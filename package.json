@@ -1,0 +1,68 @@
+{
+  "name": "fishbowl-app",
+  "version": "1.0.0",
+  "description": "A PWA multi-player/multi-device Fishbowl game with React frontend and Node.js backend",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm start --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "start": "npm run start --prefix backend",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:frontend": "npm run test --prefix frontend -- --coverage --ci --watchAll=false",
+    "test:backend": "npm run test --prefix backend",
+    "test:watch": "concurrently \"npm run test:watch:backend\" \"npm run test:watch:frontend\"",
+    "test:watch:frontend": "npm run test --prefix frontend",
+    "test:watch:backend": "npm run test:watch --prefix backend",
+    "test:coverage": "npm run test:coverage --prefix backend && npm run test:frontend",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:frontend": "npm run lint --prefix frontend",
+    "lint:backend": "npm run lint --prefix backend",
+    "lint:fix": "npm run lint:fix:backend && npm run lint:fix:frontend",
+    "lint:fix:frontend": "npm run lint:fix --prefix frontend",
+    "lint:fix:backend": "npm run lint:fix --prefix backend",
+    "format": "npm run format:backend && npm run format:frontend",
+    "format:frontend": "npm run format --prefix frontend",
+    "format:backend": "npm run format --prefix backend",
+    "format:check": "npm run format:check:backend && npm run format:check:frontend",
+    "format:check:frontend": "npm run format:check --prefix frontend",
+    "format:check:backend": "npm run format:check --prefix backend",
+    "clean": "npm run clean:backend && npm run clean:frontend",
+    "clean:frontend": "if exist frontend\\build rmdir /s /q frontend\\build && if exist frontend\\node_modules rmdir /s /q frontend\\node_modules",
+    "clean:backend": "npm run clean --prefix backend && if exist backend\\node_modules rmdir /s /q backend\\node_modules",
+    "clean:all": "npm run clean && if exist node_modules rmdir /s /q node_modules",
+    "setup": "npm run install:all && npm run build",
+    "validate": "npm run lint && npm run format:check && npm run test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "fishbowl",
+    "game",
+    "pwa",
+    "multiplayer",
+    "react",
+    "nodejs",
+    "typescript",
+    "socket.io"
+  ],
+  "author": "",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/fishbowl-app.git"
+  }
+}
