@@ -58,7 +58,7 @@
   - [x] 2.3 Create database connection module and migration system
   - [x] 2.4 Implement REST API endpoints for game creation and joining
   - [x] 2.5 Implement REST API endpoints for player and team management
-  - [ ] 2.6 Implement REST API endpoints for phrase submission and retrieval
+  - [x] 2.6 Implement REST API endpoints for phrase submission and retrieval
   - [ ] 2.7 Set up Socket.IO server and connection handling
   - [ ] 2.8 Implement Socket.IO event handlers for game state synchronization
   - [ ] 2.9 Create device session management for reconnection handling

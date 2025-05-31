@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { initializeForEnvironment, getDatabaseStatus, cleanup } from './db';
 import gameRoutes from './routes/gameRoutes';
+import { setupGameHandlers } from './sockets/gameHandlers';
 
 // Initialize Express application
 const app: Application = express();
@@ -144,19 +145,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
-  
-  socket.on('disconnect', (reason) => {
-    console.log(`Socket disconnected: ${socket.id}, reason: ${reason}`);
-  });
-  
-  // Placeholder for game-specific socket events
-  socket.on('join-game', (gameCode: string) => {
-    console.log(`Socket ${socket.id} joining game: ${gameCode}`);
-    socket.join(gameCode);
-  });
-});
+setupGameHandlers(io);
 
 // Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {

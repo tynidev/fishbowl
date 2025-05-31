@@ -4,6 +4,9 @@ import gameRoutes from './gameRoutes';
 import * as dbUtils from '../db/utils';
 import * as dbConnection from '../db/connection';
 import { Game, Player, Team, Phrase } from '../db/schema';
+import { exec } from 'child_process';
+import { serialize } from 'v8';
+import { close } from 'fs';
 
 // Mock the database modules
 jest.mock('../db/utils');
@@ -44,6 +47,25 @@ export function setupMockTransaction() {
   });
 
   return mockTransaction;
+}
+
+export function setupMockConnection(){
+  const mockConnection = {
+    db: {} as any,
+    run: jest.fn(),
+    get: jest.fn(),
+    all: jest.fn(),
+    exec: jest.fn(),
+    serialize: jest.fn(),
+    close: jest.fn(),
+    isHealthy: jest.fn(), 
+  } as any;
+
+  mockedDbConnection.withConnection.mockImplementation(async (callback) => {
+      return await callback(mockConnection);
+  });
+
+  return mockConnection;
 }
 
 /**
