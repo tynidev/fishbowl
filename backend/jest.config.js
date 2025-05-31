@@ -26,6 +26,8 @@ module.exports = {
   },
   testTimeout: 10000,
   clearMocks: true,
-  restoreMocks: true,
-  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts']
+  restoreMocks: true,  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+  // Suppress console output unless --verbose flag is used
+  silent: false, // Set to true to suppress all console output including console.error
+  verbose: true // Control test output verbosity - shows individual test names
 };

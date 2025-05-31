@@ -20,7 +20,7 @@ export interface DatabaseConfig {
 
 export interface DatabaseConnection {
   db: sqlite3.Database;
-  run: (sql: string, params?: any[]) => Promise<sqlite3.RunResult>;
+  run: (sql: string, params?: any[]) => Promise<{ lastID?: number; changes: number }>;
   get: <T = any>(sql: string, params?: any[]) => Promise<T | undefined>;
   all: <T = any>(sql: string, params?: any[]) => Promise<T[]>;
   exec: (sql: string) => Promise<void>;
@@ -38,6 +38,7 @@ class DatabaseManager {
   private connections: Map<string, sqlite3.Database> = new Map();
   private config: DatabaseConfig;
   private isInitialized = false;
+  private cachedDb: sqlite3.Database | null = null;
 
   constructor(config: DatabaseConfig) {
     this.config = config;
@@ -71,12 +72,18 @@ class DatabaseManager {
       throw error;
     }
   }
-
   /**
    * Create a new database connection with promisified methods
    */
   async createConnection(): Promise<DatabaseConnection> {
     return new Promise((resolve, reject) => {
+      // For :memory: databases, reuse the same instance to maintain data consistency
+      if (this.config.filename === ':memory:' && this.cachedDb) {
+        const connection = this.wrapDatabase(this.cachedDb);
+        resolve(connection);
+        return;
+      }
+
       const db = new sqlite3.Database(
         this.config.filename,
         this.config.mode || sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
@@ -90,51 +97,81 @@ class DatabaseManager {
           // Configure database settings
           db.configure('busyTimeout', this.config.timeout || 5000);
 
-          // Promisify database methods
-          const connection: DatabaseConnection = {
-            db,
-            run: promisify(db.run.bind(db)),
-            get: promisify(db.get.bind(db)),
-            all: promisify(db.all.bind(db)),
-            exec: promisify(db.exec.bind(db)),
-            serialize: (callback: () => Promise<void>) => {
-              return new Promise((resolveSerialize, rejectSerialize) => {
-                db.serialize(async () => {
-                  try {
-                    await callback();
-                    resolveSerialize();
-                  } catch (error) {
-                    rejectSerialize(error);
-                  }
-                });
-              });
-            },
-            close: () => {
-              return new Promise((resolveClose, rejectClose) => {
-                db.close((err) => {
-                  if (err) {
-                    rejectClose(err);
-                  } else {
-                    resolveClose();
-                  }
-                });
-              });
-            },
-            isHealthy: async () => {
-              try {
-                await connection.get('SELECT 1 as test');
-                return true;
-              } catch (error) {
-                console.error('Database health check failed:', error);
-                return false;
-              }
-            }
-          };
+          // Cache the database instance for :memory: databases
+          if (this.config.filename === ':memory:') {
+            this.cachedDb = db;
+          }
 
+          const connection = this.wrapDatabase(db);
           resolve(connection);
         }
       );
     });
+  }
+  /**
+   * Wrap a SQLite database instance with promisified methods
+   */
+  private wrapDatabase(db: sqlite3.Database): DatabaseConnection {
+    const connection: DatabaseConnection = {
+      db,
+      run: (sql: string, params?: any) => {
+        return new Promise((resolve, reject) => {
+          db.run(sql, params, function(err) {
+            if (err) {
+              reject(err);
+            } else {
+              resolve({
+                lastID: this.lastID,
+                changes: this.changes
+              });
+            }
+          });
+        });
+      },
+      get: promisify(db.get.bind(db)),
+      all: promisify(db.all.bind(db)),
+      exec: promisify(db.exec.bind(db)),
+      serialize: (callback: () => Promise<void>) => {
+        return new Promise((resolveSerialize, rejectSerialize) => {
+          db.serialize(async () => {
+            try {
+              await callback();
+              resolveSerialize();
+            } catch (error) {
+              rejectSerialize(error);
+            }
+          });
+        });
+      },
+      close: () => {
+        return new Promise((resolveClose, rejectClose) => {
+          // For cached :memory: databases, don't actually close the connection
+          if (this.config.filename === ':memory:' && db === this.cachedDb) {
+            resolveClose();
+            return;
+          }
+          
+          db.close((err) => {
+            if (err) {
+              rejectClose(err);
+            } else {
+              resolveClose();
+            }
+          });
+        });
+      },
+      isHealthy: async () => {
+        try {
+          await connection.get('SELECT 1 as test');
+          return true;
+        } catch (error) {
+          console.error('Database health check failed:', error);
+          return false;
+        }
+      }
+    };
+
+    return connection;
   }
 
   /**
@@ -212,7 +249,6 @@ class DatabaseManager {
       await connection.close();
     }
   }
-
   /**
    * Cleanup all connections
    */
@@ -227,6 +263,19 @@ class DatabaseManager {
         });
       });
     });
+
+    // Close cached database if it exists
+    if (this.cachedDb) {
+      closePromises.push(new Promise<void>((resolve) => {
+        this.cachedDb!.close((err) => {
+          if (err) {
+            console.warn('Error closing cached database connection:', err);
+          }
+          this.cachedDb = null;
+          resolve();
+        });
+      }));
+    }
 
     await Promise.all(closePromises);
     this.connections.clear();

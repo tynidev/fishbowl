@@ -4,8 +4,7 @@
 import {
   ALL_TABLES,
   CREATE_INDEXES,
-  CREATE_TRIGGERS,
-  SCHEMA_VERSION
+  CREATE_TRIGGERS
 } from '../schema';
 
 export interface Migration {
@@ -35,24 +34,10 @@ export const migration_001: Migration = {
       for (const indexSQL of CREATE_INDEXES) {
         await db.exec(indexSQL);
       }
-      
-      // Create triggers for automatic timestamp updates
+        // Create triggers for automatic timestamp updates
       for (const triggerSQL of CREATE_TRIGGERS) {
         await db.exec(triggerSQL);
       }
-      
-      // Insert schema version
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS schema_migrations (
-          version INTEGER PRIMARY KEY,
-          applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      await db.run(
-        'INSERT OR REPLACE INTO schema_migrations (version, name) VALUES (?, ?)',
-        [SCHEMA_VERSION, 'initial_schema']
-      );
       
       console.log('Migration 001 completed successfully');
       
@@ -65,16 +50,14 @@ export const migration_001: Migration = {
   down: async (db: any): Promise<void> => {
     console.log('Rolling back migration 001...');
     
-    try {
-      // Drop tables in reverse order to respect foreign key constraints
+    try {      // Drop tables in reverse order to respect foreign key constraints
       const dropStatements = [
         'DROP TABLE IF EXISTS turn_phrases;',
         'DROP TABLE IF EXISTS turns;',
         'DROP TABLE IF EXISTS phrases;',
         'DROP TABLE IF EXISTS teams;',
         'DROP TABLE IF EXISTS players;',
-        'DROP TABLE IF EXISTS games;',
-        'DROP TABLE IF EXISTS schema_migrations;'
+        'DROP TABLE IF EXISTS games;'
       ];
       
       for (const dropSQL of dropStatements) {
@@ -92,33 +75,6 @@ export const migration_001: Migration = {
 
 // Export for migration runner
 export default migration_001;
-
-// ==================== Migration Utilities ====================
-
-/**
- * Get the current schema version from the database
- */
-export async function getCurrentSchemaVersion(db: any): Promise<number> {
-  try {
-    const result = await db.get(`
-      SELECT version FROM schema_migrations 
-      ORDER BY version DESC 
-      LIMIT 1
-    `);
-    return result ? result.version : 0;
-  } catch (error) {
-    // Table doesn't exist yet
-    return 0;
-  }
-}
-
-/**
- * Check if the database schema is up to date
- */
-export async function isSchemaUpToDate(db: any): Promise<boolean> {
-  const currentVersion = await getCurrentSchemaVersion(db);
-  return currentVersion >= SCHEMA_VERSION;
-}
 
 /**
  * Validate database schema integrity

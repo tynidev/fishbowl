@@ -69,10 +69,12 @@ describe('Database Migrations', () => {
     expect(validation.valid).toBe(true);
     expect(validation.errors).toHaveLength(0);
   });
-
   test('should run migrations', async () => {
     const results = await runMigrations();
     expect(results).toBeDefined();
+    
+    // Wait a bit to ensure transaction is committed
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     const status = await getMigrationStatus();
     expect(status.isUpToDate).toBe(true);
