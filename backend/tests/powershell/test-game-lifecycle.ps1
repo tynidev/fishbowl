@@ -38,7 +38,7 @@ try {
         
         $playerResponse = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode/join" -Method POST -Body $playerData -ContentType "application/json"
         $players += $playerResponse
-        Write-Host "  ✓ Added: $($playerResponse.playerName) → $($playerResponse.teamName)" -ForegroundColor Green
+        Write-Host "  + Added: $($playerResponse.playerName) -> $($playerResponse.teamName)" -ForegroundColor Green
     }
 
     # 3. Test Team Distribution
@@ -79,10 +79,10 @@ try {
         
         try {
             $phraseResponse = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode/phrases" -Method POST -Body $phraseData -ContentType "application/json"
-            Write-Host "  ✓ $($player.playerName): $($phraseResponse.submittedCount) phrases" -ForegroundColor Green
+            Write-Host "  + $($player.playerName): $($phraseResponse.submittedCount) phrases" -ForegroundColor Green
         }
         catch {
-            Write-Host "  ✗ $($player.playerName): Failed to submit phrases" -ForegroundColor Red
+            Write-Host "  X $($player.playerName): Failed to submit phrases" -ForegroundColor Red
         }
     }
 
