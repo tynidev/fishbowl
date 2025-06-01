@@ -38,14 +38,6 @@ const corsOptions = {
 // Middleware setup
 app.use(cors(corsOptions));
 
-// Body parser middleware
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-
-// Static file serving middleware
-app.use('/static', express.static(path.join(__dirname, '../../frontend/build/static')));
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
-
 // Request logging middleware (development)
 if (process.env.NODE_ENV !== 'production') {
   app.use((req: Request, res: Response, next: NextFunction) => {
@@ -54,18 +46,36 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err.message);
-  console.error('Stack:', err.stack);
+// Custom middleware to validate Content-Type for API requests
+app.use('/api', (req: Request, res: Response, next: NextFunction): void => {
+  // Check Content-Type for requests with bodies
+  if ((req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') && 
+      req.get('Content-Length') && 
+      req.get('Content-Length') !== '0') {
+    const contentType = req.get('Content-Type');
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      res.status(400).json({
+        error: 'Invalid Content-Type',
+        message: 'Expected application/json'
+      });
+      return;
+    }
+  }
   
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Something went wrong' 
-      : err.message
-  });
+  next();
 });
+
+// Body parser middleware with error handling
+app.use(bodyParser.json({ 
+  limit: '10mb',
+  strict: true
+}));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static file serving middleware
+app.use('/static', express.static(path.join(__dirname, '../../frontend/build/static')));
+app.use(express.static(path.join(__dirname, '../../frontend/build')));
 
 // Health check endpoint
 app.get('/api/health', async (req: Request, res: Response) => {
@@ -142,6 +152,29 @@ app.use((req: Request, res: Response) => {
   } else {
     res.status(404).json({ error: 'API endpoint not found' });
   }
+});
+
+// Global error handler - must be last middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction): void => {
+  // Handle JSON parsing errors
+  if (err instanceof SyntaxError && 'body' in err) {
+    res.status(400).json({
+      error: 'Invalid JSON',
+      message: 'Request body contains malformed JSON'
+    });
+    return;
+  }
+  
+  // Handle other errors
+  console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
+  
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Something went wrong' 
+      : err.message
+  });
 });
 
 // Socket.IO connection handling

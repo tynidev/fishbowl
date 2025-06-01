@@ -15,7 +15,10 @@
 - `/backend/src/db/verify.ts` - Database verification functions
 - `/backend/src/db/README.md` - Documentation for database module
 - `/backend/src/db/migrations/001_initial.ts` - Initial database migration
+- `/backend/src/db/migrations/002_device_sessions.ts` - Device sessions table migration
 - `/backend/src/db/migrations/index.ts` - Migration exports
+- `/backend/src/sockets/deviceSessionManager.ts` - Device session management utilities
+- `/backend/src/routes/deviceSessions.ts` - REST API endpoints for device sessions
 - `/backend/unittests/setupTests.ts` - Backend test setup file
 - `/backend/unittests/setup.test.ts` - Basic test to verify Jest setup
 - `/backend/unittests/db/database.test.ts` - Unit tests for database functions
@@ -69,7 +72,7 @@
   - [x] 2.6 Implement REST API endpoints for phrase submission and retrieval
   - [x] 2.7 Set up Socket.IO server and connection handling
   - [x] 2.8 Implement Socket.IO event handlers for game state synchronization
-  - [ ] 2.9 Create device session management for reconnection handling
+  - [x] 2.9 Create device session management for reconnection handling
   - [ ] 2.10 Write unit tests for all API endpoints and socket handlers
 
 - [ ] 3.0 Build core game management features (lobby, setup, player management)

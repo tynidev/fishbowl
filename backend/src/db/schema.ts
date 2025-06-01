@@ -80,6 +80,18 @@ export interface TurnPhrase {
   timestamp: string;
 }
 
+export interface DeviceSession {
+  id: string;
+  device_id: string;
+  socket_id?: string;
+  player_id?: string;
+  game_id?: string;
+  last_seen: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ==================== SQL Schema Definitions ====================
 
 export const CREATE_GAMES_TABLE = `
@@ -187,6 +199,23 @@ export const CREATE_TURN_PHRASES_TABLE = `
   );
 `;
 
+export const CREATE_DEVICE_SESSIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS device_sessions (
+    id TEXT PRIMARY KEY,
+    device_id TEXT NOT NULL,
+    socket_id TEXT,
+    player_id TEXT,
+    game_id TEXT,
+    last_seen TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE SET NULL,
+    UNIQUE(device_id, game_id)
+  );
+`;
+
 // ==================== Indexes ====================
 
 export const CREATE_INDEXES = [
@@ -222,7 +251,16 @@ export const CREATE_INDEXES = [
   // Turn phrases indexes
   `CREATE INDEX IF NOT EXISTS idx_turn_phrases_turn ON turn_phrases(turn_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turn_phrases_phrase ON turn_phrases(phrase_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_turn_phrases_action ON turn_phrases(action);`
+  `CREATE INDEX IF NOT EXISTS idx_turn_phrases_action ON turn_phrases(action);`,
+  
+  // Device sessions indexes
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_device ON device_sessions(device_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_socket ON device_sessions(socket_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_player ON device_sessions(player_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_game ON device_sessions(game_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_active ON device_sessions(is_active);`,
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_last_seen ON device_sessions(last_seen);`,
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_device_game ON device_sessions(device_id, game_id);`
 ];
 
 // ==================== Triggers for updated_at ====================
@@ -252,10 +290,16 @@ export const CREATE_TRIGGERS = [
      UPDATE phrases SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
    END;`,
    
-  `CREATE TRIGGER IF NOT EXISTS update_turns_timestamp 
-   AFTER UPDATE ON turns 
-   BEGIN 
-     UPDATE turns SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
+  `CREATE TRIGGER IF NOT EXISTS update_turns_timestamp
+   AFTER UPDATE ON turns
+   BEGIN
+     UPDATE turns SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+   END;`,
+   
+  `CREATE TRIGGER IF NOT EXISTS update_device_sessions_timestamp
+   AFTER UPDATE ON device_sessions
+   BEGIN
+     UPDATE device_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
    END;`
 ];
 
@@ -267,7 +311,8 @@ export const ALL_TABLES = [
   CREATE_TEAMS_TABLE,
   CREATE_PHRASES_TABLE,
   CREATE_TURNS_TABLE,
-  CREATE_TURN_PHRASES_TABLE
+  CREATE_TURN_PHRASES_TABLE,
+  CREATE_DEVICE_SESSIONS_TABLE
 ];
 
 export const SCHEMA_VERSION = 1;

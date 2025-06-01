@@ -1,7 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { Game, Player, Team, Phrase } from '../db/schema';
-import { insert, select, findById, exists, update } from '../db/utils';
+import { insert, select, findById, exists, update, deleteRecords } from '../db/utils';
 import { withTransaction, TransactionConnection } from '../db/connection';
 
 // ==================== Request/Response Interfaces ====================
@@ -345,11 +345,15 @@ async function assignPlayerToTeam(gameId: string, transaction?: any): Promise<st
  */
 async function createGame(req: Request, res: Response): Promise<void> {
   try {
-    const { name, hostPlayerName, teamCount = 2, phrasesPerPlayer = 5, timerDuration = 60 }: CreateGameRequest = req.body;
-
-    // Validate required fields
+    const { name, hostPlayerName, teamCount = 2, phrasesPerPlayer = 5, timerDuration = 60 }: CreateGameRequest = req.body;    // Validate required fields
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({ error: 'Game name is required' });
+      return;
+    }
+
+    // Validate game name length
+    if (name.trim().length > 100) {
+      res.status(400).json({ error: 'Game name must be 100 characters or less' });
       return;
     }
 
@@ -683,10 +687,14 @@ async function getGamePlayers(req: Request, res: Response): Promise<void> {
 async function updateGameConfig(req: Request, res: Response): Promise<void> {
   try {
     const { gameCode } = req.params;
-    const { teamCount, phrasesPerPlayer, timerDuration }: UpdateConfigRequest = req.body;
-
-    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
+    const { teamCount, phrasesPerPlayer, timerDuration }: UpdateConfigRequest = req.body;    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
       res.status(400).json({ error: 'Invalid game code' });
+      return;
+    }
+
+    // Validate that at least one configuration field is provided
+    if (teamCount === undefined && phrasesPerPlayer === undefined && timerDuration === undefined) {
+      res.status(400).json({ error: 'At least one configuration field must be provided (teamCount, phrasesPerPlayer, or timerDuration)' });
       return;
     }
 
@@ -718,24 +726,90 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
       if (phrasesPerPlayer !== undefined) updateData.phrases_per_player = phrasesPerPlayer;
       if (timerDuration !== undefined) updateData.timer_duration = timerDuration;      // Update game configuration
       if (Object.keys(updateData).length > 0) {
-        await update('games', updateData, [{ field: 'id', operator: '=', value: gameCode }], transaction);
-
-        // If team count changed, recreate teams
+        await update('games', updateData, [{ field: 'id', operator: '=', value: gameCode }], transaction);        // If team count changed, handle teams intelligently
         if (teamCount !== undefined && teamCount !== game.team_count) {
-          // Delete existing teams (this would cascade delete team assignments)
-          // For now, we'll just recreate teams - in a real implementation
-          // you might want to handle this more carefully
-          
-          // Create new teams
-          await createDefaultTeams(gameCode, teamCount, transaction);
+          const currentTeams = await select<Team>('teams', {
+            where: [{ field: 'game_id', operator: '=', value: gameCode }],
+            orderBy: [{ field: 'created_at', direction: 'ASC' }]
+          }, transaction);
 
-          // Reassign all players to teams
-          const players = await select<Player>('players', {
-            where: [{ field: 'game_id', operator: '=', value: gameCode }]
-          }, transaction);          for (const player of players) {
-            const newTeamId = await assignPlayerToTeam(gameCode, transaction);
-            if (newTeamId) {
-              await update('players', { team_id: newTeamId }, [{ field: 'id', operator: '=', value: player.id }], transaction);
+          const currentTeamCount = currentTeams.length;
+
+          if (teamCount > currentTeamCount) {
+            // Increasing team count - create additional teams
+            const teamsToCreate = teamCount - currentTeamCount;
+            const teamColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+            const teamNames = ['Red Team', 'Teal Team', 'Blue Team', 'Green Team', 'Yellow Team', 'Purple Team', 'Mint Team', 'Gold Team'];            for (let i = 0; i < teamsToCreate; i++) {
+              const teamIndex = currentTeamCount + i;
+              if (teamIndex < teamNames.length && teamIndex < teamColors.length) {
+                const teamName = teamNames[teamIndex];
+                const teamColor = teamColors[teamIndex];
+                  if (teamName && teamColor) {
+                  const newTeam: Omit<Team, 'id' | 'created_at' | 'updated_at'> = {
+                    game_id: gameCode,
+                    name: teamName,
+                    color: teamColor,
+                    score_round_1: 0,
+                    score_round_2: 0,
+                    score_round_3: 0,
+                    total_score: 0
+                  };
+                  await insert('teams', newTeam, transaction);
+                }
+              }
+            }
+          } else if (teamCount < currentTeamCount) {
+            // Decreasing team count - check if any players are assigned to teams being removed
+            const teamsToRemove = currentTeams.slice(teamCount);
+            const teamsToKeep = currentTeams.slice(0, teamCount);
+
+            // Check if any players are assigned to teams being removed
+            const playersInRemovedTeams = await select<Player>('players', {
+              where: [
+                { field: 'game_id', operator: '=', value: gameCode },
+                { field: 'team_id', operator: 'IN', value: teamsToRemove.map(t => t.id) }
+              ]
+            }, transaction);
+
+            if (playersInRemovedTeams.length > 0) {
+              // Reassign players from removed teams to remaining teams
+              for (const player of playersInRemovedTeams) {
+                // Find the team with the fewest players among remaining teams
+                const teamPlayerCounts = new Map<string, number>();
+                for (const team of teamsToKeep) {
+                  const playerCount = await select<Player>('players', {
+                    where: [
+                      { field: 'game_id', operator: '=', value: gameCode },
+                      { field: 'team_id', operator: '=', value: team.id }
+                    ]
+                  }, transaction);
+                  teamPlayerCounts.set(team.id, playerCount.length);
+                }
+
+                // Find team with minimum players
+                let minCount = Infinity;
+                let targetTeamId = teamsToKeep[0]?.id;
+                for (const [teamId, count] of teamPlayerCounts) {
+                  if (count < minCount) {
+                    minCount = count;
+                    targetTeamId = teamId;
+                  }
+                }
+
+                // Reassign player to the team with fewest players
+                if (targetTeamId) {
+                  await update('players', { team_id: targetTeamId }, [
+                    { field: 'id', operator: '=', value: player.id }
+                  ], transaction);
+                }
+              }
+            }
+
+            // Remove the excess teams
+            for (const teamToRemove of teamsToRemove) {
+              await deleteRecords('teams', [
+                { field: 'id', operator: '=', value: teamToRemove.id }
+              ], transaction);
             }
           }
         }

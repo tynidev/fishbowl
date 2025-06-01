@@ -2,6 +2,15 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { findById, select, update, exists } from '../db/utils';
 import { Game, Team, Player } from '../db/schema';
 import { withTransaction } from '../db/connection';
+import {
+    createOrUpdateDeviceSession,
+    getDeviceSession,
+    getDeviceSessionBySocket,
+    deactivateDeviceSessionBySocket,
+    updateLastSeen,
+    cleanupStaleSessions,
+    generateDeviceId
+} from './deviceSessionManager';
 
 // ==================== Socket Event Interfaces ====================
 
@@ -9,6 +18,7 @@ export interface JoinGameData {
     gameCode: string;
     playerId: string;
     playerName: string;
+    deviceId: string;
 }
 
 export interface LeaveGameData {
@@ -95,12 +105,12 @@ export async function handleJoinGameRoom(
     data: JoinGameData
 ): Promise<void> {
     try {
-        const { gameCode, playerId, playerName } = data;
+        const { gameCode, playerId, playerName, deviceId } = data;
 
         // Validate input
-        if (!gameCode || !playerId || !playerName) {
+        if (!gameCode || !playerId || !playerName || !deviceId) {
             socket.emit('error', {
-                message: 'Missing required fields: gameCode, playerId, playerName'
+                message: 'Missing required fields: gameCode, playerId, playerName, deviceId'
             });
             return;
         }
@@ -121,6 +131,14 @@ export async function handleJoinGameRoom(
                 return;
             }
 
+            // Create or update device session
+            const deviceSession = await createOrUpdateDeviceSession(
+                deviceId,
+                socket.id,
+                playerId,
+                gameCode
+            );
+
             // Check if player is already connected on another socket
             // if they are, disconnect the old socket
             const existingSocketId = playerSockets.get(playerId);
@@ -128,10 +146,20 @@ export async function handleJoinGameRoom(
                 // Disconnect the old socket
                 const existingSocket = io.sockets.sockets.get(existingSocketId);
                 if (existingSocket) {
+                    // Check if this is a reconnection from the same device
+                    const existingSession = await getDeviceSessionBySocket(existingSocketId);
+                    const isReconnection = existingSession && existingSession.device_id === deviceId;
+                    
                     existingSocket.emit('connection-replaced', {
-                        message: 'You have connected from another device'
+                        message: isReconnection
+                            ? 'You have reconnected from the same device'
+                            : 'You have connected from another device',
+                        isReconnection
                     });
                     existingSocket.disconnect();
+                    
+                    // Deactivate the old session
+                    await deactivateDeviceSessionBySocket(existingSocketId);
                 }
                 // Clean up old connection data
                 connectedPlayers.delete(existingSocketId);
@@ -300,6 +328,9 @@ export async function handleDisconnect(
 
         if (playerConnection) {
             await withTransaction(async (transaction) => {
+                // Deactivate device session
+                await deactivateDeviceSessionBySocket(socket.id);
+                
                 // Update player connection status in database
                 await update('players',
                     { is_connected: false },
@@ -604,9 +635,83 @@ export function registerSocketHandlers(io: SocketIOServer): void {
             handleDisconnect(io, socket, reason);
         });
 
-        // Heartbeat/ping for connection monitoring
-        socket.on('ping', () => {
+        // Device session reconnection
+        socket.on('reconnect-session', async (data: { deviceId: string; gameCode?: string }) => {
+            try {
+                const { deviceId, gameCode } = data;
+                const existingSession = await getDeviceSession(deviceId, gameCode);
+                
+                if (existingSession && existingSession.player_id) {
+                    // Found existing session, attempt to rejoin
+                    const rejoinData: JoinGameData = {
+                        gameCode: existingSession.game_id || gameCode || '',
+                        playerId: existingSession.player_id,
+                        playerName: '', // We'll fetch this from the database
+                        deviceId: deviceId
+                    };
+                    
+                    // Get player name from database
+                    const player = await findById<Player>('players', existingSession.player_id);
+                    if (player) {
+                        rejoinData.playerName = player.name;
+                        rejoinData.gameCode = player.game_id;
+                        
+                        // Emit reconnection success and auto-rejoin
+                        socket.emit('session-reconnected', {
+                            success: true,
+                            session: existingSession,
+                            player: {
+                                id: player.id,
+                                name: player.name,
+                                gameId: player.game_id,
+                                teamId: player.team_id
+                            }
+                        });
+                        
+                        // Auto-rejoin the game room
+                        await handleJoinGameRoom(io, socket, rejoinData);
+                    }
+                } else {
+                    // No existing session found
+                    socket.emit('session-reconnected', {
+                        success: false,
+                        message: 'No previous session found for this device'
+                    });
+                }
+            } catch (error) {
+                console.error('Error in reconnect-session:', error);
+                socket.emit('session-reconnected', {
+                    success: false,
+                    message: 'Failed to reconnect session'
+                });
+            }
+        });
+
+        // Generate new device ID
+        socket.on('generate-device-id', () => {
+            const newDeviceId = generateDeviceId();
+            socket.emit('device-id-generated', { deviceId: newDeviceId });
+        });
+
+        // Heartbeat/ping for connection monitoring with device session update
+        socket.on('ping', async (data?: { deviceId?: string; gameCode?: string }) => {
+            if (data?.deviceId) {
+                try {
+                    await updateLastSeen(data.deviceId, data.gameCode);
+                } catch (error) {
+                    console.error('Error updating last seen:', error);
+                }
+            }
             socket.emit('pong');
         });
     });
+
+    // Start periodic cleanup of stale sessions (every 30 minutes)
+    setInterval(async () => {
+        try {
+            await cleanupStaleSessions();
+        } catch (error) {
+            console.error('Error during session cleanup:', error);
+        }
+    }, 30 * 60 * 1000);
 }
