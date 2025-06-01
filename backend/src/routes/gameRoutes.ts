@@ -297,7 +297,7 @@ async function createDefaultTeams(gameId: string, teamCount: number, transaction
 /**
  * Assign player to team using round-robin
  */
-async function assignPlayerToTeam(gameId: string, playerId: string, transaction?: any): Promise<string | undefined> {
+async function assignPlayerToTeam(gameId: string, transaction?: any): Promise<string | undefined> {
   // Get all teams for the game
   const teams = await select<Team>('teams', {
     where: [{ field: 'game_id', operator: '=', value: gameId }],
@@ -516,7 +516,7 @@ async function joinGame(req: Request, res: Response): Promise<void> {
         const playerId = uuidv4();
         
         // Assign to team first
-        const assignedTeamId = await assignPlayerToTeam(gameCode, playerId, transaction);
+        const assignedTeamId = await assignPlayerToTeam(gameCode, transaction);
         
         player = {
           id: playerId,
@@ -733,7 +733,7 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
           const players = await select<Player>('players', {
             where: [{ field: 'game_id', operator: '=', value: gameCode }]
           }, transaction);          for (const player of players) {
-            const newTeamId = await assignPlayerToTeam(gameCode, player.id, transaction);
+            const newTeamId = await assignPlayerToTeam(gameCode, transaction);
             if (newTeamId) {
               await update('players', { team_id: newTeamId }, [{ field: 'id', operator: '=', value: player.id }], transaction);
             }

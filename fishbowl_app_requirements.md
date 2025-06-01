@@ -36,13 +36,31 @@
 ## Backend Responsibilities
 
 - Serve static files from the React PWA build.
-- Provide REST API endpoints for:
+- **REST API handles all persistent data operations**:
   - Game creation and setup
-  - Player and team management
+  - Player and team management  
+  - Phrase submission and retrieval
   - Game state updates (e.g., score tracking, turn progression)
-- Handle **real-time updates** using **Socket.IO**:
+  - All database changes except player connection status
+- **Socket.IO handles real-time communication**:
+  - Player connection/disconnection tracking (updates `is_connected` status in database)
+  - Broadcast real-time updates to all connected devices when game state changes
   - Synchronize game state across all connected devices
-  - Allow any device to trigger game actions (e.g., start round, skip phrase, submit guess)
+  - Device session management and reconnection handling
+  - Real-time notifications (player joined, phrase guessed, turn started, etc.)
+
+## Frontend Client Integration
+
+- The React frontend will implement a **single unified game service module** that handles both REST API and Socket.IO communication
+- This module will provide a simple interface for all game functions (e.g., `joinGame()`, `submitPhrase()`, `startTurn()`)
+- For each game action, the module will:
+  1. Make the appropriate REST API call to update persistent data
+  2. Make the corresponding Socket.IO call for real-time connection/notification
+  3. Return combined data from both calls to the React components
+- Example: When calling `gameService.joinGame(gameCode, playerName)`:
+  - Calls REST API `POST /api/games/:gameCode/join` to add player to database
+  - Calls Socket.IO `join-gameroom` event to join real-time room and update connection status
+  - Returns player data from REST API plus real-time connection confirmation
 
 ## Database
 

@@ -73,7 +73,13 @@
   - [ ] 3.6 Implement real-time player joining updates using Socket.IO
   - [ ] 3.7 Build phrase submission screen with progress tracking
   - [ ] 3.8 Create Redux store structure for game state management
-  - [ ] 3.9 Implement API service layer for backend communication
+  - [ ] 3.9 Implement API service layer for backend communication/frontend integration
+    - [ ] 3.9.1 Create GameService class that handles both REST API and Socket.IO communication
+    - [ ] 3.9.2 Implement all necessary calls for both APIs combining where appropriate
+      - [ ] 3.9.2.1 Create TypeScript interfaces for all service method responses
+    - [ ] 3.9.8 Implement connection status monitoring and reconnection handling
+    - [ ] 3.9.9 Write comprehensive unit tests for GameService module
+    - [ ] 3.9.10 Integrate GameService with React components and Redux store
   - [ ] 3.10 Write unit tests for all components and Redux logic
 
 - [ ] 4.0 Develop in-game functionality (rounds, turns, scoring)

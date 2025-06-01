@@ -1,7 +1,7 @@
 import {
-  setupMockTransaction,
-  resetAllMocks,
-  mockedDbUtils,
+    setupMockTransaction,
+    resetAllMocks,
+    mockedDbUtils,
 } from '../routes/test-utils';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer } from 'http';
@@ -67,17 +67,17 @@ describe('Socket.IO Game Handlers', () => {
         });
     });
 
-    describe('join-game event', () => {
+    describe('join-gameroom event', () => {
         const mockJoinData: JoinGameData = {
             gameCode: 'ABCD',
             playerId: 'player-123',
             playerName: 'Test Player'
-        }; 
-        
+        };
+
         test('should handle database errors gracefully', (done) => {
             mockedDbUtils.findById.mockRejectedValueOnce(new Error('Database connection failed'));
 
-            clientSocket.emit('join-game', mockJoinData);
+            clientSocket.emit('join-gameroom', mockJoinData);
 
             clientSocket.once('error', (response) => {
                 expect(response.message).toBe('Failed to join game');
@@ -88,66 +88,66 @@ describe('Socket.IO Game Handlers', () => {
         test('should handle game not found', (done) => {
             mockedDbUtils.findById.mockResolvedValueOnce(null); // Game doesn't exist
 
-            clientSocket.emit('join-game', mockJoinData);
+            clientSocket.emit('join-gameroom', mockJoinData);
 
             clientSocket.once('error', (response) => {
                 expect(response.message).toBe('Game not found');
                 done();
             });
-        }); 
-        
+        });
+
         test('should handle player not found in game', (done) => {
             mockedDbUtils.findById
-            .mockResolvedValueOnce({
-                id: 'game-1',
-                game_code: mockJoinData.gameCode,
-                status: 'waiting'
-            } as any) // Game exists
-            .mockResolvedValueOnce(null as any); // Player doesn't exist
+                .mockResolvedValueOnce({
+                    id: 'game-1',
+                    game_code: mockJoinData.gameCode,
+                    status: 'waiting'
+                } as any) // Game exists
+                .mockResolvedValueOnce(null as any); // Player doesn't exist
 
-            clientSocket.emit('join-game', mockJoinData);
+            clientSocket.emit('join-gameroom', mockJoinData);
 
             clientSocket.once('error', (response) => {
                 expect(response.message).toBe('Player not found in this game');
                 done();
             });
-        }); 
+        });
 
         test('should handle successful game join', (done) => {
             // Mock successful database responses
             mockedDbUtils.findById
-            .mockResolvedValueOnce({
-                id: 'game-1',
-                game_code: mockJoinData.gameCode,
-                status: 'waiting'
-            } as any) // Game exists
-            .mockResolvedValueOnce({
-                id: mockJoinData.playerId,
-                game_id: mockJoinData.gameCode,
-                name: mockJoinData.playerName
-            } as any); // Player exists in game
+                .mockResolvedValueOnce({
+                    id: 'game-1',
+                    game_code: mockJoinData.gameCode,
+                    status: 'waiting'
+                } as any) // Game exists
+                .mockResolvedValueOnce({
+                    id: mockJoinData.playerId,
+                    game_id: mockJoinData.gameCode,
+                    name: mockJoinData.playerName
+                } as any); // Player exists in game
 
             mockedDbUtils.update.mockResolvedValueOnce(1);
 
-            clientSocket.emit('join-game', mockJoinData);
+            clientSocket.emit('join-gameroom', mockJoinData);
 
-            clientSocket.once('game-joined', (response) => {
+            clientSocket.once('gameroom-joined', (response) => {
                 expect(response.gameCode).toBe('ABCD');
                 expect(response.playerId).toBe('player-123');
                 expect(response.playerName).toBe('Test Player');
                 done();
             });
-        }); 
+        });
     });
 
-    describe('leave-game event', () => {
+    describe('leave-gameroom event', () => {
         const mockLeaveData: LeaveGameData = {
             gameCode: 'ABCD',
             playerId: 'player-123'
-        }; 
-        
+        };
+
         test('should handle successful game leave', (done) => {
-            // Mock the join-game dependencies first
+            // Mock the join-gameroom dependencies first
             mockedDbUtils.findById.mockResolvedValueOnce({
                 id: 'game-1',
                 game_code: 'ABCD',
@@ -164,17 +164,17 @@ describe('Socket.IO Game Handlers', () => {
             mockedDbUtils.update.mockResolvedValueOnce(1); // Leave update
 
             // First join the game
-            clientSocket.emit('join-game', {
+            clientSocket.emit('join-gameroom', {
                 gameCode: 'ABCD',
                 playerId: 'player-123',
                 playerName: 'Test Player'
             });
 
-            clientSocket.once('game-joined', () => {
+            clientSocket.once('gameroom-joined', () => {
                 // Now leave the game
-                clientSocket.emit('leave-game', mockLeaveData);
+                clientSocket.emit('leave-gameroom', mockLeaveData);
 
-                // Since leave-game doesn't emit a response, just verify it doesn't crash
+                // Since leave-gameroom doesn't emit a response, just verify it doesn't crash
                 setTimeout(() => {
                     expect(clientSocket.connected).toBe(true);
                     done();
@@ -183,17 +183,17 @@ describe('Socket.IO Game Handlers', () => {
         });
 
         test('should handle game not found', (done) => {
-            clientSocket.emit('leave-game', mockLeaveData);
+            clientSocket.emit('leave-gameroom', mockLeaveData);
 
-            // Since leave-game doesn't emit error responses, just verify it doesn't crash
+            // Since leave-gameroom doesn't emit error responses, just verify it doesn't crash
             setTimeout(() => {
                 expect(clientSocket.connected).toBe(true);
                 done();
             }, 100);
         });
     });
-    
-    describe('assign-team event', () => {
+
+    describe('assigned-team event', () => {
         const playerName = 'Test Player';
         const mockAssignData: TeamAssignmentData = {
             gameCode: 'ABCD',
@@ -214,18 +214,18 @@ describe('Socket.IO Game Handlers', () => {
                     game_id: mockAssignData.gameCode,
                     name: playerName,
                 } as any); // Player exists for join
-            
+
             mockedDbUtils.update.mockResolvedValueOnce(1); // Join update
             mockedDbUtils.select.mockResolvedValueOnce([]); // Players for game state
-            
+
             // Join the game first
-            clientSocket.emit('join-game', {
+            clientSocket.emit('join-gameroom', {
                 gameCode: mockAssignData.gameCode,
                 playerId: mockAssignData.playerId,
                 playerName: playerName
             });
-            
-            clientSocket.once('game-joined', () => {
+
+            clientSocket.once('gameroom-joined', () => {
                 // Now setup mocks for team assignment
                 mockedDbUtils.findById
                     .mockResolvedValueOnce({
@@ -237,12 +237,16 @@ describe('Socket.IO Game Handlers', () => {
                         id: mockAssignData.playerId,
                         game_id: mockAssignData.gameCode,
                         name: playerName,
-                    } as any); // Player exists in game
-                
+                    } as any) // Player exists in game
+                    .mockResolvedValueOnce({
+                        id: mockAssignData.teamId,
+                        game_id: mockAssignData.gameCode,
+                    } as any); // Team exists
+
                 mockedDbUtils.update.mockResolvedValueOnce(1); // Team assignment update
-                
-                clientSocket.emit('assign-team', mockAssignData);
-                
+
+                clientSocket.emit('assigned-team', mockAssignData);
+
                 clientSocket.once('team-assignment-updated', (response) => {
                     expect(response.playerId).toBe(mockAssignData.playerId);
                     expect(response.teamId).toBe(mockAssignData.teamId);
@@ -252,7 +256,7 @@ describe('Socket.IO Game Handlers', () => {
             });
         });
     });
-    
+
     describe('ping event', () => {
         test('should respond to ping with pong', (done) => {
             clientSocket.emit('ping');
@@ -307,7 +311,7 @@ describe('Socket.IO Game Handlers', () => {
     describe('Error Handling', () => {
         test('should handle malformed event data', (done) => {
             // Send invalid data
-            clientSocket.emit('join-game', { invalid: 'data' });
+            clientSocket.emit('join-gameroom', { invalid: 'data' });
 
             // Should not crash the server
             setTimeout(() => {
@@ -315,9 +319,9 @@ describe('Socket.IO Game Handlers', () => {
                 done();
             }, 100);
         });
-        
+
         test('should handle events with missing required fields', (done) => {
-            clientSocket.emit('join-game', { gameCode: 'ABCD' }); // Missing playerId and playerName
+            clientSocket.emit('join-gameroom', { gameCode: 'ABCD' }); // Missing playerId and playerName
 
             clientSocket.once('error', (response) => {
                 expect(response.message).toContain('Missing required fields');
