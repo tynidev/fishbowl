@@ -8,11 +8,11 @@ param(
     [string]$LogFile = "api-performance.log"
 )
 
-Write-Host "=== API PERFORMANCE MONITOR ===" -ForegroundColor Cyan
-Write-Host "Monitoring: $BaseUrl" -ForegroundColor White
-Write-Host "Interval: $IntervalSeconds seconds" -ForegroundColor White
-Write-Host "Duration: $DurationMinutes minutes" -ForegroundColor White
-Write-Host "Log File: $LogFile" -ForegroundColor White
+Write-Host "=== API PERFORMANCE MONITOR ===" -ForegroundColor Magenta
+Write-Host "Monitoring: $BaseUrl" -ForegroundColor Gray
+Write-Host "Interval: $IntervalSeconds seconds" -ForegroundColor Gray
+Write-Host "Duration: $DurationMinutes minutes" -ForegroundColor Gray
+Write-Host "Log File: $LogFile" -ForegroundColor Gray
 Write-Host ""
 
 $ErrorActionPreference = "Continue"
@@ -48,7 +48,7 @@ function Test-APIPerformance {
     }
     
     # Test 1: Create Game
-    Write-Host "[$($results.Timestamp)] Test $Iteration - Creating game..." -ForegroundColor Gray
+    Write-Host "[$($results.Timestamp)] Test $Iteration - Creating game..." -ForegroundColor DarkGray
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     try {
         $gameData = @{
@@ -60,12 +60,12 @@ function Test-APIPerformance {
         $stopwatch.Stop()
         $results.CreateGameMs = $stopwatch.ElapsedMilliseconds
         $gameCode = $game.gameCode
-        Write-Host "  ✓ Game created: $gameCode ($($results.CreateGameMs)ms)" -ForegroundColor Green
+        Write-Host "[+]   Game created: $gameCode ($($results.CreateGameMs)ms)" -ForegroundColor DarkGreen
     }
     catch {
         $stopwatch.Stop()
         $results.Errors++
-        Write-Host "  ✗ Game creation failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[X]   Game creation failed: $($_.Exception.Message)" -ForegroundColor DarkRed
     }
     finally {
         $results.TotalRequests++
@@ -73,37 +73,37 @@ function Test-APIPerformance {
     
     # Test 2: Join Game (if creation succeeded)
     if ($gameCode) {
-        Write-Host "  Joining game..." -ForegroundColor Gray
+        Write-Host "  Joining game..." -ForegroundColor DarkGray
         $stopwatch.Restart()
         try {
             $playerData = @{ playerName = "MonitorPlayer$Iteration" } | ConvertTo-Json
             $player = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode/join" -Method POST -Body $playerData -ContentType "application/json"
             $stopwatch.Stop()
             $results.JoinGameMs = $stopwatch.ElapsedMilliseconds
-            Write-Host "  ✓ Player joined ($($results.JoinGameMs)ms)" -ForegroundColor Green
+            Write-Host "[+]   Player joined ($($results.JoinGameMs)ms)" -ForegroundColor DarkGreen
         }
         catch {
             $stopwatch.Stop()
             $results.Errors++
-            Write-Host "  ✗ Join failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "[X]   Join failed: $($_.Exception.Message)" -ForegroundColor DarkRed
         }
         finally {
             $results.TotalRequests++
         }
         
         # Test 3: Get Game Info
-        Write-Host "  Getting game info..." -ForegroundColor Gray
+        Write-Host "  Getting game info..." -ForegroundColor DarkGray
         $stopwatch.Restart()
         try {
             $gameInfo = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode" -Method GET
             $stopwatch.Stop()
             $results.GetGameInfoMs = $stopwatch.ElapsedMilliseconds
-            Write-Host "  ✓ Game info retrieved ($($results.GetGameInfoMs)ms)" -ForegroundColor Green
+            Write-Host "[+]   Game info retrieved ($($results.GetGameInfoMs)ms)" -ForegroundColor DarkGreen
         }
         catch {
             $stopwatch.Stop()
             $results.Errors++
-            Write-Host "  ✗ Get game info failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "[X]   Get game info failed: $($_.Exception.Message)" -ForegroundColor DarkRed
         }
         finally {
             $results.TotalRequests++
@@ -132,7 +132,7 @@ function Test-APIPerformance {
     
     if ($issues.Count -gt 0) {
         $results.Status = "WARNING: " + ($issues -join ", ")
-        Write-Host "  ⚠ Performance issues detected: $($issues -join ', ')" -ForegroundColor Yellow
+        Write-Host "[ ! ] Performance issues detected: $($issues -join ', ')" -ForegroundColor DarkYellow
     }
     
     # Log results
@@ -145,11 +145,11 @@ function Test-APIPerformance {
 function Show-Summary {
     param($AllResults)
     
-    Write-Host "`n=== PERFORMANCE MONITORING SUMMARY ===" -ForegroundColor Cyan
+    Write-Host "`n=== PERFORMANCE MONITORING SUMMARY ===" -ForegroundColor Magenta
     
     $successfulTests = $AllResults | Where-Object { $_.CreateGameMs -ne $null }
     if ($successfulTests.Count -eq 0) {
-        Write-Host "No successful tests completed" -ForegroundColor Red
+        Write-Host "[X] No successful tests completed" -ForegroundColor DarkRed
         return
     }
     
@@ -158,73 +158,74 @@ function Show-Summary {
     $joinGameTimes = $successfulTests | Where-Object { $_.JoinGameMs } | ForEach-Object { $_.JoinGameMs }
     $getInfoTimes = $successfulTests | Where-Object { $_.GetGameInfoMs } | ForEach-Object { $_.GetGameInfoMs }
     
-    Write-Host "`nCreate Game Performance:" -ForegroundColor Yellow
+    Write-Host "`nCreate Game Performance:" -ForegroundColor Cyan
     if ($createGameTimes.Count -gt 0) {
         $avgCreate = ($createGameTimes | Measure-Object -Average).Average
         $minCreate = ($createGameTimes | Measure-Object -Minimum).Minimum
         $maxCreate = ($createGameTimes | Measure-Object -Maximum).Maximum
-        Write-Host "  Average: $([Math]::Round($avgCreate, 1))ms" -ForegroundColor White
-        Write-Host "  Range: $minCreate - $maxCreate ms" -ForegroundColor White
+        Write-Host "  Average: $([Math]::Round($avgCreate, 1))ms" -ForegroundColor Gray
+        Write-Host "  Range: $minCreate - $maxCreate ms" -ForegroundColor Gray
         
         if ($avgCreate -gt $thresholds.CreateGameMs) {
-            Write-Host "  ⚠ Average exceeds threshold ($($thresholds.CreateGameMs)ms)" -ForegroundColor Red
+            Write-Host "[X]   Average exceeds threshold ($($thresholds.CreateGameMs)ms)" -ForegroundColor DarkRed
         } else {
-            Write-Host "  ✓ Performance within acceptable range" -ForegroundColor Green
+            Write-Host "[OK]  Performance within acceptable range" -ForegroundColor DarkGreen
         }
     }
     
-    Write-Host "`nJoin Game Performance:" -ForegroundColor Yellow
+    Write-Host "`nJoin Game Performance:" -ForegroundColor Cyan
     if ($joinGameTimes.Count -gt 0) {
         $avgJoin = ($joinGameTimes | Measure-Object -Average).Average
         $minJoin = ($joinGameTimes | Measure-Object -Minimum).Minimum
         $maxJoin = ($joinGameTimes | Measure-Object -Maximum).Maximum
-        Write-Host "  Average: $([Math]::Round($avgJoin, 1))ms" -ForegroundColor White
-        Write-Host "  Range: $minJoin - $maxJoin ms" -ForegroundColor White
+        Write-Host "  Average: $([Math]::Round($avgJoin, 1))ms" -ForegroundColor Gray
+        Write-Host "  Range: $minJoin - $maxJoin ms" -ForegroundColor Gray
         
         if ($avgJoin -gt $thresholds.JoinGameMs) {
-            Write-Host "  ⚠ Average exceeds threshold ($($thresholds.JoinGameMs)ms)" -ForegroundColor Red
+            Write-Host "[X]   Average exceeds threshold ($($thresholds.JoinGameMs)ms)" -ForegroundColor DarkRed
         } else {
-            Write-Host "  ✓ Performance within acceptable range" -ForegroundColor Green
+            Write-Host "[OK]  Performance within acceptable range" -ForegroundColor DarkGreen
         }
     }
     
-    Write-Host "`nGet Info Performance:" -ForegroundColor Yellow
+    Write-Host "`nGet Info Performance:" -ForegroundColor Cyan
     if ($getInfoTimes.Count -gt 0) {
         $avgInfo = ($getInfoTimes | Measure-Object -Average).Average
         $minInfo = ($getInfoTimes | Measure-Object -Minimum).Minimum
         $maxInfo = ($getInfoTimes | Measure-Object -Maximum).Maximum
-        Write-Host "  Average: $([Math]::Round($avgInfo, 1))ms" -ForegroundColor White
-        Write-Host "  Range: $minInfo - $maxInfo ms" -ForegroundColor White
+        Write-Host "  Average: $([Math]::Round($avgInfo, 1))ms" -ForegroundColor Gray
+        Write-Host "  Range: $minInfo - $maxInfo ms" -ForegroundColor Gray
         
         if ($avgInfo -gt $thresholds.GetGameInfoMs) {
-            Write-Host "  ⚠ Average exceeds threshold ($($thresholds.GetGameInfoMs)ms)" -ForegroundColor Red
+            Write-Host "[X]   Average exceeds threshold ($($thresholds.GetGameInfoMs)ms)" -ForegroundColor DarkRed
         } else {
-            Write-Host "  ✓ Performance within acceptable range" -ForegroundColor Green
+            Write-Host "[OK]  Performance within acceptable range" -ForegroundColor DarkGreen
         }
     }
     
     # Error analysis
-    $totalErrors = ($AllResults | Measure-Object -Property Errors -Sum).Sum
-    $totalRequests = ($AllResults | Measure-Object -Property TotalRequests -Sum).Sum
+    $successfulResults = $AllResults | Where-Object { $null -ne $_.Errors -and $null -ne $_.TotalRequests }
+    $totalErrors = ($successfulResults | Measure-Object -Property Errors -Sum).Sum
+    $totalRequests = ($successfulResults | Measure-Object -Property TotalRequests -Sum).Sum
     $overallErrorRate = if ($totalRequests -gt 0) { [Math]::Round(($totalErrors / $totalRequests) * 100, 1) } else { 0 }
-    
-    Write-Host "`nError Analysis:" -ForegroundColor Yellow
-    Write-Host "  Total Errors: $totalErrors" -ForegroundColor White
-    Write-Host "  Total Requests: $totalRequests" -ForegroundColor White
-    Write-Host "  Error Rate: $overallErrorRate%" -ForegroundColor White
-    
+
+    Write-Host "`nError Analysis:" -ForegroundColor Cyan
+    Write-Host "  Total Errors: $totalErrors" -ForegroundColor Gray
+    Write-Host "  Total Requests: $totalRequests" -ForegroundColor Gray
+    Write-Host "  Error Rate: $overallErrorRate%" -ForegroundColor Gray
+
     if ($overallErrorRate -gt $thresholds.ErrorRate) {
-        Write-Host "  ⚠ Error rate exceeds threshold ($($thresholds.ErrorRate)%)" -ForegroundColor Red
+        Write-Host "[X]   Error rate exceeds threshold ($($thresholds.ErrorRate)%)\" -ForegroundColor DarkRed
     } else {
-        Write-Host "  ✓ Error rate within acceptable range" -ForegroundColor Green
+        Write-Host "[OK]  Error rate within acceptable range" -ForegroundColor DarkGreen
     }
-    
-    Write-Host "`nLog file saved: $logPath" -ForegroundColor Cyan
+
+    Write-Host "`nLog file saved: $logPath" -ForegroundColor Blue
 }
 
 # Main monitoring loop
-Write-Host "Starting performance monitoring..." -ForegroundColor Yellow
-Write-Host "Press Ctrl+C to stop early" -ForegroundColor Gray
+Write-Host "Starting performance monitoring..." -ForegroundColor DarkYellow
+Write-Host "Press Ctrl+C to stop early" -ForegroundColor DarkGray
 Write-Host ""
 
 $allResults = @()
@@ -237,16 +238,15 @@ try {
         
         # Show progress
         $elapsed = (Get-Date) - $startTime
-        $remaining = $endTime - (Get-Date)
-        Write-Host "  Progress: $([Math]::Round($elapsed.TotalMinutes, 1))/$DurationMinutes minutes | Next test in $IntervalSeconds seconds" -ForegroundColor Cyan
+        Write-Host "  Progress: $([Math]::Round($elapsed.TotalMinutes, 1))/$DurationMinutes minutes | Next test in $IntervalSeconds seconds" -ForegroundColor Blue
         
         # Wait for next interval
         Start-Sleep -Seconds $IntervalSeconds
     }
 }
 catch {
-    Write-Host "`nMonitoring stopped: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "`nMonitoring stopped: $($_.Exception.Message)" -ForegroundColor DarkYellow
 }
 
-Write-Host "`nMonitoring completed!" -ForegroundColor Green
+Write-Host "`nMonitoring completed!" -ForegroundColor DarkGreen
 Show-Summary -AllResults $allResults

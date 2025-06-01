@@ -12,9 +12,9 @@ $script:GameHistory = @()
 
 function Show-Welcome {
     Clear-Host
-    Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║                   FISHBOWL API TEST CONSOLE                  ║" -ForegroundColor Cyan
-    Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "+--------------------------------------------------------------+" -ForegroundColor Cyan
+    Write-Host "|                   FISHBOWL API TEST CONSOLE                  |" -ForegroundColor Cyan
+    Write-Host "+--------------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Base URL: $BaseUrl" -ForegroundColor Gray
     Write-Host "Type 'help' for available commands or 'exit' to quit" -ForegroundColor Gray
@@ -22,20 +22,20 @@ function Show-Welcome {
 }
 
 function Show-Status {
-    Write-Host "┌─ Current Status ─────────────────────────────────────────────┐" -ForegroundColor DarkCyan
+    Write-Host "+ Current Status ----------------------------------------------+" -ForegroundColor DarkCyan
     if ($script:CurrentGame) {
-        Write-Host "│ Game: $($script:CurrentGame.gameCode) - $($script:CurrentGame.name)" -ForegroundColor White
-        Write-Host "│ Status: $($script:CurrentGame.status) | Teams: $($script:CurrentGame.teamCount) | Players: $($script:CurrentGame.playerCount)" -ForegroundColor Gray
+        Write-Host "| Game: $($script:CurrentGame.gameCode) - $($script:CurrentGame.name)" -ForegroundColor White
+        Write-Host "| Status: $($script:CurrentGame.status) | Teams: $($script:CurrentGame.teamCount) | Players: $($script:CurrentGame.playerCount)" -ForegroundColor Gray
     } else {
-        Write-Host "│ No active game" -ForegroundColor Gray
+        Write-Host "| No active game" -ForegroundColor Gray
     }
     
     if ($script:CurrentPlayer) {
-        Write-Host "│ Player: $($script:CurrentPlayer.playerName) ($($script:CurrentPlayer.teamName))" -ForegroundColor White
+        Write-Host "| Player: $($script:CurrentPlayer.playerName) ($($script:CurrentPlayer.teamName))" -ForegroundColor White
     } else {
-        Write-Host "│ No active player" -ForegroundColor Gray
+        Write-Host "| No active player" -ForegroundColor Gray
     }
-    Write-Host "└──────────────────────────────────────────────────────────────┘" -ForegroundColor DarkCyan
+    Write-Host "+--------------------------------------------------------------+" -ForegroundColor DarkCyan
     Write-Host ""
 }
 
@@ -72,7 +72,7 @@ function Execute-CreateGame {
     param($Args)
     
     $name = if ($Args.Count -gt 0) { $Args[0] } else { "Console Test Game" }
-    $host = if ($Args.Count -gt 1) { $Args[1] } else { "ConsoleHost" }
+    $hostName = if ($Args.Count -gt 1) { $Args[1] } else { "ConsoleHost" }
     $teams = if ($Args.Count -gt 2) { [int]$Args[2] } else { 2 }
     $phrases = if ($Args.Count -gt 3) { [int]$Args[3] } else { 5 }
     $timer = if ($Args.Count -gt 4) { [int]$Args[4] } else { 60 }
@@ -80,7 +80,7 @@ function Execute-CreateGame {
     try {
         $gameData = @{
             name = $name
-            hostPlayerName = $host
+            hostPlayerName = $hostName
             teamCount = $teams
             phrasesPerPlayer = $phrases
             timerDuration = $timer
@@ -104,12 +104,12 @@ function Execute-CreateGame {
         
         $script:GameHistory += $script:CurrentGame
         
-        Write-Host "✓ Game created successfully!" -ForegroundColor Green
+        Write-Host "+ Game created successfully!" -ForegroundColor Green
         Write-Host "  Game Code: $($response.gameCode)" -ForegroundColor Cyan
         Write-Host "  Host Player ID: $($response.hostPlayerId)" -ForegroundColor Cyan
         
     } catch {
-        Write-Host "✗ Failed to create game: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "X Failed to create game: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
@@ -142,13 +142,13 @@ function Execute-JoinGame {
             teamName = $response.teamName
         }
         
-        Write-Host "✓ Joined game successfully!" -ForegroundColor Green
+        Write-Host "+ Joined game successfully!" -ForegroundColor Green
         Write-Host "  Player: $($response.playerName)" -ForegroundColor Cyan
         Write-Host "  Team: $($response.teamName)" -ForegroundColor Cyan
         Write-Host "  Game: $($response.gameInfo.name)" -ForegroundColor Cyan
         
     } catch {
-        Write-Host "✗ Failed to join game: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "X Failed to join game: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
@@ -183,7 +183,7 @@ function Execute-GameInfo {
         }
         
     } catch {
-        Write-Host "✗ Failed to get game info: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "X Failed to get game info: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
@@ -200,26 +200,28 @@ function Execute-ListPlayers {
     try {
         $response = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode/players" -Method GET
         
-        Write-Host "Players in Game $gameCode`:" -ForegroundColor Cyan
-        Write-Host "┌─────────────────────┬─────────────────────┬──────────┐" -ForegroundColor Gray
-        Write-Host "│ Player Name         │ Team                │ Status   │" -ForegroundColor Gray
-        Write-Host "├─────────────────────┼─────────────────────┼──────────┤" -ForegroundColor Gray
+        Write-Host ("Players in Game {0}:" -f $gameCode) -ForegroundColor Cyan
+        Write-Host "+---------------------+---------------------+----------+" -ForegroundColor Gray
+        Write-Host "| Player Name         | Team                | Status   |" -ForegroundColor Gray
+        Write-Host "+---------------------+---------------------+----------+" -ForegroundColor Gray
         
         foreach ($player in $response.players) {
-            $name = $player.name.PadRight(19)
-            $team = ($player.teamName -or "No Team").PadRight(19)
+            $name = if ($player.name) { [string]$player.name } else { "" }
+            $name = $name.PadRight(19)
+            $team = if ($player.teamName) { [string]$player.teamName } else { "No Team" }
+            $team = $team.PadRight(19)
             $status = if ($player.isConnected) { "Online" } else { "Offline" }
             $status = $status.PadRight(8)
             
             $color = if ($player.isConnected) { "Green" } else { "Red" }
-            Write-Host "│ $name │ $team │ $status │" -ForegroundColor $color
+            Write-Host "| $name | $team | $status |" -ForegroundColor $color
         }
         
-        Write-Host "└─────────────────────┴─────────────────────┴──────────┘" -ForegroundColor Gray
+        Write-Host "+---------------------+---------------------+----------+" -ForegroundColor Gray
         Write-Host "Total Players: $($response.totalCount)" -ForegroundColor Cyan
         
     } catch {
-        Write-Host "✗ Failed to list players: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "X Failed to list players: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
@@ -253,16 +255,16 @@ function Execute-SubmitPhrases {
         
         $response = Invoke-RestMethod -Uri "$BaseUrl/games/$($script:CurrentGame.gameCode)/phrases" -Method POST -Body $phraseData -ContentType "application/json"
         
-        Write-Host "✓ Phrases submitted successfully!" -ForegroundColor Green
+        Write-Host "+ Phrases submitted successfully!" -ForegroundColor Green
         Write-Host "  Submitted: $($response.submittedCount)" -ForegroundColor Cyan
         Write-Host "  Required: $($response.totalRequired)" -ForegroundColor Cyan
         
         foreach ($phrase in $response.phrases) {
-            Write-Host "    • $($phrase.text)" -ForegroundColor Gray
+            Write-Host "    - $($phrase.text)" -ForegroundColor Gray
         }
         
     } catch {
-        Write-Host "✗ Failed to submit phrases: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "X Failed to submit phrases: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
@@ -291,8 +293,16 @@ function Execute-Command {
             }
         }
         "test-load" {
-            $games = if ($args.Count -gt 0) { [int]$args[0] } else { 3 }
-            $players = if ($args.Count -gt 1) { [int]$args[1] } else { 4 }
+            if ($args.Count -eq 0 -or $args[0] -isnot [int]) {
+                $games = 3
+            } else {
+                $games = [int]$args[0]
+            }
+            if ($args.Count -lt 2 -or $args[1] -isnot [int]) {
+                $players = 4
+            } else {
+                $players = [int]$args[1]
+            }
             Write-Host "Running load test with $games games and $players players each..." -ForegroundColor Yellow
             & "$PSScriptRoot\test-load.ps1" -ConcurrentGames $games -PlayersPerGame $players
         }

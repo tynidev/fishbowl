@@ -5,21 +5,21 @@ param(
     [string]$BaseUrl = "http://localhost:3001/api"
 )
 
-Write-Host "=== ERROR HANDLING & EDGE CASE TESTING ===" -ForegroundColor Cyan
+Write-Host "=== ERROR HANDLING & EDGE CASE TESTING ===" -ForegroundColor Magenta
 
 $ErrorActionPreference = "Continue"
 
 function Test-ErrorScenario {
     param($Description, $ScriptBlock, $ExpectedStatusCode = 400)
     
-    Write-Host "`nTesting: $Description" -ForegroundColor Yellow
+    Write-Host "`nTesting: $Description" -ForegroundColor DarkYellow
     try {
         & $ScriptBlock
         if ($ExpectedStatusCode -ge 200 -and $ExpectedStatusCode -lt 300) {
-            Write-Host "  + Request succeeded as expected" -ForegroundColor Green
+            Write-Host "[+]   Request succeeded as expected" -ForegroundColor DarkGreen
             return $true
         } else {
-            Write-Host "  X Expected error but request succeeded" -ForegroundColor Red
+            Write-Host "[X]   Expected error but request succeeded" -ForegroundColor DarkRed
             return $false
         }
     }
@@ -29,10 +29,10 @@ function Test-ErrorScenario {
             $statusCode = [int]$_.Exception.Response.StatusCode
         }
         if ($statusCode -eq $ExpectedStatusCode) {
-            Write-Host "  + Correctly returned $statusCode error" -ForegroundColor Green
+            Write-Host "[+]   Correctly returned $statusCode error" -ForegroundColor DarkGreen
             return $true
         } else {
-            Write-Host "  ! Expected $ExpectedStatusCode but got $statusCode" -ForegroundColor Yellow
+            Write-Host "[ ! ] Expected $ExpectedStatusCode but got $statusCode" -ForegroundColor DarkYellow
             Write-Host "    Error: $($_.Exception.Message)" -ForegroundColor Gray
             return $false
         }
@@ -150,7 +150,7 @@ try {
     if ($passed) { $passedTests++ }
     
 } catch {
-    Write-Host "Failed to create test game for join tests: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[X] Failed to create test game for join tests: $($_.Exception.Message)" -ForegroundColor DarkRed
 }
 
 # 4. Phrase Submission Error Tests
@@ -200,7 +200,7 @@ if ($testGameCode) {
         if ($passed) { $passedTests++ }
         
     } catch {
-        Write-Host "Failed to add test player: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[X] Failed to add test player: $($_.Exception.Message)" -ForegroundColor DarkRed
     }
 }
 
@@ -331,7 +331,7 @@ if ($passed) { $passedTests++ }
 # 10. Race Condition Simulation
 Write-Host "`n=== RACE CONDITION TESTS ===" -ForegroundColor Magenta
 
-Write-Host "Testing concurrent game creation with same names..." -ForegroundColor Yellow
+Write-Host "Testing concurrent game creation with same names..." -ForegroundColor DarkYellow
 $jobs = @()
 for ($i = 1; $i -le 5; $i++) {
     $job = Start-Job -ScriptBlock {
@@ -358,28 +358,28 @@ foreach ($job in $jobs) {
 $successfulRaces = $raceResults | Where-Object { $_.Success }
 $failedRaces = $raceResults | Where-Object { -not $_.Success }
 
-Write-Host "  Concurrent creations: $($successfulRaces.Count) succeeded, $($failedRaces.Count) failed" -ForegroundColor Cyan
+Write-Host "- Concurrent creations: $($successfulRaces.Count) succeeded, $($failedRaces.Count) failed" -ForegroundColor Cyan
 if ($successfulRaces.Count -gt 0) {
     $uniqueGameCodes = ($successfulRaces | ForEach-Object { $_.GameCode } | Sort-Object -Unique).Count
-    Write-Host "  Unique game codes generated: $uniqueGameCodes" -ForegroundColor Cyan
+    Write-Host "- Unique game codes generated: $uniqueGameCodes" -ForegroundColor Cyan
     if ($uniqueGameCodes -eq $successfulRaces.Count) {
-        Write-Host "  + All game codes are unique" -ForegroundColor Green
+        Write-Host "[+]   All game codes are unique" -ForegroundColor DarkGreen
     } else {
-        Write-Host "  X Duplicate game codes detected!" -ForegroundColor Red
+        Write-Host "[X]   Duplicate game codes detected!" -ForegroundColor DarkRed
     }
 }
 
 # Final Summary
-Write-Host "`n=== ERROR HANDLING TEST SUMMARY ===" -ForegroundColor Cyan
+Write-Host "`n=== ERROR HANDLING TEST SUMMARY ===" -ForegroundColor Magenta
 $successRate = [Math]::Round(($passedTests / $totalTests) * 100, 1)
-Write-Host "Tests Passed: $passedTests / $totalTests ($successRate%)" -ForegroundColor White
+Write-Host "Tests Passed: $passedTests / $totalTests ($successRate%)" -ForegroundColor Gray
 
 if ($successRate -ge 90) {
-    Write-Host "*** EXCELLENT error handling!" -ForegroundColor Green
+    Write-Host "*** EXCELLENT error handling!" -ForegroundColor DarkGreen
 } elseif ($successRate -ge 75) {
-    Write-Host "+ Good error handling" -ForegroundColor Yellow
+    Write-Host "[OK] Good error handling" -ForegroundColor DarkGreen # Changed from Yellow to DarkGreen for consistency with [OK]
 } else {
-    Write-Host "! Error handling needs improvement" -ForegroundColor Red
+    Write-Host "[X] Error handling needs improvement" -ForegroundColor DarkRed
 }
 
-Write-Host "`n=== ERROR HANDLING TESTS COMPLETED ===" -ForegroundColor Cyan
+Write-Host "`n=== ERROR HANDLING TESTS COMPLETED ===" -ForegroundColor Magenta

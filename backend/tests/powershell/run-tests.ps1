@@ -8,13 +8,13 @@ param(
 
 function Show-Menu {
     Clear-Host
-    Write-Host "????????????????????????????????????????????????????????????????" -ForegroundColor Cyan
-    Write-Host "?                 FISHBOWL API TESTING SUITE                   ?" -ForegroundColor Cyan
-    Write-Host "????????????????????????????????????????????????????????????????" -ForegroundColor Cyan
+    Write-Host "================================================================" -ForegroundColor Magenta
+    Write-Host "|                 FISHBOWL API TESTING SUITE                   |" -ForegroundColor Magenta
+    Write-Host "================================================================" -ForegroundColor Magenta
     Write-Host ""
     Write-Host "Base URL: $BaseUrl" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Available Test Scripts:" -ForegroundColor Yellow
+    Write-Host "Available Test Scripts:" -ForegroundColor Cyan
     Write-Host " 1. [*] Complete API Test          - Run comprehensive API tests" -ForegroundColor White
     Write-Host " 2. [>] Game Lifecycle Test        - Test full game flow" -ForegroundColor White
     Write-Host " 3. [!] Load Testing               - Test performance under load" -ForegroundColor White
@@ -34,7 +34,7 @@ function Run-TestScript {
     $scriptPath = Join-Path $PSScriptRoot $ScriptName
     
     if (-not (Test-Path $scriptPath)) {
-        Write-Host "Script not found: $scriptPath" -ForegroundColor Red
+        Write-Host "[X] Script not found: $scriptPath" -ForegroundColor DarkRed
         return
     }
     
@@ -49,7 +49,7 @@ function Run-TestScript {
         }
     }
     catch {
-        Write-Host "Error running script: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[X] Error running script: $($_.Exception.Message)" -ForegroundColor DarkRed
     }
     
     Write-Host "`nScript completed. Press any key to return to menu..." -ForegroundColor Gray
@@ -57,26 +57,26 @@ function Run-TestScript {
 }
 
 function Get-CustomParameters {
-    Write-Host "Custom Test Parameters:" -ForegroundColor Yellow
+    Write-Host "Custom Test Parameters:" -ForegroundColor DarkYellow
     Write-Host ""
     
-    $baseUrl = Read-Host "Base URL [$BaseUrl]"
-    if (-not $baseUrl) { $baseUrl = $BaseUrl }
+    $baseUrlInput = Read-Host "Base URL [$BaseUrl]"
+    if ([string]::IsNullOrWhiteSpace($baseUrlInput)) { $baseUrlInput = $BaseUrl }
     
-    $playerCount = Read-Host "Number of players per game [4]"
-    if (-not $playerCount -or -not [int]::TryParse($playerCount, [ref]$null)) { $playerCount = 4 }
-    else { $playerCount = [int]$playerCount }
+    $playerCountInput = Read-Host "Number of players per game [4]"
+    if (-not $playerCountInput -or -not [int]::TryParse($playerCountInput, [ref]$null)) { $playerCount = 4 }
+    else { $playerCount = [int]$playerCountInput }
     
-    $gameCount = Read-Host "Number of games for load test [3]"
-    if (-not $gameCount -or -not [int]::TryParse($gameCount, [ref]$null)) { $gameCount = 3 }
-    else { $gameCount = [int]$gameCount }
+    $gameCountInput = Read-Host "Number of games for load test [3]"
+    if (-not $gameCountInput -or -not [int]::TryParse($gameCountInput, [ref]$null)) { $gameCount = 3 }
+    else { $gameCount = [int]$gameCountInput }
     
-    $teamCount = Read-Host "Number of teams [2]"
-    if (-not $teamCount -or -not [int]::TryParse($teamCount, [ref]$null)) { $teamCount = 2 }
-    else { $teamCount = [int]$teamCount }
+    $teamCountInput = Read-Host "Number of teams [2]"
+    if (-not $teamCountInput -or -not [int]::TryParse($teamCountInput, [ref]$null)) { $teamCount = 2 }
+    else { $teamCount = [int]$teamCountInput }
     
     return @{
-        BaseUrl = $baseUrl
+        BaseUrl = $baseUrlInput
         PlayerCount = $playerCount
         GameCount = $gameCount
         TeamCount = $teamCount
@@ -94,8 +94,8 @@ if ($TestType -ne "menu") {
         "console" { Run-TestScript "test-console.ps1" }
         "monitor" { Run-TestScript "test-monitor.ps1" }
         default {
-            Write-Host "Unknown test type: $TestType" -ForegroundColor Red
-            Write-Host "Available types: api, lifecycle, load, config, errors, console, monitor" -ForegroundColor Yellow
+            Write-Host "[X] Unknown test type: $TestType" -ForegroundColor DarkRed
+            Write-Host "[ ! ] Available types: api, lifecycle, load, config, errors, console, monitor" -ForegroundColor DarkYellow
         }
     }
     return
@@ -110,7 +110,7 @@ do {
         "1" { Run-TestScript "test-api.ps1" }
         "2" { Run-TestScript "test-game-lifecycle.ps1" }
         "3" { 
-            Write-Host "`nLoad Test Parameters:" -ForegroundColor Yellow
+            Write-Host "`nLoad Test Parameters:" -ForegroundColor DarkYellow
             $games = Read-Host "Number of concurrent games [5]"
             $players = Read-Host "Players per game [8]"
             
@@ -124,7 +124,7 @@ do {
         "5" { Run-TestScript "test-errors.ps1" }
         "6" { Run-TestScript "test-console.ps1" }
         "7" { 
-            Write-Host "`nPerformance Monitor Parameters:" -ForegroundColor Yellow
+            Write-Host "`nPerformance Monitor Parameters:" -ForegroundColor DarkYellow
             $duration = Read-Host "Duration in minutes [10]"
             $interval = Read-Host "Test interval in seconds [30]"
             
@@ -136,7 +136,7 @@ do {
         }
         "8" { 
             $customParams = Get-CustomParameters
-            Write-Host "`nWhich test would you like to run with custom parameters?" -ForegroundColor Yellow
+            Write-Host "`nWhich test would you like to run with custom parameters?" -ForegroundColor DarkYellow
             Write-Host "1. Game Lifecycle  2. Load Test  3. Configuration Test" -ForegroundColor White
             $testChoice = Read-Host "Choice [1]"
             
@@ -152,7 +152,7 @@ do {
         }
         default { 
             if ($choice -ne "") {
-                Write-Host "Invalid option. Please select 0-8." -ForegroundColor Red
+                Write-Host "[X] Invalid option. Please select 0-8." -ForegroundColor DarkRed
                 Start-Sleep -Seconds 1
             }
         }

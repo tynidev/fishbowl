@@ -7,14 +7,14 @@ param(
     [int]$TeamCount = 2
 )
 
-Write-Host "=== GAME LIFECYCLE TEST ===" -ForegroundColor Cyan
-Write-Host "Testing complete game flow with $PlayerCount players on $TeamCount teams"
+Write-Host "=== GAME LIFECYCLE TEST ===" -ForegroundColor Magenta
+Write-Host "Testing complete game flow with $PlayerCount players on $TeamCount teams" -ForegroundColor Gray
 
 $ErrorActionPreference = "Continue"
 
 try {
     # 1. Create Game
-    Write-Host "`n1. Creating game..." -ForegroundColor Yellow
+    Write-Host "`n1. Creating game..." -ForegroundColor DarkYellow
     $gameData = @{
         name = "Lifecycle Test Game"
         hostPlayerName = "GameHost"
@@ -25,10 +25,10 @@ try {
 
     $game = Invoke-RestMethod -Uri "$BaseUrl/games" -Method POST -Body $gameData -ContentType "application/json"
     $gameCode = $game.gameCode
-    Write-Host "✓ Game created: $gameCode" -ForegroundColor Green
+    Write-Host "[+] Game created: $gameCode" -ForegroundColor DarkGreen
 
     # 2. Add Players
-    Write-Host "`n2. Adding $PlayerCount players..." -ForegroundColor Yellow
+    Write-Host "`n2. Adding $PlayerCount players..." -ForegroundColor DarkYellow
     $players = @()
     $playerNames = @("Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry")
     
@@ -38,11 +38,11 @@ try {
         
         $playerResponse = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode/join" -Method POST -Body $playerData -ContentType "application/json"
         $players += $playerResponse
-        Write-Host "  + Added: $($playerResponse.playerName) -> $($playerResponse.teamName)" -ForegroundColor Green
+        Write-Host "[+]   Added: $($playerResponse.playerName) -> $($playerResponse.teamName)" -ForegroundColor DarkGreen
     }
 
     # 3. Test Team Distribution
-    Write-Host "`n3. Analyzing team distribution..." -ForegroundColor Yellow
+    Write-Host "`n3. Analyzing team distribution..." -ForegroundColor DarkYellow
     $teamStats = @{}
     foreach ($player in $players) {
         if ($player.teamName) {
@@ -54,11 +54,11 @@ try {
     }
     
     foreach ($team in $teamStats.Keys) {
-        Write-Host "  $team`: $($teamStats[$team]) players" -ForegroundColor Cyan
+        Write-Host "- $team`: $($teamStats[$team]) players" -ForegroundColor Cyan
     }
 
     # 4. Submit Phrases for Each Player
-    Write-Host "`n4. Submitting phrases for all players..." -ForegroundColor Yellow
+    Write-Host "`n4. Submitting phrases for all players..." -ForegroundColor DarkYellow
     $allPhrases = @(
         "PowerShell Automation", "REST API Testing", "Game Development",
         "Team Management", "Database Operations", "Error Handling",
@@ -79,26 +79,26 @@ try {
         
         try {
             $phraseResponse = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode/phrases" -Method POST -Body $phraseData -ContentType "application/json"
-            Write-Host "  + $($player.playerName): $($phraseResponse.submittedCount) phrases" -ForegroundColor Green
+            Write-Host "[+]   $($player.playerName): $($phraseResponse.submittedCount) phrases" -ForegroundColor DarkGreen
         }
         catch {
-            Write-Host "  X $($player.playerName): Failed to submit phrases" -ForegroundColor Red
+            Write-Host "[X]   $($player.playerName): Failed to submit phrases" -ForegroundColor DarkRed
         }
     }
 
     # 5. Check Final Game State
-    Write-Host "`n5. Final game state..." -ForegroundColor Yellow
+    Write-Host "`n5. Final game state..." -ForegroundColor DarkYellow
     $finalGame = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode" -Method GET
-    Write-Host "  Status: $($finalGame.status)" -ForegroundColor Cyan
-    Write-Host "  Players: $($finalGame.playerCount)" -ForegroundColor Cyan
-    Write-Host "  Teams: $($finalGame.teamCount)" -ForegroundColor Cyan
+    Write-Host "- Status: $($finalGame.status)" -ForegroundColor Cyan
+    Write-Host "- Players: $($finalGame.playerCount)" -ForegroundColor Cyan
+    Write-Host "- Teams: $($finalGame.teamCount)" -ForegroundColor Cyan
 
     # 6. Get Phrase Submission Status
     $phraseStatus = Invoke-RestMethod -Uri "$BaseUrl/games/$gameCode/phrases/status" -Method GET
-    Write-Host "  Total Phrases: $($phraseStatus.summary.totalPhrasesSubmitted)/$($phraseStatus.summary.totalPhrasesRequired)" -ForegroundColor Cyan
-    Write-Host "  Complete: $($phraseStatus.summary.isAllComplete)" -ForegroundColor Cyan
+    Write-Host "- Total Phrases: $($phraseStatus.summary.totalPhrasesSubmitted)/$($phraseStatus.summary.totalPhrasesRequired)" -ForegroundColor Cyan
+    Write-Host "- Complete: $($phraseStatus.summary.isAllComplete)" -ForegroundColor Cyan
 
-    Write-Host "`n=== LIFECYCLE TEST COMPLETED SUCCESSFULLY ===" -ForegroundColor Green
+    Write-Host "`n=== LIFECYCLE TEST COMPLETED SUCCESSFULLY ===" -ForegroundColor DarkGreen
     return @{
         Success = $true
         GameCode = $gameCode
@@ -107,8 +107,8 @@ try {
     }
 }
 catch {
-    Write-Host "`n=== LIFECYCLE TEST FAILED ===" -ForegroundColor Red
-    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "`n=== LIFECYCLE TEST FAILED ===" -ForegroundColor DarkRed
+    Write-Host "[X] Error: $($_.Exception.Message)" -ForegroundColor DarkRed
     return @{
         Success = $false
         Error = $_.Exception.Message
