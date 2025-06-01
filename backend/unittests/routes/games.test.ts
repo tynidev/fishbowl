@@ -11,8 +11,8 @@ import {
 import {
   CreateGameRequest,
   JoinGameRequest
-} from './gameRoutes';
-import { Game, Player, Team } from '../db/schema';
+} from '../../src/routes/REST-API';
+import { Game, Player, Team } from '../../src/db/schema';
 
 describe('Games API', () => {
   let app: Application;

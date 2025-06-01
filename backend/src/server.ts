@@ -5,8 +5,8 @@ import path from 'path';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { initializeForEnvironment, getDatabaseStatus, cleanup } from './db';
-import gameRoutes from './routes/gameRoutes';
-import { setupGameHandlers } from './sockets/gameHandlers';
+import gameRoutes from './routes/REST-API';
+import { registerSocketHandlers } from './sockets/SOCKET-API';
 
 // Initialize Express application
 const app: Application = express();
@@ -145,7 +145,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Socket.IO connection handling
-setupGameHandlers(io);
+registerSocketHandlers(io);
 
 // Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {

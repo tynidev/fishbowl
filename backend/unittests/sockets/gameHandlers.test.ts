@@ -17,7 +17,7 @@ import {
     TeamAssignmentData,
     GameStateUpdate,
     PhraseSubmissionUpdate
-} from './gameHandlers';
+} from '../../src/sockets/SOCKET-API';
 
 describe('Socket.IO Game Handlers', () => {
     let server: SocketIOServer;
@@ -108,7 +108,7 @@ describe('Socket.IO Game Handlers', () => {
             clientSocket.emit('join-gameroom', mockJoinData);
 
             clientSocket.once('error', (response) => {
-                expect(response.message).toBe('Player not found in this game');
+                expect(response.message).toBe('Player not found in this game. Make sure to join via REST API first.');
                 done();
             });
         });

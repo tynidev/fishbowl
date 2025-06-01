@@ -9,7 +9,7 @@ import {
   createMockPlayer,
   createMockTeam
 } from './test-utils';
-import { Player, Team } from '../db/schema';
+import { Player, Team } from '../../src/db/schema';
 
 describe('Players API', () => {
   let app: Application;

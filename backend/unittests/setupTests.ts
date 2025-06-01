@@ -22,7 +22,7 @@ beforeAll(() => {
     console.trace = jest.fn();
     
     // Keep console.error for actual test failures, but you can uncomment to suppress it too
-    //console.error = jest.fn();
+    console.error = jest.fn();
   }
 });
 
@@ -34,7 +34,7 @@ afterAll(() => {
     console.info = originalConsole.info;
     console.debug = originalConsole.debug;
     console.trace = originalConsole.trace;
-    //console.error = originalConsole.error;
+    console.error = originalConsole.error;
   }
 });
 

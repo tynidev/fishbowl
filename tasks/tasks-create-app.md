@@ -1,42 +1,50 @@
 ## Relevant Files
 
-- `/backend/package.json` - Node.js project configuration with TypeScript setup
-- `/backend/tsconfig.json` - TypeScript compiler configuration
+### Backend Files (Existing)
 - `/backend/jest.config.js` - Jest testing configuration for backend
-- `/backend/src/setupTests.ts` - Backend test setup file
-- `/backend/src/setup.test.ts` - Basic test to verify Jest setup
-- `/backend/src/` - Backend source code directory
 - `/backend/src/server.ts` - Main Express server setup with Socket.IO integration
-- `/backend/src/server.test.ts` - Unit tests for server setup
-- `/backend/src/routes/gameRoutes.ts` - REST API endpoints for game management
-- `/backend/src/routes/gameRoutes.test.ts` - Unit tests for game routes
-- `/backend/src/sockets/gameHandlers.ts` - Socket.IO event handlers for real-time updates
-- `/backend/src/sockets/gameHandlers.test.ts` - Unit tests for socket handlers
+- `/backend/src/routes/REST-API.ts` - REST API endpoints for game management
+- `/backend/src/routes/README.md` - Documentation for REST API routes
+- `/backend/src/sockets/SOCKET-API.ts` - Socket.IO event handlers for real-time updates
 - `/backend/src/db/schema.ts` - SQLite database schema definitions
+- `/backend/src/db/connection.ts` - Database connection management
+- `/backend/src/db/index.ts` - Database module exports
+- `/backend/src/db/init.ts` - Database initialization
+- `/backend/src/db/migrator.ts` - Database migration management
+- `/backend/src/db/utils.ts` - Database utility functions
+- `/backend/src/db/verify.ts` - Database verification functions
+- `/backend/src/db/README.md` - Documentation for database module
 - `/backend/src/db/migrations/001_initial.ts` - Initial database migration
-- `/backend/src/models/Game.ts` - Game model with business logic
-- `/backend/src/models/Game.test.ts` - Unit tests for Game model
+- `/backend/src/db/migrations/index.ts` - Migration exports
+- `/backend/unittests/setupTests.ts` - Backend test setup file
+- `/backend/unittests/setup.test.ts` - Basic test to verify Jest setup
+- `/backend/unittests/db/database.test.ts` - Unit tests for database functions
+- `/backend/unittests/routes/gameConfig.test.ts` - Unit tests for game configuration routes
+- `/backend/unittests/routes/games.test.ts` - Unit tests for game routes
+- `/backend/unittests/routes/phrases.test.ts` - Unit tests for phrase routes
+- `/backend/unittests/routes/players.test.ts` - Unit tests for player routes
+- `/backend/unittests/routes/test-utils.ts` - Testing utilities for routes
+- `/backend/unittests/sockets/gameHandlers.test.ts` - Unit tests for socket handlers
+- `/backend/database/fishbowl.db` - SQLite database file (generated)
+
+### Frontend Files (Existing)
 - `/frontend/src/App.tsx` - Main React app component with routing
 - `/frontend/src/App.test.tsx` - Unit tests for App component
-- `/frontend/src/pages/HomePage.tsx` - Home screen with game options
-- `/frontend/src/pages/HomePage.test.tsx` - Unit tests for home page
-- `/frontend/src/pages/LobbyPage.tsx` - Game lobby for player management
-- `/frontend/src/pages/LobbyPage.test.tsx` - Unit tests for lobby page
-- `/frontend/src/pages/GamePage.tsx` - Main game play screen
-- `/frontend/src/pages/GamePage.test.tsx` - Unit tests for game page
-- `/frontend/src/store/gameSlice.ts` - Redux slice for game state
-- `/frontend/src/store/gameSlice.test.ts` - Unit tests for game slice
-- `/frontend/src/services/api.ts` - API service layer
-- `/frontend/src/services/api.test.ts` - Unit tests for API service
-- `/frontend/src/services/socket.ts` - Socket.IO client service
-- `/frontend/src/services/socket.test.ts` - Unit tests for socket service
-- `/frontend/public/manifest.json` - PWA manifest configuration
-- `/frontend/src/serviceWorker.ts` - Service worker for offline functionality
-- `/database/fishbowl.db` - SQLite database file (generated)
+- `/frontend/src/App.css` - Styles for App component
+- `/frontend/src/index.tsx` - React app entry point
+- `/frontend/src/index.css` - Global styles
+- `/frontend/src/setupTests.ts` - Frontend test setup file
+- `/frontend/src/service-worker.ts` - Service worker for offline functionality
+- `/frontend/src/serviceWorkerRegistration.ts` - Service worker registration
+- `/frontend/src/reportWebVitals.ts` - Web vitals reporting
+
+### Project Documentation
+- `/README.md` - Project documentation
+- `/fishbowl_app_requirements.md` - Application requirements
 
 ### Notes
 
-- Unit tests should typically be placed alongside the code files they are testing (e.g., `MyComponent.tsx` and `MyComponent.test.tsx` in the same directory).
+- Unit tests should typically be placed in the unittest directory ex: backend/unittests and be name similar (e.g., `MyComponent.tsx` and `MyComponent.test.tsx`).
 - Use `npx jest [optional/path/to/test/file]` to run tests. Running without a path executes all tests found by the Jest configuration.
 
 ## Tasks
@@ -59,8 +67,8 @@
   - [x] 2.4 Implement REST API endpoints for game creation and joining
   - [x] 2.5 Implement REST API endpoints for player and team management
   - [x] 2.6 Implement REST API endpoints for phrase submission and retrieval
-  - [ ] 2.7 Set up Socket.IO server and connection handling
-  - [ ] 2.8 Implement Socket.IO event handlers for game state synchronization
+  - [x] 2.7 Set up Socket.IO server and connection handling
+  - [x] 2.8 Implement Socket.IO event handlers for game state synchronization
   - [ ] 2.9 Create device session management for reconnection handling
   - [ ] 2.10 Write unit tests for all API endpoints and socket handlers
 

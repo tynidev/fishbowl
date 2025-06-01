@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/unittests'],
   testMatch: [
     '**/__tests__/**/*.+(ts|tsx|js)',
     '**/*.(test|spec).+(ts|tsx|js)'
@@ -23,10 +23,10 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
-  },
-  testTimeout: 10000,
+  },  testTimeout: 10000,
   clearMocks: true,
-  restoreMocks: true,  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+  restoreMocks: true,
+  setupFilesAfterEnv: ['<rootDir>/unittests/setupTests.ts'],
   // Suppress console output unless --verbose flag is used
   silent: false, // Set to true to suppress all console output including console.error
   verbose: true // Control test output verbosity - shows individual test names

@@ -12,8 +12,8 @@ import {
 import {
   SubmitPhrasesRequest,
   UpdatePhraseRequest
-} from './gameRoutes';
-import { Player, Phrase } from '../db/schema';
+} from '../../src/routes/REST-API'
+import { Player, Phrase } from '../../src/db/schema';
 
 describe('Phrases API', () => {
   let app: Application;

@@ -1,19 +1,19 @@
 // Database functionality tests
 // Tests for connection, migrations, and basic operations
 
-import { initializeTestDatabase, getDatabaseStatus } from './init';
+import { initializeTestDatabase, getDatabaseStatus } from '../../src/db/init';
 import { 
   initializeDatabase, 
   getConnection, 
   withConnection, 
   withTransaction, 
   healthCheck 
-} from './connection';
+} from '../../src/db/connection';
 import { 
   runMigrations, 
   getMigrationStatus, 
   validateMigrations 
-} from './migrator';
+} from '../../src/db/migrator';
 import { 
   insert, 
   select, 
@@ -22,7 +22,7 @@ import {
   findById, 
   exists, 
   count 
-} from './utils';
+} from '../../src/db/utils';
 
 describe('Database Connection', () => {
   beforeEach(async () => {

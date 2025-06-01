@@ -7,7 +7,7 @@ import {
   mockedDbUtils,
   createMockGame
 } from './test-utils';
-import { UpdateConfigRequest } from './gameRoutes';
+import { UpdateConfigRequest } from '../../src/routes/REST-API';
 
 describe('Game Configuration API', () => {
   let app: Application;
