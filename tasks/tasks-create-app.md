@@ -34,6 +34,8 @@
 - `/frontend/src/App.tsx` - Main React app component with routing
 - `/frontend/src/App.test.tsx` - Unit tests for App component
 - `/frontend/src/App.css` - Styles for App component
+- `/frontend/src/HomePage.tsx` - Home page component with navigation to New Game/Join Game
+- `/frontend/src/NewGamePage.tsx` - Page for creating a new game with configuration options.
 - `/frontend/src/index.tsx` - React app entry point
 - `/frontend/src/index.css` - Global styles
 - `/frontend/src/setupTests.ts` - Frontend test setup file
@@ -73,11 +75,11 @@
   - [x] 2.7 Set up Socket.IO server and connection handling
   - [x] 2.8 Implement Socket.IO event handlers for game state synchronization
   - [x] 2.9 Create device session management for reconnection handling
-  - [ ] 2.10 Write unit tests for all API endpoints and socket handlers
+  - [x] 2.10 Write unit tests for all API endpoints and socket handlers
 
 - [ ] 3.0 Build core game management features (lobby, setup, player management)
-  - [ ] 3.1 Create Home page component with navigation to New Game/Join Game
-  - [ ] 3.2 Implement game creation flow with configuration options (teams, phrases per player, timer)
+  - [x] 3.1 Create Home page component with navigation to New Game/Join Game
+  - [x] 3.2 Implement game creation flow with configuration options (teams, phrases per player, timer)
   - [ ] 3.3 Build game code generation and QR code display functionality
   - [ ] 3.4 Create Join Game screen with code input and validation
   - [ ] 3.5 Develop Lobby page with player list and team assignment UI

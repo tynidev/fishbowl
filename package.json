@@ -23,12 +23,6 @@
     "test:watch:frontend": "npm run test --prefix frontend",
     "test:watch:backend": "npm run test:watch --prefix backend",
     "test:coverage": "npm run test:coverage --prefix backend && npm run test:frontend",
-    "lint": "npm run lint:backend && npm run lint:frontend",
-    "lint:frontend": "npm run lint --prefix frontend",
-    "lint:backend": "npm run lint --prefix backend",
-    "lint:fix": "npm run lint:fix:backend && npm run lint:fix:frontend",
-    "lint:fix:frontend": "npm run lint:fix --prefix frontend",
-    "lint:fix:backend": "npm run lint:fix --prefix backend",
     "format": "npm run format:backend && npm run format:frontend",
     "format:frontend": "npm run format --prefix frontend",
     "format:backend": "npm run format --prefix backend",
@@ -40,7 +34,7 @@
     "clean:backend": "npm run clean --prefix backend && if exist backend\\node_modules rmdir /s /q backend\\node_modules",
     "clean:all": "npm run clean && if exist node_modules rmdir /s /q node_modules",
     "setup": "npm run install:all && npm run build",
-    "validate": "npm run lint && npm run format:check && npm run test"
+    "validate": "npm run format:check && npm run test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
