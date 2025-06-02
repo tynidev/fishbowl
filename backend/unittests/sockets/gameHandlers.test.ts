@@ -116,28 +116,75 @@ describe('Socket.IO Game Handlers', () => {
 
         test('should handle successful game join', (done) => {
             // Mock successful database responses
-            mockedDbUtils.findById
-                .mockResolvedValueOnce({
-                    id: 'game-1',
-                    game_code: mockJoinData.gameCode,
-                    status: 'waiting'
-                } as any) // Game exists
-                .mockResolvedValueOnce({
-                    id: mockJoinData.playerId,
-                    game_id: mockJoinData.gameCode,
-                    name: mockJoinData.playerName
-                } as any); // Player exists in game
+            // 1. findById for Game in handleJoinGameRoom
+            mockedDbUtils.findById.mockResolvedValueOnce({
+                id: 'game-1',
+                game_code: mockJoinData.gameCode,
+                status: 'waiting'
+            } as any);
+            // 2. findById for Player in handleJoinGameRoom
+            mockedDbUtils.findById.mockResolvedValueOnce({
+                id: mockJoinData.playerId,
+                game_id: mockJoinData.gameCode,
+                name: mockJoinData.playerName
+            } as any);
 
+            // For createOrUpdateDeviceSession (called by handleJoinGameRoom)
+            // 1. select for existing device_sessions - assuming no existing session
+            mockedDbUtils.select.mockResolvedValueOnce([]); 
+            
+            // For update player is_connected (called by handleJoinGameRoom)
             mockedDbUtils.update.mockResolvedValueOnce(1);
 
-            clientSocket.emit('join-gameroom', mockJoinData);
+            // Mocks for sendGameStateToPlayer (called by handleJoinGameRoom)
+            // 3. findById for Game in sendGameStateToPlayer
+            mockedDbUtils.findById.mockResolvedValueOnce({
+                id: 'game-1', name: 'Test Game', status: 'waiting', host_player_id: 'p1', 
+                team_count: 2, phrases_per_player: 5, timer_duration: 60, 
+                current_round: 0, current_team: 0, created_at: new Date().toISOString(), started_at: null
+            } as any); 
+            // 2. select for players in game for sendGameStateToPlayer
+            mockedDbUtils.select.mockResolvedValueOnce([]); 
+
+            let gameroomJoinedCalled = false;
+            let playerConnectedCalled = false;
+            let currentGameStateCalled = false; 
+
+            const checkDone = () => {
+                if (gameroomJoinedCalled && playerConnectedCalled && currentGameStateCalled) {
+                    done();
+                }
+            };
 
             clientSocket.once('gameroom-joined', (response) => {
-                expect(response.gameCode).toBe('ABCD');
-                expect(response.playerId).toBe('player-123');
-                expect(response.playerName).toBe('Test Player');
-                done();
+                expect(response.gameCode).toBe(mockJoinData.gameCode);
+                expect(response.playerId).toBe(mockJoinData.playerId);
+                expect(response.playerName).toBe(mockJoinData.playerName);
+                gameroomJoinedCalled = true;
+                checkDone();
             });
+
+            // clientSocket should receive 'player-connected' as it's in the game room.
+            clientSocket.once('player-connected', (data) => {
+                // Payload for 'player-connected' is { playerId, playerName, connectedAt }
+                expect(data.playerId).toBe(mockJoinData.playerId);
+                expect(data.playerName).toBe(mockJoinData.playerName);
+                expect(data.connectedAt).toBeDefined(); // Check that connectedAt is present
+                playerConnectedCalled = true;
+                checkDone();
+            });
+
+            // Optionally, also listen for 'current-game-state' if it's part of this test's success criteria
+            clientSocket.once('current-game-state', (data) => {
+                expect(data.game).toBeDefined();
+                expect(data.game.id).toBe('game-1'); // From the mock for findById in sendGameStateToPlayer
+                expect(data.game.status).toBe('waiting'); // From the mock
+                expect(data.players).toEqual([]); // From the mock for select in sendGameStateToPlayer
+                currentGameStateCalled = true;
+                checkDone();
+            });
+
+            clientSocket.emit('join-gameroom', mockJoinData);
         });
     });
 
@@ -148,38 +195,63 @@ describe('Socket.IO Game Handlers', () => {
         };
 
         test('should handle successful game leave', (done) => {
-            // Mock the join-gameroom dependencies first
+            const joinDataForLeaveTest: JoinGameData = {
+                gameCode: mockLeaveData.gameCode,      // 'ABCD'
+                playerId: mockLeaveData.playerId,      // 'player-123'
+                playerName: 'Test Player To Leave', // Specific name for this test context
+                deviceId: 'device-for-leave-test'   // Added deviceId
+            };
+
+            // Mocks for the 'join-gameroom' phase executed first:
+            // 1. findById (Game in handleJoinGameRoom)
             mockedDbUtils.findById.mockResolvedValueOnce({
-                id: 'game-1',
-                game_code: 'ABCD',
-                status: 'waiting'
-            } as any); // Game exists for join
-
+                id: 'game-1', game_code: joinDataForLeaveTest.gameCode, status: 'waiting'
+            } as any);
+            // 2. findById (Player in handleJoinGameRoom)
             mockedDbUtils.findById.mockResolvedValueOnce({
-                id: 'player-123',
-                game_id: 'ABCD',
-                name: 'Test Player'
-            } as any); // Player exists in game for join
+                id: joinDataForLeaveTest.playerId, game_id: joinDataForLeaveTest.gameCode, name: joinDataForLeaveTest.playerName
+            } as any);
+            // 3. select (device_sessions in createOrUpdateDeviceSession) - assuming no existing session
+            mockedDbUtils.select.mockResolvedValueOnce([]);
+            // 4. insert (device_sessions in createOrUpdateDeviceSession) - new session created
+            mockedDbUtils.insert.mockResolvedValueOnce({ id: 'session-xyz', device_id: joinDataForLeaveTest.deviceId, player_id: joinDataForLeaveTest.playerId, game_id: joinDataForLeaveTest.gameCode } as any);
+            // 5. update (Player is_connected = true in handleJoinGameRoom)
+            mockedDbUtils.update.mockResolvedValueOnce(1);
+            // 6. findById (Game in sendGameStateToPlayer)
+            mockedDbUtils.findById.mockResolvedValueOnce({
+                id: 'game-1', name: 'Test Game For Leave', status: 'waiting', 
+                host_player_id: 'p1', team_count: 2, phrases_per_player: 5, 
+                timer_duration: 60, current_round: 0, current_team: 0, 
+                created_at: new Date().toISOString(), started_at: null
+            } as any); 
+            // 7. select (Players in game for sendGameStateToPlayer)
+            mockedDbUtils.select.mockResolvedValueOnce([]);
 
-            mockedDbUtils.update.mockResolvedValueOnce(1); // Join update
-            mockedDbUtils.update.mockResolvedValueOnce(1); // Leave update
+            // Mock for the 'leave-gameroom' phase:
+            // 8. update (Player is_connected = false in handleLeaveGameRoom)
+            mockedDbUtils.update.mockResolvedValueOnce(1); 
 
-            // First join the game
-            clientSocket.emit('join-gameroom', {
-                gameCode: 'ABCD',
-                playerId: 'player-123',
-                playerName: 'Test Player'
-            });
+            // First, join the game
+            clientSocket.emit('join-gameroom', joinDataForLeaveTest);
 
-            clientSocket.once('gameroom-joined', () => {
+            clientSocket.once('gameroom-joined', (joinResponse) => {
+                expect(joinResponse.gameCode).toBe(joinDataForLeaveTest.gameCode);
+                expect(joinResponse.playerId).toBe(joinDataForLeaveTest.playerId);
+                expect(joinResponse.playerName).toBe(joinDataForLeaveTest.playerName);
+
                 // Now leave the game
                 clientSocket.emit('leave-gameroom', mockLeaveData);
 
-                // Since leave-gameroom doesn't emit a response, just verify it doesn't crash
+                // The 'player-disconnected' event is broadcast to other clients in the room.
+                // The leaving client itself typically won't receive this after socket.leave().
+                // This timeout primarily ensures the client socket remains connected to the server
+                // and the server doesn't crash due to the leave operation with the provided mocks.
+                // Verification of the database update (is_connected: false) relies on the mock being set up correctly
+                // and consumed in the expected order.
                 setTimeout(() => {
                     expect(clientSocket.connected).toBe(true);
                     done();
-                }, 100);
+                }, 200); // Timeout to allow server processing
             });
         });
 
@@ -199,31 +271,47 @@ describe('Socket.IO Game Handlers', () => {
         const mockAssignData: TeamAssignmentData = {
             gameCode: 'ABCD',
             playerId: 'player-123',
-            teamId: 'team-1'
+            teamId: 'team-1',
         };
 
         test('should handle successful team assignment', (done) => {
-            // First, join the game to add socket to the room
-            mockedDbUtils.findById
-                .mockResolvedValueOnce({
-                    id: 'game-1',
-                    game_code: mockAssignData.gameCode,
-                    status: 'waiting'
-                } as any) // Game exists for join
-                .mockResolvedValueOnce({
-                    id: mockAssignData.playerId,
-                    game_id: mockAssignData.gameCode,
-                    name: playerName,
-                } as any); // Player exists for join
+            // Mock successful database responses
+            // 1. findById for Game in handleJoinGameRoom
+            mockedDbUtils.findById.mockResolvedValueOnce({
+                id: 'game-1',
+                game_code: mockAssignData.gameCode,
+                status: 'waiting'
+            } as any);
+            // 2. findById for Player in handleJoinGameRoom
+            mockedDbUtils.findById.mockResolvedValueOnce({
+                id: mockAssignData.playerId,
+                game_id: mockAssignData.gameCode,
+                name: playerName
+            } as any);
 
-            mockedDbUtils.update.mockResolvedValueOnce(1); // Join update
-            mockedDbUtils.select.mockResolvedValueOnce([]); // Players for game state
+            // For createOrUpdateDeviceSession (called by handleJoinGameRoom)
+            // 1. select for existing device_sessions - assuming no existing session
+            mockedDbUtils.select.mockResolvedValueOnce([]); 
+            
+            // For update player is_connected (called by handleJoinGameRoom)
+            mockedDbUtils.update.mockResolvedValueOnce(1);
+
+            // Mocks for sendGameStateToPlayer (called by handleJoinGameRoom)
+            // 3. findById for Game in sendGameStateToPlayer
+            mockedDbUtils.findById.mockResolvedValueOnce({
+                id: 'game-1', name: 'Test Game', status: 'waiting', host_player_id: 'p1', 
+                team_count: 2, phrases_per_player: 5, timer_duration: 60, 
+                current_round: 0, current_team: 0, created_at: new Date().toISOString(), started_at: null
+            } as any); 
+            // 2. select for players in game for sendGameStateToPlayer
+            mockedDbUtils.select.mockResolvedValueOnce([]); 
 
             // Join the game first
             clientSocket.emit('join-gameroom', {
                 gameCode: mockAssignData.gameCode,
                 playerId: mockAssignData.playerId,
-                playerName: playerName
+                playerName: playerName,
+                deviceId: 'test-device-123'
             });
 
             clientSocket.once('gameroom-joined', () => {
