@@ -71,7 +71,8 @@ describe('Socket.IO Game Handlers', () => {
         const mockJoinData: JoinGameData = {
             gameCode: 'ABCD',
             playerId: 'player-123',
-            playerName: 'Test Player'
+            playerName: 'Test Player',
+            deviceId: 'test-device-123'
         };
 
         test('should handle database errors gracefully', (done) => {

@@ -223,36 +223,36 @@ export const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);`,
   `CREATE INDEX IF NOT EXISTS idx_games_host ON games(host_player_id);`,
   `CREATE INDEX IF NOT EXISTS idx_games_current_turn ON games(current_turn_id);`,
-  
+
   // Players indexes
   `CREATE INDEX IF NOT EXISTS idx_players_game ON players(game_id);`,
   `CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);`,
   `CREATE INDEX IF NOT EXISTS idx_players_connected ON players(is_connected);`,
   `CREATE INDEX IF NOT EXISTS idx_players_game_name ON players(game_id, name);`,
-  
+
   // Teams indexes
   `CREATE INDEX IF NOT EXISTS idx_teams_game ON teams(game_id);`,
   `CREATE INDEX IF NOT EXISTS idx_teams_score ON teams(total_score DESC);`,
-  
+
   // Phrases indexes
   `CREATE INDEX IF NOT EXISTS idx_phrases_game ON phrases(game_id);`,
   `CREATE INDEX IF NOT EXISTS idx_phrases_player ON phrases(player_id);`,
   `CREATE INDEX IF NOT EXISTS idx_phrases_status ON phrases(status);`,
   `CREATE INDEX IF NOT EXISTS idx_phrases_game_status ON phrases(game_id, status);`,
   `CREATE INDEX IF NOT EXISTS idx_phrases_round_team ON phrases(guessed_in_round, guessed_by_team_id);`,
-  
+
   // Turns indexes
   `CREATE INDEX IF NOT EXISTS idx_turns_game ON turns(game_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turns_team ON turns(team_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turns_player ON turns(acting_player_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turns_game_round ON turns(game_id, round);`,
   `CREATE INDEX IF NOT EXISTS idx_turns_complete ON turns(is_complete);`,
-  
+
   // Turn phrases indexes
   `CREATE INDEX IF NOT EXISTS idx_turn_phrases_turn ON turn_phrases(turn_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turn_phrases_phrase ON turn_phrases(phrase_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turn_phrases_action ON turn_phrases(action);`,
-  
+
   // Device sessions indexes
   `CREATE INDEX IF NOT EXISTS idx_device_sessions_device ON device_sessions(device_id);`,
   `CREATE INDEX IF NOT EXISTS idx_device_sessions_socket ON device_sessions(socket_id);`,
@@ -260,7 +260,7 @@ export const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_device_sessions_game ON device_sessions(game_id);`,
   `CREATE INDEX IF NOT EXISTS idx_device_sessions_active ON device_sessions(is_active);`,
   `CREATE INDEX IF NOT EXISTS idx_device_sessions_last_seen ON device_sessions(last_seen);`,
-  `CREATE INDEX IF NOT EXISTS idx_device_sessions_device_game ON device_sessions(device_id, game_id);`
+  `CREATE INDEX IF NOT EXISTS idx_device_sessions_device_game ON device_sessions(device_id, game_id);`,
 ];
 
 // ==================== Triggers for updated_at ====================
@@ -271,36 +271,36 @@ export const CREATE_TRIGGERS = [
    BEGIN 
      UPDATE games SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
    END;`,
-   
+
   `CREATE TRIGGER IF NOT EXISTS update_players_timestamp 
    AFTER UPDATE ON players 
    BEGIN 
      UPDATE players SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
    END;`,
-   
+
   `CREATE TRIGGER IF NOT EXISTS update_teams_timestamp 
    AFTER UPDATE ON teams 
    BEGIN 
      UPDATE teams SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
    END;`,
-   
+
   `CREATE TRIGGER IF NOT EXISTS update_phrases_timestamp 
    AFTER UPDATE ON phrases 
    BEGIN 
      UPDATE phrases SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
    END;`,
-   
+
   `CREATE TRIGGER IF NOT EXISTS update_turns_timestamp
    AFTER UPDATE ON turns
    BEGIN
      UPDATE turns SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
    END;`,
-   
+
   `CREATE TRIGGER IF NOT EXISTS update_device_sessions_timestamp
    AFTER UPDATE ON device_sessions
    BEGIN
      UPDATE device_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-   END;`
+   END;`,
 ];
 
 // ==================== Schema Validation ====================
@@ -312,7 +312,7 @@ export const ALL_TABLES = [
   CREATE_PHRASES_TABLE,
   CREATE_TURNS_TABLE,
   CREATE_TURN_PHRASES_TABLE,
-  CREATE_DEVICE_SESSIONS_TABLE
+  CREATE_DEVICE_SESSIONS_TABLE,
 ];
 
 export const SCHEMA_VERSION = 1;

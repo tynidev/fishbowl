@@ -20,7 +20,10 @@ export interface DatabaseConfig {
 
 export interface DatabaseConnection {
   db: sqlite3.Database;
-  run: (sql: string, params?: any[]) => Promise<{ lastID?: number; changes: number }>;
+  run: (
+    sql: string,
+    params?: any[]
+  ) => Promise<{ lastID?: number; changes: number }>;
   get: <T = any>(sql: string, params?: any[]) => Promise<T | undefined>;
   all: <T = any>(sql: string, params?: any[]) => Promise<T[]>;
   exec: (sql: string) => Promise<void>;
@@ -87,7 +90,7 @@ class DatabaseManager {
       const db = new sqlite3.Database(
         this.config.filename,
         this.config.mode || sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-        (err) => {
+        err => {
           if (err) {
             console.error('Failed to create database connection:', err);
             reject(err);
@@ -116,13 +119,13 @@ class DatabaseManager {
       db,
       run: (sql: string, params?: any) => {
         return new Promise((resolve, reject) => {
-          db.run(sql, params, function(err) {
+          db.run(sql, params, function (err) {
             if (err) {
               reject(err);
             } else {
               resolve({
                 lastID: this.lastID,
-                changes: this.changes
+                changes: this.changes,
               });
             }
           });
@@ -150,8 +153,8 @@ class DatabaseManager {
             resolveClose();
             return;
           }
-          
-          db.close((err) => {
+
+          db.close(err => {
             if (err) {
               rejectClose(err);
             } else {
@@ -168,7 +171,7 @@ class DatabaseManager {
           console.error('Database health check failed:', error);
           return false;
         }
-      }
+      },
     };
 
     return connection;
@@ -204,11 +207,14 @@ class DatabaseManager {
             try {
               await connection.exec('ROLLBACK');
             } catch (error) {
-              console.warn('Failed to rollback transaction during close:', error);
+              console.warn(
+                'Failed to rollback transaction during close:',
+                error
+              );
             }
           }
           await connection.close();
-        }
+        },
       };
 
       return transaction;
@@ -224,16 +230,15 @@ class DatabaseManager {
   async getStats(): Promise<any> {
     const connection = await this.createConnection();
     try {
-      const [
-        version,
-        pragmaInfo,
-        tableCount,
-        indexCount
-      ] = await Promise.all([
+      const [version, pragmaInfo, tableCount, indexCount] = await Promise.all([
         connection.get('SELECT sqlite_version() as version'),
         connection.get('PRAGMA database_list'),
-        connection.get('SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"'),
-        connection.get('SELECT COUNT(*) as count FROM sqlite_master WHERE type="index"')
+        connection.get(
+          'SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"'
+        ),
+        connection.get(
+          'SELECT COUNT(*) as count FROM sqlite_master WHERE type="index"'
+        ),
       ]);
 
       return {
@@ -243,7 +248,7 @@ class DatabaseManager {
         tableCount: tableCount?.count || 0,
         indexCount: indexCount?.count || 0,
         pragmaInfo,
-        lastModified: this.getDatabaseLastModified()
+        lastModified: this.getDatabaseLastModified(),
       };
     } finally {
       await connection.close();
@@ -254,8 +259,8 @@ class DatabaseManager {
    */
   async cleanup(): Promise<void> {
     const closePromises = Array.from(this.connections.values()).map(db => {
-      return new Promise<void>((resolve) => {
-        db.close((err) => {
+      return new Promise<void>(resolve => {
+        db.close(err => {
           if (err) {
             console.warn('Error closing database connection:', err);
           }
@@ -266,15 +271,17 @@ class DatabaseManager {
 
     // Close cached database if it exists
     if (this.cachedDb) {
-      closePromises.push(new Promise<void>((resolve) => {
-        this.cachedDb!.close((err) => {
-          if (err) {
-            console.warn('Error closing cached database connection:', err);
-          }
-          this.cachedDb = null;
-          resolve();
-        });
-      }));
+      closePromises.push(
+        new Promise<void>(resolve => {
+          this.cachedDb!.close(err => {
+            if (err) {
+              console.warn('Error closing cached database connection:', err);
+            }
+            this.cachedDb = null;
+            resolve();
+          });
+        })
+      );
     }
 
     await Promise.all(closePromises);
@@ -288,6 +295,7 @@ class DatabaseManager {
       const stats = fs.statSync(this.config.filename);
       return stats.size;
     } catch (error) {
+      console.warn('Error getting database file size:', error);
       return 0;
     }
   }
@@ -297,6 +305,7 @@ class DatabaseManager {
       const stats = fs.statSync(this.config.filename);
       return stats.mtime;
     } catch (error) {
+      console.warn('Error getting database last modified time:', error);
       return null;
     }
   }
@@ -304,13 +313,14 @@ class DatabaseManager {
 
 // Default database configuration
 const getDefaultConfig = (): DatabaseConfig => {
-  const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'database', 'fishbowl.db');
-  
+  const dbPath =
+    process.env.DB_PATH || path.join(process.cwd(), 'database', 'fishbowl.db');
+
   return {
     filename: dbPath,
     mode: sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
     timeout: parseInt(process.env.DB_TIMEOUT || '5000'),
-    maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '10')
+    maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '10'),
   };
 };
 
@@ -320,7 +330,9 @@ let dbManager: DatabaseManager | null = null;
 /**
  * Initialize the database manager with optional config
  */
-export async function initializeDatabase(config?: Partial<DatabaseConfig>): Promise<void> {
+export async function initializeDatabase(
+  config?: Partial<DatabaseConfig>
+): Promise<void> {
   const finalConfig = { ...getDefaultConfig(), ...config };
   dbManager = new DatabaseManager(finalConfig);
   await dbManager.initialize();
@@ -331,7 +343,9 @@ export async function initializeDatabase(config?: Partial<DatabaseConfig>): Prom
  */
 export async function getConnection(): Promise<DatabaseConnection> {
   if (!dbManager) {
-    throw new Error('Database not initialized. Call initializeDatabase() first.');
+    throw new Error(
+      'Database not initialized. Call initializeDatabase() first.'
+    );
   }
   return await dbManager.createConnection();
 }
@@ -341,7 +355,9 @@ export async function getConnection(): Promise<DatabaseConnection> {
  */
 export async function getTransaction(): Promise<TransactionConnection> {
   if (!dbManager) {
-    throw new Error('Database not initialized. Call initializeDatabase() first.');
+    throw new Error(
+      'Database not initialized. Call initializeDatabase() first.'
+    );
   }
   return await dbManager.createTransaction();
 }
@@ -384,7 +400,9 @@ export async function withConnection<T>(
  */
 export async function getDatabaseStats(): Promise<any> {
   if (!dbManager) {
-    throw new Error('Database not initialized. Call initializeDatabase() first.');
+    throw new Error(
+      'Database not initialized. Call initializeDatabase() first.'
+    );
   }
   return await dbManager.getStats();
 }
@@ -394,7 +412,7 @@ export async function getDatabaseStats(): Promise<any> {
  */
 export async function healthCheck(): Promise<boolean> {
   try {
-    return await withConnection(async (connection) => {
+    return await withConnection(async connection => {
       return await connection.isHealthy();
     });
   } catch (error) {

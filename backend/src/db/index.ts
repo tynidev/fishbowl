@@ -20,30 +20,20 @@ export * from './utils';
 export * from './init';
 
 // Re-export commonly used types for convenience
-export type {
-  Game,
-  Player,
-  Team,
-  Phrase,
-  Turn,
-  TurnPhrase
-} from './schema';
+export type { Game, Player, Team, Phrase, Turn, TurnPhrase } from './schema';
 
 export type { Migration } from './migrations';
 
 export type {
   DatabaseConfig,
   DatabaseConnection,
-  TransactionConnection
+  TransactionConnection,
 } from './connection';
 
 export type {
   MigrationRecord,
   MigrationResult,
-  MigrationStatus
+  MigrationStatus,
 } from './migrator';
 
-export type {
-  WhereCondition,
-  QueryOptions
-} from './utils';
+export type { WhereCondition, QueryOptions } from './utils';

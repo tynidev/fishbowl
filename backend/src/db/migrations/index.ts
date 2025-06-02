@@ -8,10 +8,7 @@ import type { Migration } from './001_initial';
 export { Migration };
 
 // All migrations in order
-export const MIGRATIONS: Migration[] = [
-  migration_001,
-  migration_002
-];
+export const MIGRATIONS: Migration[] = [migration_001, migration_002];
 
 // Get migration by version
 export function getMigrationByVersion(version: number): Migration | undefined {

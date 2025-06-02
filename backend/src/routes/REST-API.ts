@@ -1,7 +1,14 @@
 import express, { Request, Response, Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { Game, Player, Team, Phrase } from '../db/schema';
-import { insert, select, findById, exists, update, deleteRecords } from '../db/utils';
+import {
+  insert,
+  select,
+  findById,
+  exists,
+  update,
+  deleteRecords,
+} from '../db/utils';
 import { withTransaction, TransactionConnection } from '../db/connection';
 
 // ==================== Request/Response Interfaces ====================
@@ -160,20 +167,34 @@ function validateGameConfig(config: {
   const errors: string[] = [];
 
   if (config.teamCount !== undefined) {
-    if (!Number.isInteger(config.teamCount) || config.teamCount < 2 || config.teamCount > 8) {
+    if (
+      !Number.isInteger(config.teamCount) ||
+      config.teamCount < 2 ||
+      config.teamCount > 8
+    ) {
       errors.push('Team count must be an integer between 2 and 8');
     }
   }
 
   if (config.phrasesPerPlayer !== undefined) {
-    if (!Number.isInteger(config.phrasesPerPlayer) || config.phrasesPerPlayer < 3 || config.phrasesPerPlayer > 10) {
+    if (
+      !Number.isInteger(config.phrasesPerPlayer) ||
+      config.phrasesPerPlayer < 3 ||
+      config.phrasesPerPlayer > 10
+    ) {
       errors.push('Phrases per player must be an integer between 3 and 10');
     }
   }
 
   if (config.timerDuration !== undefined) {
-    if (!Number.isInteger(config.timerDuration) || config.timerDuration < 30 || config.timerDuration > 180) {
-      errors.push('Timer duration must be an integer between 30 and 180 seconds');
+    if (
+      !Number.isInteger(config.timerDuration) ||
+      config.timerDuration < 30 ||
+      config.timerDuration > 180
+    ) {
+      errors.push(
+        'Timer duration must be an integer between 30 and 180 seconds'
+      );
     }
   }
 
@@ -183,14 +204,20 @@ function validateGameConfig(config: {
 /**
  * Validate player name
  */
-function validatePlayerName(name: string): { isValid: boolean; error?: string } {
+function validatePlayerName(name: string): {
+  isValid: boolean;
+  error?: string;
+} {
   if (!name || typeof name !== 'string') {
     return { isValid: false, error: 'Player name is required' };
   }
 
   const trimmedName = name.trim();
   if (trimmedName.length < 1 || trimmedName.length > 20) {
-    return { isValid: false, error: 'Player name must be between 1 and 20 characters' };
+    return {
+      isValid: false,
+      error: 'Player name must be between 1 and 20 characters',
+    };
   }
 
   // Check for valid characters (letters, numbers, spaces, basic punctuation)
@@ -229,7 +256,10 @@ function validatePhrase(text: string): { isValid: boolean; error?: string } {
 /**
  * Validate array of phrases
  */
-function validatePhrases(phrases: string[]): { isValid: boolean; errors: string[] } {
+function validatePhrases(phrases: string[]): {
+  isValid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
   const seen = new Set<string>();
 
@@ -247,9 +277,9 @@ function validatePhrases(phrases: string[]): { isValid: boolean; errors: string[
       errors.push(`Phrase ${i + 1}: Phrase is required`);
       continue;
     }
-    
+
     const validation = validatePhrase(phrase);
-    
+
     if (!validation.isValid) {
       errors.push(`Phrase ${i + 1}: ${validation.error}`);
       continue;
@@ -269,22 +299,46 @@ function validatePhrases(phrases: string[]): { isValid: boolean; errors: string[
 /**
  * Create default teams for a game
  */
-async function createDefaultTeams(gameId: string, teamCount: number, transaction?: any): Promise<Team[]> {
-  const teamColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
-  const teamNames = ['Red Team', 'Teal Team', 'Blue Team', 'Green Team', 'Yellow Team', 'Purple Team', 'Mint Team', 'Gold Team'];
+async function createDefaultTeams(
+  gameId: string,
+  teamCount: number,
+  transaction?: any
+): Promise<Team[]> {
+  const teamColors = [
+    '#FF6B6B',
+    '#4ECDC4',
+    '#45B7D1',
+    '#96CEB4',
+    '#FFEAA7',
+    '#DDA0DD',
+    '#98D8C8',
+    '#F7DC6F',
+  ];
+  const teamNames = [
+    'Red Team',
+    'Teal Team',
+    'Blue Team',
+    'Green Team',
+    'Yellow Team',
+    'Purple Team',
+    'Mint Team',
+    'Gold Team',
+  ];
 
   const teams: Team[] = [];
-  
+
   for (let i = 0; i < teamCount; i++) {
     const team: Omit<Team, 'created_at' | 'updated_at'> = {
       id: uuidv4(),
       game_id: gameId,
       name: teamNames[i] || `Team ${i + 1}`,
-      color: teamColors[i] || `#${Math.floor(Math.random()*16777215).toString(16)}`,
+      color:
+        teamColors[i] ||
+        `#${Math.floor(Math.random() * 16777215).toString(16)}`,
       score_round_1: 0,
       score_round_2: 0,
       score_round_3: 0,
-      total_score: 0
+      total_score: 0,
     };
 
     await insert('teams', team, transaction);
@@ -297,12 +351,19 @@ async function createDefaultTeams(gameId: string, teamCount: number, transaction
 /**
  * Assign player to team using round-robin
  */
-async function assignPlayerToTeam(gameId: string, transaction?: any): Promise<string | undefined> {
+async function assignPlayerToTeam(
+  gameId: string,
+  transaction?: any
+): Promise<string | undefined> {
   // Get all teams for the game
-  const teams = await select<Team>('teams', {
-    where: [{ field: 'game_id', operator: '=', value: gameId }],
-    orderBy: [{ field: 'created_at', direction: 'ASC' }]
-  }, transaction);
+  const teams = await select<Team>(
+    'teams',
+    {
+      where: [{ field: 'game_id', operator: '=', value: gameId }],
+      orderBy: [{ field: 'created_at', direction: 'ASC' }],
+    },
+    transaction
+  );
 
   if (teams.length === 0) {
     return undefined;
@@ -311,12 +372,16 @@ async function assignPlayerToTeam(gameId: string, transaction?: any): Promise<st
   // Get current player counts for each team
   const teamPlayerCounts = new Map<string, number>();
   for (const team of teams) {
-    const count = await select<Player>('players', {
-      where: [
-        { field: 'game_id', operator: '=', value: gameId },
-        { field: 'team_id', operator: '=', value: team.id }
-      ]
-    }, transaction);
+    const count = await select<Player>(
+      'players',
+      {
+        where: [
+          { field: 'game_id', operator: '=', value: gameId },
+          { field: 'team_id', operator: '=', value: team.id },
+        ],
+      },
+      transaction
+    );
     teamPlayerCounts.set(team.id, count.length);
   }
 
@@ -345,7 +410,13 @@ async function assignPlayerToTeam(gameId: string, transaction?: any): Promise<st
  */
 async function createGame(req: Request, res: Response): Promise<void> {
   try {
-    const { name, hostPlayerName, teamCount = 2, phrasesPerPlayer = 5, timerDuration = 60 }: CreateGameRequest = req.body;    // Validate required fields
+    const {
+      name,
+      hostPlayerName,
+      teamCount = 2,
+      phrasesPerPlayer = 5,
+      timerDuration = 60,
+    }: CreateGameRequest = req.body; // Validate required fields
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       res.status(400).json({ error: 'Game name is required' });
       return;
@@ -353,7 +424,9 @@ async function createGame(req: Request, res: Response): Promise<void> {
 
     // Validate game name length
     if (name.trim().length > 100) {
-      res.status(400).json({ error: 'Game name must be 100 characters or less' });
+      res
+        .status(400)
+        .json({ error: 'Game name must be 100 characters or less' });
       return;
     }
 
@@ -365,9 +438,16 @@ async function createGame(req: Request, res: Response): Promise<void> {
     }
 
     // Validate game configuration
-    const configValidation = validateGameConfig({ teamCount, phrasesPerPlayer, timerDuration });
+    const configValidation = validateGameConfig({
+      teamCount,
+      phrasesPerPlayer,
+      timerDuration,
+    });
     if (!configValidation.isValid) {
-      res.status(400).json({ error: 'Invalid game configuration', details: configValidation.errors });
+      res.status(400).json({
+        error: 'Invalid game configuration',
+        details: configValidation.errors,
+      });
       return;
     }
 
@@ -380,7 +460,11 @@ async function createGame(req: Request, res: Response): Promise<void> {
 
       do {
         gameCode = generateGameCode();
-        codeExists = await exists('games', [{ field: 'id', operator: '=', value: gameCode }], transaction);
+        codeExists = await exists(
+          'games',
+          [{ field: 'id', operator: '=', value: gameCode }],
+          transaction
+        );
         attempts++;
       } while (codeExists && attempts < maxAttempts);
 
@@ -390,12 +474,15 @@ async function createGame(req: Request, res: Response): Promise<void> {
 
       // Create host player
       const hostPlayerId = uuidv4();
-      const hostPlayer: Omit<Player, 'created_at' | 'updated_at' | 'last_seen_at'> = {
+      const hostPlayer: Omit<
+        Player,
+        'created_at' | 'updated_at' | 'last_seen_at'
+      > = {
         id: hostPlayerId,
         game_id: gameCode,
         name: hostPlayerName.trim(),
         team_id: null as any,
-        is_connected: true
+        is_connected: true,
       };
 
       // Create game
@@ -411,7 +498,7 @@ async function createGame(req: Request, res: Response): Promise<void> {
         current_team: 1,
         current_turn_id: null as any,
         started_at: null as any,
-        finished_at: null as any
+        finished_at: null as any,
       };
 
       await insert('games', game, transaction);
@@ -435,18 +522,17 @@ async function createGame(req: Request, res: Response): Promise<void> {
           name: name.trim(),
           teamCount,
           phrasesPerPlayer,
-          timerDuration
-        }
+          timerDuration,
+        },
       };
 
       res.status(201).json(response);
     });
-
   } catch (error) {
     console.error('Error creating game:', error);
-    res.status(500).json({ 
-      error: 'Failed to create game', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to create game',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -483,34 +569,45 @@ async function joinGame(req: Request, res: Response): Promise<void> {
       }
 
       if (game.status !== 'waiting') {
-        res.status(400).json({ error: 'Game is no longer accepting new players' });
+        res
+          .status(400)
+          .json({ error: 'Game is no longer accepting new players' });
         return;
       }
 
       // Check if player name already exists in this game
-      const existingPlayer = await select<Player>('players', {
-        where: [
-          { field: 'game_id', operator: '=', value: gameCode },
-          { field: 'name', operator: '=', value: trimmedPlayerName }
-        ]
-      }, transaction);
+      const existingPlayer = await select<Player>(
+        'players',
+        {
+          where: [
+            { field: 'game_id', operator: '=', value: gameCode },
+            { field: 'name', operator: '=', value: trimmedPlayerName },
+          ],
+        },
+        transaction
+      );
 
       let player: Player;
-      let teamInfo: { teamId?: string; teamName?: string } = {};      
+      let teamInfo: { teamId?: string; teamName?: string } = {};
       if (existingPlayer.length > 0) {
         // Player reconnecting
         player = existingPlayer[0]!;
-        
+
         // Update connection status
-        await update('players', 
-          { is_connected: true, last_seen_at: new Date().toISOString() }, 
-          [{ field: 'id', operator: '=', value: player.id }], 
+        await update(
+          'players',
+          { is_connected: true, last_seen_at: new Date().toISOString() },
+          [{ field: 'id', operator: '=', value: player.id }],
           transaction
         );
-        
+
         // Get team info if assigned
         if (player.team_id) {
-          const team = await findById<Team>('teams', player.team_id, transaction);
+          const team = await findById<Team>(
+            'teams',
+            player.team_id,
+            transaction
+          );
           if (team) {
             teamInfo = { teamId: team.id, teamName: team.name };
           }
@@ -518,25 +615,29 @@ async function joinGame(req: Request, res: Response): Promise<void> {
       } else {
         // New player joining
         const playerId = uuidv4();
-        
+
         // Assign to team first
         const assignedTeamId = await assignPlayerToTeam(gameCode, transaction);
-        
+
         player = {
           id: playerId,
           game_id: gameCode,
           name: trimmedPlayerName,
-          team_id: assignedTeamId || null as any,
+          team_id: assignedTeamId || (null as any),
           is_connected: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          last_seen_at: new Date().toISOString()
+          last_seen_at: new Date().toISOString(),
         };
 
         await insert('players', player, transaction);
 
         if (assignedTeamId) {
-          const team = await findById<Team>('teams', assignedTeamId, transaction);
+          const team = await findById<Team>(
+            'teams',
+            assignedTeamId,
+            transaction
+          );
           if (team) {
             teamInfo = { teamId: team.id, teamName: team.name };
           }
@@ -544,9 +645,13 @@ async function joinGame(req: Request, res: Response): Promise<void> {
       }
 
       // Get current player count
-      const allPlayers = await select<Player>('players', {
-        where: [{ field: 'game_id', operator: '=', value: gameCode }]
-      }, transaction);
+      const allPlayers = await select<Player>(
+        'players',
+        {
+          where: [{ field: 'game_id', operator: '=', value: gameCode }],
+        },
+        transaction
+      );
 
       const response: JoinGameResponse = {
         playerId: player.id,
@@ -560,18 +665,17 @@ async function joinGame(req: Request, res: Response): Promise<void> {
           playerCount: allPlayers.length,
           teamCount: game.team_count,
           phrasesPerPlayer: game.phrases_per_player,
-          timerDuration: game.timer_duration
-        }
+          timerDuration: game.timer_duration,
+        },
       };
 
       res.status(200).json(response);
     });
-
   } catch (error) {
     console.error('Error joining game:', error);
-    res.status(500).json({ 
-      error: 'Failed to join game', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to join game',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -596,7 +700,7 @@ async function getGameInfo(req: Request, res: Response): Promise<void> {
 
     // Get player count
     const players = await select<Player>('players', {
-      where: [{ field: 'game_id', operator: '=', value: gameCode }]
+      where: [{ field: 'game_id', operator: '=', value: gameCode }],
     });
 
     const response: GameInfoResponse = {
@@ -611,16 +715,15 @@ async function getGameInfo(req: Request, res: Response): Promise<void> {
       currentTeam: game.current_team,
       playerCount: players.length,
       createdAt: game.created_at,
-      startedAt: game.started_at
+      startedAt: game.started_at,
     };
 
     res.status(200).json(response);
-
   } catch (error) {
     console.error('Error getting game info:', error);
-    res.status(500).json({ 
-      error: 'Failed to get game information', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to get game information',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -647,11 +750,11 @@ async function getGamePlayers(req: Request, res: Response): Promise<void> {
     // Get players with team information
     const players = await select<Player>('players', {
       where: [{ field: 'game_id', operator: '=', value: gameCode }],
-      orderBy: [{ field: 'created_at', direction: 'ASC' }]
+      orderBy: [{ field: 'created_at', direction: 'ASC' }],
     });
 
     const teams = await select<Team>('teams', {
-      where: [{ field: 'game_id', operator: '=', value: gameCode }]
+      where: [{ field: 'game_id', operator: '=', value: gameCode }],
     });
 
     const teamMap = new Map(teams.map(team => [team.id, team]));
@@ -662,21 +765,20 @@ async function getGamePlayers(req: Request, res: Response): Promise<void> {
       teamId: player.team_id,
       teamName: player.team_id ? teamMap.get(player.team_id)?.name : undefined,
       isConnected: player.is_connected,
-      joinedAt: player.created_at
+      joinedAt: player.created_at,
     }));
 
     const response: PlayersResponse = {
       players: playerInfos,
-      totalCount: players.length
+      totalCount: players.length,
     };
 
     res.status(200).json(response);
-
   } catch (error) {
     console.error('Error getting game players:', error);
-    res.status(500).json({ 
-      error: 'Failed to get game players', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to get game players',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -687,28 +789,46 @@ async function getGamePlayers(req: Request, res: Response): Promise<void> {
 async function updateGameConfig(req: Request, res: Response): Promise<void> {
   try {
     const { gameCode } = req.params;
-    const { teamCount, phrasesPerPlayer, timerDuration }: UpdateConfigRequest = req.body;    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
+    const { teamCount, phrasesPerPlayer, timerDuration }: UpdateConfigRequest =
+      req.body;
+    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
       res.status(400).json({ error: 'Invalid game code' });
       return;
     }
 
     // Validate that at least one configuration field is provided
-    if (teamCount === undefined && phrasesPerPlayer === undefined && timerDuration === undefined) {
-      res.status(400).json({ error: 'At least one configuration field must be provided (teamCount, phrasesPerPlayer, or timerDuration)' });
+    if (
+      teamCount === undefined &&
+      phrasesPerPlayer === undefined &&
+      timerDuration === undefined
+    ) {
+      res.status(400).json({
+        error:
+          'At least one configuration field must be provided (teamCount, phrasesPerPlayer, or timerDuration)',
+      });
       return;
     }
 
     // Validate configuration updates
-    const configToValidate: { teamCount?: number; phrasesPerPlayer?: number; timerDuration?: number } = {};
+    const configToValidate: {
+      teamCount?: number;
+      phrasesPerPlayer?: number;
+      timerDuration?: number;
+    } = {};
     if (teamCount !== undefined) configToValidate.teamCount = teamCount;
-    if (phrasesPerPlayer !== undefined) configToValidate.phrasesPerPlayer = phrasesPerPlayer;
-    if (timerDuration !== undefined) configToValidate.timerDuration = timerDuration;
-    
+    if (phrasesPerPlayer !== undefined)
+      configToValidate.phrasesPerPlayer = phrasesPerPlayer;
+    if (timerDuration !== undefined)
+      configToValidate.timerDuration = timerDuration;
+
     const configValidation = validateGameConfig(configToValidate);
     if (!configValidation.isValid) {
-      res.status(400).json({ error: 'Invalid configuration', details: configValidation.errors });
+      res.status(400).json({
+        error: 'Invalid configuration',
+        details: configValidation.errors,
+      });
       return;
-    }    
+    }
     await withTransaction(async (transaction: TransactionConnection) => {
       // Check if game exists and is configurable
       const game = await findById<Game>('games', gameCode, transaction);
@@ -723,36 +843,72 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
       // Prepare update data
       const updateData: Partial<Game> = {};
       if (teamCount !== undefined) updateData.team_count = teamCount;
-      if (phrasesPerPlayer !== undefined) updateData.phrases_per_player = phrasesPerPlayer;
-      if (timerDuration !== undefined) updateData.timer_duration = timerDuration;      // Update game configuration
+      if (phrasesPerPlayer !== undefined)
+        updateData.phrases_per_player = phrasesPerPlayer;
+      if (timerDuration !== undefined)
+        updateData.timer_duration = timerDuration; // Update game configuration
       if (Object.keys(updateData).length > 0) {
-        await update('games', updateData, [{ field: 'id', operator: '=', value: gameCode }], transaction);        // If team count changed, handle teams intelligently
+        await update(
+          'games',
+          updateData,
+          [{ field: 'id', operator: '=', value: gameCode }],
+          transaction
+        ); // If team count changed, handle teams intelligently
         if (teamCount !== undefined && teamCount !== game.team_count) {
-          const currentTeams = await select<Team>('teams', {
-            where: [{ field: 'game_id', operator: '=', value: gameCode }],
-            orderBy: [{ field: 'created_at', direction: 'ASC' }]
-          }, transaction);
+          const currentTeams = await select<Team>(
+            'teams',
+            {
+              where: [{ field: 'game_id', operator: '=', value: gameCode }],
+              orderBy: [{ field: 'created_at', direction: 'ASC' }],
+            },
+            transaction
+          );
 
           const currentTeamCount = currentTeams.length;
 
           if (teamCount > currentTeamCount) {
             // Increasing team count - create additional teams
             const teamsToCreate = teamCount - currentTeamCount;
-            const teamColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
-            const teamNames = ['Red Team', 'Teal Team', 'Blue Team', 'Green Team', 'Yellow Team', 'Purple Team', 'Mint Team', 'Gold Team'];            for (let i = 0; i < teamsToCreate; i++) {
+            const teamColors = [
+              '#FF6B6B',
+              '#4ECDC4',
+              '#45B7D1',
+              '#96CEB4',
+              '#FFEAA7',
+              '#DDA0DD',
+              '#98D8C8',
+              '#F7DC6F',
+            ];
+            const teamNames = [
+              'Red Team',
+              'Teal Team',
+              'Blue Team',
+              'Green Team',
+              'Yellow Team',
+              'Purple Team',
+              'Mint Team',
+              'Gold Team',
+            ];
+            for (let i = 0; i < teamsToCreate; i++) {
               const teamIndex = currentTeamCount + i;
-              if (teamIndex < teamNames.length && teamIndex < teamColors.length) {
+              if (
+                teamIndex < teamNames.length &&
+                teamIndex < teamColors.length
+              ) {
                 const teamName = teamNames[teamIndex];
                 const teamColor = teamColors[teamIndex];
-                  if (teamName && teamColor) {
-                  const newTeam: Omit<Team, 'id' | 'created_at' | 'updated_at'> = {
+                if (teamName && teamColor) {
+                  const newTeam: Omit<
+                    Team,
+                    'id' | 'created_at' | 'updated_at'
+                  > = {
                     game_id: gameCode,
                     name: teamName,
                     color: teamColor,
                     score_round_1: 0,
                     score_round_2: 0,
                     score_round_3: 0,
-                    total_score: 0
+                    total_score: 0,
                   };
                   await insert('teams', newTeam, transaction);
                 }
@@ -764,12 +920,20 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
             const teamsToKeep = currentTeams.slice(0, teamCount);
 
             // Check if any players are assigned to teams being removed
-            const playersInRemovedTeams = await select<Player>('players', {
-              where: [
-                { field: 'game_id', operator: '=', value: gameCode },
-                { field: 'team_id', operator: 'IN', value: teamsToRemove.map(t => t.id) }
-              ]
-            }, transaction);
+            const playersInRemovedTeams = await select<Player>(
+              'players',
+              {
+                where: [
+                  { field: 'game_id', operator: '=', value: gameCode },
+                  {
+                    field: 'team_id',
+                    operator: 'IN',
+                    value: teamsToRemove.map(t => t.id),
+                  },
+                ],
+              },
+              transaction
+            );
 
             if (playersInRemovedTeams.length > 0) {
               // Reassign players from removed teams to remaining teams
@@ -777,12 +941,16 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
                 // Find the team with the fewest players among remaining teams
                 const teamPlayerCounts = new Map<string, number>();
                 for (const team of teamsToKeep) {
-                  const playerCount = await select<Player>('players', {
-                    where: [
-                      { field: 'game_id', operator: '=', value: gameCode },
-                      { field: 'team_id', operator: '=', value: team.id }
-                    ]
-                  }, transaction);
+                  const playerCount = await select<Player>(
+                    'players',
+                    {
+                      where: [
+                        { field: 'game_id', operator: '=', value: gameCode },
+                        { field: 'team_id', operator: '=', value: team.id },
+                      ],
+                    },
+                    transaction
+                  );
                   teamPlayerCounts.set(team.id, playerCount.length);
                 }
 
@@ -798,18 +966,23 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
 
                 // Reassign player to the team with fewest players
                 if (targetTeamId) {
-                  await update('players', { team_id: targetTeamId }, [
-                    { field: 'id', operator: '=', value: player.id }
-                  ], transaction);
+                  await update(
+                    'players',
+                    { team_id: targetTeamId },
+                    [{ field: 'id', operator: '=', value: player.id }],
+                    transaction
+                  );
                 }
               }
             }
 
             // Remove the excess teams
             for (const teamToRemove of teamsToRemove) {
-              await deleteRecords('teams', [
-                { field: 'id', operator: '=', value: teamToRemove.id }
-              ], transaction);
+              await deleteRecords(
+                'teams',
+                [{ field: 'id', operator: '=', value: teamToRemove.id }],
+                transaction
+              );
             }
           }
         }
@@ -817,9 +990,13 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
 
       // Return updated game info
       const updatedGame = await findById<Game>('games', gameCode, transaction);
-      const players = await select<Player>('players', {
-        where: [{ field: 'game_id', operator: '=', value: gameCode }]
-      }, transaction);
+      const players = await select<Player>(
+        'players',
+        {
+          where: [{ field: 'game_id', operator: '=', value: gameCode }],
+        },
+        transaction
+      );
 
       const response: GameInfoResponse = {
         id: updatedGame!.id,
@@ -833,28 +1010,30 @@ async function updateGameConfig(req: Request, res: Response): Promise<void> {
         currentTeam: updatedGame!.current_team,
         playerCount: players.length,
         createdAt: updatedGame!.created_at,
-        startedAt: updatedGame!.started_at
+        startedAt: updatedGame!.started_at,
       };
 
       res.status(200).json(response);
     });
   } catch (error) {
     console.error('Error updating game config:', error);
-    
+
     if (error instanceof Error) {
       if (error.message === 'GAME_NOT_FOUND') {
         res.status(404).json({ error: 'Game not found' });
         return;
       }
       if (error.message === 'GAME_ALREADY_STARTED') {
-        res.status(400).json({ error: 'Cannot update configuration after game has started' });
+        res.status(400).json({
+          error: 'Cannot update configuration after game has started',
+        });
         return;
       }
     }
-    
-    res.status(500).json({ 
-      error: 'Failed to update game configuration', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+
+    res.status(500).json({
+      error: 'Failed to update game configuration',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -880,12 +1059,16 @@ async function submitPhrases(req: Request, res: Response): Promise<void> {
     }
 
     // Normalize phrases to array
-    const phrasesArray = Array.isArray(phrasesInput) ? phrasesInput : [phrasesInput];
+    const phrasesArray = Array.isArray(phrasesInput)
+      ? phrasesInput
+      : [phrasesInput];
 
     // Validate phrases
     const phrasesValidation = validatePhrases(phrasesArray);
     if (!phrasesValidation.isValid) {
-      res.status(400).json({ error: 'Invalid phrases', details: phrasesValidation.errors });
+      res
+        .status(400)
+        .json({ error: 'Invalid phrases', details: phrasesValidation.errors });
       return;
     }
 
@@ -898,7 +1081,9 @@ async function submitPhrases(req: Request, res: Response): Promise<void> {
       }
 
       if (game.status !== 'waiting' && game.status !== 'phrase_submission') {
-        res.status(400).json({ error: 'Cannot submit phrases after game has started' });
+        res
+          .status(400)
+          .json({ error: 'Cannot submit phrases after game has started' });
         return;
       }
 
@@ -910,24 +1095,33 @@ async function submitPhrases(req: Request, res: Response): Promise<void> {
       }
 
       // Get existing phrases for this player
-      const existingPhrases = await select<Phrase>('phrases', {
-        where: [
-          { field: 'game_id', operator: '=', value: gameCode },
-          { field: 'player_id', operator: '=', value: playerId }
-        ]
-      }, transaction);
+      const existingPhrases = await select<Phrase>(
+        'phrases',
+        {
+          where: [
+            { field: 'game_id', operator: '=', value: gameCode },
+            { field: 'player_id', operator: '=', value: playerId },
+          ],
+        },
+        transaction
+      );
 
       // Check if adding new phrases would exceed limit
-      const totalPhrasesAfterSubmission = existingPhrases.length + phrasesArray.length;
+      const totalPhrasesAfterSubmission =
+        existingPhrases.length + phrasesArray.length;
       if (totalPhrasesAfterSubmission > game.phrases_per_player) {
         res.status(400).json({
-          error: `Cannot submit ${phrasesArray.length} phrases. Player can submit maximum ${game.phrases_per_player} phrases total. Currently has ${existingPhrases.length} phrases.`
+          error: `Cannot submit ${phrasesArray.length} phrases. Player can submit maximum ${game.phrases_per_player} phrases total. Currently has ${existingPhrases.length} phrases.`,
         });
         return;
-      }      // Check for duplicates within the game
-      const allGamePhrases = await select<Phrase>('phrases', {
-        where: [{ field: 'game_id', operator: '=', value: gameCode }]
-      }, transaction);
+      } // Check for duplicates within the game
+      const allGamePhrases = await select<Phrase>(
+        'phrases',
+        {
+          where: [{ field: 'game_id', operator: '=', value: gameCode }],
+        },
+        transaction
+      );
 
       const existingPhrasesLower = new Set(
         allGamePhrases
@@ -945,13 +1139,19 @@ async function submitPhrases(req: Request, res: Response): Promise<void> {
       if (duplicates.length > 0) {
         res.status(400).json({
           error: 'Duplicate phrases detected',
-          details: [`The following phrases already exist in this game: ${duplicates.join(', ')}`]
+          details: [
+            `The following phrases already exist in this game: ${duplicates.join(', ')}`,
+          ],
         });
         return;
       }
 
       // Insert new phrases
-      const submittedPhrases: { id: string; text: string; submittedAt: string }[] = [];
+      const submittedPhrases: {
+        id: string;
+        text: string;
+        submittedAt: string;
+      }[] = [];
       const now = new Date().toISOString();
 
       for (const phraseText of phrasesArray) {
@@ -961,34 +1161,38 @@ async function submitPhrases(req: Request, res: Response): Promise<void> {
           game_id: gameCode,
           player_id: playerId,
           text: phraseText.trim(),
-          status: 'active'
+          status: 'active',
         };
 
         await insert('phrases', phrase, transaction);
         submittedPhrases.push({
           id: phraseId,
           text: phraseText.trim(),
-          submittedAt: now
+          submittedAt: now,
         });
-      }      // Update game status if this was first phrase submission
+      } // Update game status if this was first phrase submission
       if (game.status === 'waiting') {
-        await update('games', { status: 'phrase_submission' }, [{ field: 'id', operator: '=', value: gameCode }], transaction);
+        await update(
+          'games',
+          { status: 'phrase_submission' },
+          [{ field: 'id', operator: '=', value: gameCode }],
+          transaction
+        );
       }
 
       const response: SubmitPhrasesResponse = {
         submittedCount: phrasesArray.length,
         totalRequired: game.phrases_per_player,
-        phrases: submittedPhrases
+        phrases: submittedPhrases,
       };
 
       res.status(201).json(response);
     });
-
   } catch (error) {
     console.error('Error submitting phrases:', error);
     res.status(500).json({
       error: 'Failed to submit phrases',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -1023,23 +1227,27 @@ async function getGamePhrases(req: Request, res: Response): Promise<void> {
       }
 
       if (player.id !== game.host_player_id) {
-        res.status(403).json({ error: 'Only the game host can view all phrases' });
+        res
+          .status(403)
+          .json({ error: 'Only the game host can view all phrases' });
         return;
       }
     } else {
-      res.status(400).json({ error: 'Player ID is required for authorization' });
+      res
+        .status(400)
+        .json({ error: 'Player ID is required for authorization' });
       return;
     }
 
     // Get all phrases for the game
     const phrases = await select<Phrase>('phrases', {
       where: [{ field: 'game_id', operator: '=', value: gameCode }],
-      orderBy: [{ field: 'created_at', direction: 'ASC' }]
+      orderBy: [{ field: 'created_at', direction: 'ASC' }],
     });
 
     // Get all players to map player names
     const players = await select<Player>('players', {
-      where: [{ field: 'game_id', operator: '=', value: gameCode }]
+      where: [{ field: 'game_id', operator: '=', value: gameCode }],
     });
 
     const playerMap = new Map(players.map(p => [p.id, p.name]));
@@ -1049,7 +1257,7 @@ async function getGamePhrases(req: Request, res: Response): Promise<void> {
       text: phrase.text,
       playerId: phrase.player_id,
       playerName: playerMap.get(phrase.player_id) || 'Unknown Player',
-      submittedAt: phrase.created_at
+      submittedAt: phrase.created_at,
     }));
 
     const response: GetPhrasesResponse = {
@@ -1058,17 +1266,16 @@ async function getGamePhrases(req: Request, res: Response): Promise<void> {
       gameInfo: {
         phrasesPerPlayer: game.phrases_per_player,
         totalPlayers: players.length,
-        totalExpected: players.length * game.phrases_per_player
-      }
+        totalExpected: players.length * game.phrases_per_player,
+      },
     };
 
     res.status(200).json(response);
-
   } catch (error) {
     console.error('Error getting game phrases:', error);
     res.status(500).json({
       error: 'Failed to get game phrases',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -1076,7 +1283,10 @@ async function getGamePhrases(req: Request, res: Response): Promise<void> {
 /**
  * GET /api/games/:gameCode/phrases/status - Get phrase submission status for all players
  */
-async function getPhraseSubmissionStatus(req: Request, res: Response): Promise<void> {
+async function getPhraseSubmissionStatus(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const { gameCode } = req.params;
 
@@ -1096,18 +1306,21 @@ async function getPhraseSubmissionStatus(req: Request, res: Response): Promise<v
     // Get all players in the game
     const players = await select<Player>('players', {
       where: [{ field: 'game_id', operator: '=', value: gameCode }],
-      orderBy: [{ field: 'created_at', direction: 'ASC' }]
+      orderBy: [{ field: 'created_at', direction: 'ASC' }],
     });
 
     // Get all phrases for the game
     const phrases = await select<Phrase>('phrases', {
-      where: [{ field: 'game_id', operator: '=', value: gameCode }]
+      where: [{ field: 'game_id', operator: '=', value: gameCode }],
     });
 
     // Count phrases per player
     const phraseCountMap = new Map<string, number>();
     for (const phrase of phrases) {
-      phraseCountMap.set(phrase.player_id, (phraseCountMap.get(phrase.player_id) || 0) + 1);
+      phraseCountMap.set(
+        phrase.player_id,
+        (phraseCountMap.get(phrase.player_id) || 0) + 1
+      );
     }
 
     // Build status for each player
@@ -1118,7 +1331,7 @@ async function getPhraseSubmissionStatus(req: Request, res: Response): Promise<v
         playerName: player.name,
         submitted,
         required: game.phrases_per_player,
-        isComplete: submitted >= game.phrases_per_player
+        isComplete: submitted >= game.phrases_per_player,
       };
     });
 
@@ -1133,17 +1346,16 @@ async function getPhraseSubmissionStatus(req: Request, res: Response): Promise<v
         playersComplete,
         totalPhrasesSubmitted,
         totalPhrasesRequired,
-        isAllComplete: playersComplete === players.length && players.length > 0
-      }
+        isAllComplete: playersComplete === players.length && players.length > 0,
+      },
     };
 
     res.status(200).json(response);
-
   } catch (error) {
     console.error('Error getting phrase submission status:', error);
     res.status(500).json({
       error: 'Failed to get phrase submission status',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -1189,7 +1401,9 @@ async function updatePhrase(req: Request, res: Response): Promise<void> {
       }
 
       if (game.status !== 'waiting' && game.status !== 'phrase_submission') {
-        res.status(400).json({ error: 'Cannot edit phrases after game has started' });
+        res
+          .status(400)
+          .json({ error: 'Cannot edit phrases after game has started' });
         return;
       }
 
@@ -1211,36 +1425,45 @@ async function updatePhrase(req: Request, res: Response): Promise<void> {
       }
 
       // Check for duplicates (excluding current phrase)
-      const existingPhrases = await select<Phrase>('phrases', {
-        where: [
-          { field: 'game_id', operator: '=', value: gameCode },
-          { field: 'id', operator: '!=', value: phraseId }
-        ]      }, transaction);
+      const existingPhrases = await select<Phrase>(
+        'phrases',
+        {
+          where: [
+            { field: 'game_id', operator: '=', value: gameCode },
+            { field: 'id', operator: '!=', value: phraseId },
+          ],
+        },
+        transaction
+      );
 
-      const existingTexts = new Set(existingPhrases.map(p => p.text?.toLowerCase()).filter(Boolean));
+      const existingTexts = new Set(
+        existingPhrases.map(p => p.text?.toLowerCase()).filter(Boolean)
+      );
       if (existingTexts.has(text.trim().toLowerCase())) {
-        res.status(400).json({ error: 'This phrase already exists in the game' });
+        res
+          .status(400)
+          .json({ error: 'This phrase already exists in the game' });
         return;
-      }      // Update the phrase
+      } // Update the phrase
       const updatedAt = new Date().toISOString();
-      await update('phrases', 
-        { text: text.trim(), updated_at: updatedAt }, 
-        [{ field: 'id', operator: '=', value: phraseId }], 
+      await update(
+        'phrases',
+        { text: text.trim(), updated_at: updatedAt },
+        [{ field: 'id', operator: '=', value: phraseId }],
         transaction
       );
 
       res.status(200).json({
         id: phraseId,
         text: text.trim(),
-        updatedAt: updatedAt
+        updatedAt: updatedAt,
       });
     });
-
   } catch (error) {
     console.error('Error updating phrase:', error);
     res.status(500).json({
       error: 'Failed to update phrase',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -1278,7 +1501,9 @@ async function deletePhrase(req: Request, res: Response): Promise<void> {
       }
 
       if (game.status !== 'waiting' && game.status !== 'phrase_submission') {
-        res.status(400).json({ error: 'Cannot delete phrases after game has started' });
+        res
+          .status(400)
+          .json({ error: 'Cannot delete phrases after game has started' });
         return;
       }
 
@@ -1301,9 +1526,13 @@ async function deletePhrase(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      const canDelete = phrase.player_id === playerId || player.id === game.host_player_id;
+      const canDelete =
+        phrase.player_id === playerId || player.id === game.host_player_id;
       if (!canDelete) {
-        res.status(403).json({ error: 'You can only delete your own phrases, or phrases as the game host' });
+        res.status(403).json({
+          error:
+            'You can only delete your own phrases, or phrases as the game host',
+        });
         return;
       }
 
@@ -1311,18 +1540,17 @@ async function deletePhrase(req: Request, res: Response): Promise<void> {
       // For now, we'll mark it as deleted by updating status or removing from active phrases
       // Since we don't have a delete function in utils, we'll need to implement this differently
       // For SQLite, we can use direct SQL deletion
-      
+
       // This is a workaround - in a real implementation, you'd add a delete utility
       await transaction.run('DELETE FROM phrases WHERE id = ?', [phraseId]);
 
       res.status(200).json({ message: 'Phrase deleted successfully' });
     });
-
   } catch (error) {
     console.error('Error deleting phrase:', error);
     res.status(500).json({
       error: 'Failed to delete phrase',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -1356,5 +1584,5 @@ export {
   getGamePhrases,
   getPhraseSubmissionStatus,
   updatePhrase,
-  deletePhrase
+  deletePhrase,
 };

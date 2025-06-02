@@ -1,7 +1,11 @@
 // Database utility functions
 // Common database operations, query builders, and helpers
 
-import { DatabaseConnection, TransactionConnection, withConnection, withTransaction } from './connection';
+import {
+  DatabaseConnection,
+  withConnection,
+  withTransaction,
+} from './connection';
 
 // ==================== Query Builder Utilities ====================
 
@@ -21,7 +25,10 @@ export interface QueryOptions {
 /**
  * Build WHERE clause from conditions
  */
-export function buildWhereClause(conditions: WhereCondition[]): { sql: string; params: any[] } {
+export function buildWhereClause(conditions: WhereCondition[]): {
+  sql: string;
+  params: any[];
+} {
   if (conditions.length === 0) {
     return { sql: '', params: [] };
   }
@@ -31,10 +38,12 @@ export function buildWhereClause(conditions: WhereCondition[]): { sql: string; p
 
   for (const condition of conditions) {
     if (condition.operator === 'IN' || condition.operator === 'NOT IN') {
-      const placeholders = Array.isArray(condition.value) 
+      const placeholders = Array.isArray(condition.value)
         ? condition.value.map(() => '?').join(', ')
         : '?';
-      clauses.push(`${condition.field} ${condition.operator} (${placeholders})`);
+      clauses.push(
+        `${condition.field} ${condition.operator} (${placeholders})`
+      );
       if (Array.isArray(condition.value)) {
         params.push(...condition.value);
       } else {
@@ -48,14 +57,16 @@ export function buildWhereClause(conditions: WhereCondition[]): { sql: string; p
 
   return {
     sql: `WHERE ${clauses.join(' AND ')}`,
-    params
+    params,
   };
 }
 
 /**
  * Build ORDER BY clause
  */
-export function buildOrderByClause(orderBy: { field: string; direction: 'ASC' | 'DESC' }[]): string {
+export function buildOrderByClause(
+  orderBy: { field: string; direction: 'ASC' | 'DESC' }[]
+): string {
   if (orderBy.length === 0) {
     return '';
   }
@@ -95,7 +106,7 @@ export async function insert<T extends Record<string, any>>(
 
     const sql = `INSERT INTO ${tableName} (${fields.join(', ')}) VALUES (${placeholders})`;
     const result = await conn.run(sql, values);
-    
+
     return result.lastID?.toString() || '';
   };
 
@@ -120,11 +131,12 @@ export async function update<T extends Record<string, any>>(
     const setClause = fields.map(field => `${field} = ?`).join(', ');
     const values = Object.values(data);
 
-    const { sql: whereClause, params: whereParams } = buildWhereClause(conditions);
-    
+    const { sql: whereClause, params: whereParams } =
+      buildWhereClause(conditions);
+
     const sql = `UPDATE ${tableName} SET ${setClause} ${whereClause}`;
     const allParams = [...values, ...whereParams];
-    
+
     const result = await conn.run(sql, allParams);
     return result.changes || 0;
   };
@@ -146,11 +158,13 @@ export async function deleteRecords(
 ): Promise<number> {
   const operation = async (conn: DatabaseConnection) => {
     const { sql: whereClause, params } = buildWhereClause(conditions);
-    
+
     if (conditions.length === 0) {
-      throw new Error('Delete operation requires at least one WHERE condition for safety');
+      throw new Error(
+        'Delete operation requires at least one WHERE condition for safety'
+      );
     }
-    
+
     const sql = `DELETE FROM ${tableName} ${whereClause}`;
     const result = await conn.run(sql, params);
     return result.changes || 0;
@@ -177,7 +191,9 @@ export async function select<T = any>(
 
     // Add WHERE clause
     if (options.where && options.where.length > 0) {
-      const { sql: whereClause, params: whereParams } = buildWhereClause(options.where);
+      const { sql: whereClause, params: whereParams } = buildWhereClause(
+        options.where
+      );
       sql += ` ${whereClause}`;
       params = [...params, ...whereParams];
     }
@@ -210,11 +226,15 @@ export async function findById<T = any>(
   id: string,
   connection?: DatabaseConnection
 ): Promise<T | undefined> {
-  const results = await select<T>(tableName, {
-    where: [{ field: 'id', operator: '=', value: id }],
-    limit: 1
-  }, connection);
-  
+  const results = await select<T>(
+    tableName,
+    {
+      where: [{ field: 'id', operator: '=', value: id }],
+      limit: 1,
+    },
+    connection
+  );
+
   return results[0];
 }
 
@@ -229,7 +249,7 @@ export async function exists(
   const operation = async (conn: DatabaseConnection) => {
     const { sql: whereClause, params } = buildWhereClause(conditions);
     const sql = `SELECT 1 FROM ${tableName} ${whereClause} LIMIT 1`;
-    
+
     const result = await conn.get(sql, params);
     return !!result;
   };
@@ -254,7 +274,8 @@ export async function count(
     let params: any[] = [];
 
     if (conditions.length > 0) {
-      const { sql: whereClause, params: whereParams } = buildWhereClause(conditions);
+      const { sql: whereClause, params: whereParams } =
+        buildWhereClause(conditions);
       sql += ` ${whereClause}`;
       params = whereParams;
     }
@@ -284,10 +305,10 @@ export async function batchInsert<T extends Record<string, any>>(
     return;
   }
 
-  await withTransaction(async (transaction) => {
+  await withTransaction(async transaction => {
     for (let i = 0; i < records.length; i += batchSize) {
       const batch = records.slice(i, i + batchSize);
-      
+
       for (const record of batch) {
         await insert(tableName, record, transaction);
       }
@@ -310,8 +331,12 @@ export async function upsert<T extends Record<string, any>>(
     const values = Object.values(data);
 
     // Build UPDATE clause for ON CONFLICT
-    const updateFields = fields.filter(field => !conflictFields.includes(field));
-    const updateClause = updateFields.map(field => `${field} = excluded.${field}`).join(', ');
+    const updateFields = fields.filter(
+      field => !conflictFields.includes(field)
+    );
+    const updateClause = updateFields
+      .map(field => `${field} = excluded.${field}`)
+      .join(', ');
 
     const sql = `
       INSERT INTO ${tableName} (${fields.join(', ')}) 
@@ -336,7 +361,7 @@ export async function upsert<T extends Record<string, any>>(
  * Vacuum database to reclaim space
  */
 export async function vacuum(): Promise<void> {
-  await withConnection(async (connection) => {
+  await withConnection(async connection => {
     await connection.exec('VACUUM');
     console.log('Database vacuum completed');
   });
@@ -346,7 +371,7 @@ export async function vacuum(): Promise<void> {
  * Analyze database for query optimization
  */
 export async function analyze(): Promise<void> {
-  await withConnection(async (connection) => {
+  await withConnection(async connection => {
     await connection.exec('ANALYZE');
     console.log('Database analysis completed');
   });
@@ -356,7 +381,7 @@ export async function analyze(): Promise<void> {
  * Get table information
  */
 export async function getTableInfo(tableName: string): Promise<any[]> {
-  return await withConnection(async (connection) => {
+  return await withConnection(async connection => {
     return await connection.all(`PRAGMA table_info(${tableName})`);
   });
 }
@@ -365,7 +390,7 @@ export async function getTableInfo(tableName: string): Promise<any[]> {
  * Get foreign key information
  */
 export async function getForeignKeyInfo(tableName: string): Promise<any[]> {
-  return await withConnection(async (connection) => {
+  return await withConnection(async connection => {
     return await connection.all(`PRAGMA foreign_key_list(${tableName})`);
   });
 }
@@ -374,7 +399,7 @@ export async function getForeignKeyInfo(tableName: string): Promise<any[]> {
  * Get index information
  */
 export async function getIndexInfo(tableName: string): Promise<any[]> {
-  return await withConnection(async (connection) => {
+  return await withConnection(async connection => {
     return await connection.all(`PRAGMA index_list(${tableName})`);
   });
 }
@@ -397,7 +422,7 @@ class QueryLogger {
       sql,
       params,
       executionTime,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     // Keep only the latest logs
@@ -431,11 +456,11 @@ export async function executeWithLogging<T>(
   try {
     const result = await connection.all<T>(sql, params);
     const executionTime = Date.now() - startTime;
-    
+
     if (process.env.NODE_ENV === 'development') {
       QueryLogger.log(sql, params, executionTime);
     }
-    
+
     return result;
   } catch (error) {
     const executionTime = Date.now() - startTime;

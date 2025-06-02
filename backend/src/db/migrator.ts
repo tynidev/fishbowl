@@ -1,8 +1,12 @@
 // Database migration runner
 // Handles running migrations up and down, tracking migration state
 
-import { DatabaseConnection, getConnection, withTransaction } from './connection';
-import { MIGRATIONS, getMigrationByVersion, getLatestMigrationVersion } from './migrations';
+import {
+  DatabaseConnection,
+  getConnection,
+  withTransaction,
+} from './connection';
+import { MIGRATIONS, getLatestMigrationVersion } from './migrations';
 import type { Migration } from './migrations';
 
 export interface MigrationRecord {
@@ -91,16 +95,19 @@ class MigrationRunner {
     const currentVersion = await this.getCurrentVersion();
     const latestVersion = getLatestMigrationVersion();
     const appliedMigrations = await this.getAppliedMigrations();
-    
+
     const appliedVersions = new Set(appliedMigrations.map(m => m.version));
-    const pendingMigrations = MIGRATIONS.filter(m => !appliedVersions.has(m.version));
+    const pendingMigrations = MIGRATIONS.filter(
+      m => !appliedVersions.has(m.version)
+    );
 
     return {
       currentVersion,
       latestVersion,
       pendingMigrations,
       appliedMigrations,
-      isUpToDate: currentVersion >= latestVersion && pendingMigrations.length === 0
+      isUpToDate:
+        currentVersion >= latestVersion && pendingMigrations.length === 0,
     };
   }
 
@@ -109,40 +116,46 @@ class MigrationRunner {
    */
   async runMigrationUp(migration: Migration): Promise<MigrationResult> {
     const startTime = Date.now();
-    
+
     try {
       console.log(`Running migration ${migration.version}: ${migration.name}`);
-      
+
       await migration.up(this.connection);
-      
+
       const executionTime = Date.now() - startTime;
-      
+
       // Record migration in tracking table
-      await this.connection.run(`
+      await this.connection.run(
+        `
         INSERT OR REPLACE INTO schema_migrations (version, name, applied_at, execution_time_ms)
         VALUES (?, ?, CURRENT_TIMESTAMP, ?)
-      `, [migration.version, migration.name, executionTime]);
+      `,
+        [migration.version, migration.name, executionTime]
+      );
 
-      console.log(`Migration ${migration.version} completed in ${executionTime}ms`);
-      
+      console.log(
+        `Migration ${migration.version} completed in ${executionTime}ms`
+      );
+
       return {
         success: true,
         version: migration.version,
         name: migration.name,
-        executionTime
+        executionTime,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       console.error(`Migration ${migration.version} failed:`, errorMessage);
-      
+
       return {
         success: false,
         version: migration.version,
         name: migration.name,
         executionTime,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -152,39 +165,50 @@ class MigrationRunner {
    */
   async runMigrationDown(migration: Migration): Promise<MigrationResult> {
     const startTime = Date.now();
-    
-    try {
-      console.log(`Rolling back migration ${migration.version}: ${migration.name}`);
-      
-      await migration.down(this.connection);
-      
-      const executionTime = Date.now() - startTime;
-      
-      // Remove migration from tracking table
-      await this.connection.run(`
-        DELETE FROM schema_migrations WHERE version = ?
-      `, [migration.version]);
 
-      console.log(`Migration ${migration.version} rolled back in ${executionTime}ms`);
-      
+    try {
+      console.log(
+        `Rolling back migration ${migration.version}: ${migration.name}`
+      );
+
+      await migration.down(this.connection);
+
+      const executionTime = Date.now() - startTime;
+
+      // Remove migration from tracking table
+      await this.connection.run(
+        `
+        DELETE FROM schema_migrations WHERE version = ?
+      `,
+        [migration.version]
+      );
+
+      console.log(
+        `Migration ${migration.version} rolled back in ${executionTime}ms`
+      );
+
       return {
         success: true,
         version: migration.version,
         name: migration.name,
-        executionTime
+        executionTime,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      console.error(`Migration ${migration.version} rollback failed:`, errorMessage);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      console.error(
+        `Migration ${migration.version} rollback failed:`,
+        errorMessage
+      );
+
       return {
         success: false,
         version: migration.version,
         name: migration.name,
         executionTime,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -201,14 +225,20 @@ class MigrationRunner {
       return results;
     }
 
-    console.log(`Running ${status.pendingMigrations.length} pending migrations`);
+    console.log(
+      `Running ${status.pendingMigrations.length} pending migrations`
+    );
 
-    for (const migration of status.pendingMigrations.sort((a, b) => a.version - b.version)) {
+    for (const migration of status.pendingMigrations.sort(
+      (a, b) => a.version - b.version
+    )) {
       const result = await this.runMigrationUp(migration);
       results.push(result);
-      
+
       if (!result.success) {
-        console.error(`Migration ${migration.version} failed, stopping migration process`);
+        console.error(
+          `Migration ${migration.version} failed, stopping migration process`
+        );
         break;
       }
     }
@@ -230,28 +260,28 @@ class MigrationRunner {
 
     if (targetVersion > currentVersion) {
       // Migrate up
-      const migrationsToRun = MIGRATIONS
-        .filter(m => m.version > currentVersion && m.version <= targetVersion)
-        .sort((a, b) => a.version - b.version);
+      const migrationsToRun = MIGRATIONS.filter(
+        m => m.version > currentVersion && m.version <= targetVersion
+      ).sort((a, b) => a.version - b.version);
 
       for (const migration of migrationsToRun) {
         const result = await this.runMigrationUp(migration);
         results.push(result);
-        
+
         if (!result.success) {
           break;
         }
       }
     } else {
       // Migrate down
-      const migrationsToRollback = MIGRATIONS
-        .filter(m => m.version > targetVersion && m.version <= currentVersion)
-        .sort((a, b) => b.version - a.version); // Reverse order for rollback
+      const migrationsToRollback = MIGRATIONS.filter(
+        m => m.version > targetVersion && m.version <= currentVersion
+      ).sort((a, b) => b.version - a.version); // Reverse order for rollback
 
       for (const migration of migrationsToRollback) {
         const result = await this.runMigrationDown(migration);
         results.push(result);
-        
+
         if (!result.success) {
           break;
         }
@@ -286,21 +316,34 @@ class MigrationRunner {
     for (let i = 1; i < sortedVersions.length; i++) {
       const current = sortedVersions[i];
       const previous = sortedVersions[i - 1];
-      if (current !== undefined && previous !== undefined && current !== previous + 1) {
-        errors.push(`Gap in migration versions between ${previous} and ${current}`);
+      if (
+        current !== undefined &&
+        previous !== undefined &&
+        current !== previous + 1
+      ) {
+        errors.push(
+          `Gap in migration versions between ${previous} and ${current}`
+        );
       }
     }
 
     // Check migration structure
     for (const migration of MIGRATIONS) {
-      if (!migration.version || !migration.name || !migration.up || !migration.down) {
-        errors.push(`Migration ${migration.version} is missing required properties`);
+      if (
+        !migration.version ||
+        !migration.name ||
+        !migration.up ||
+        !migration.down
+      ) {
+        errors.push(
+          `Migration ${migration.version} is missing required properties`
+        );
       }
     }
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }
@@ -309,7 +352,7 @@ class MigrationRunner {
  * Run all pending migrations
  */
 export async function runMigrations(): Promise<MigrationResult[]> {
-  return await withTransaction(async (connection) => {
+  return await withTransaction(async connection => {
     const runner = new MigrationRunner(connection);
     return await runner.migrateUp();
   });
@@ -331,8 +374,10 @@ export async function getMigrationStatus(): Promise<MigrationStatus> {
 /**
  * Migrate to a specific version
  */
-export async function migrateTo(targetVersion: number): Promise<MigrationResult[]> {
-  return await withTransaction(async (connection) => {
+export async function migrateTo(
+  targetVersion: number
+): Promise<MigrationResult[]> {
+  return await withTransaction(async connection => {
     const runner = new MigrationRunner(connection);
     return await runner.migrateTo(targetVersion);
   });
@@ -342,7 +387,7 @@ export async function migrateTo(targetVersion: number): Promise<MigrationResult[
  * Reset database (rollback all migrations)
  */
 export async function resetDatabase(): Promise<MigrationResult[]> {
-  return await withTransaction(async (connection) => {
+  return await withTransaction(async connection => {
     const runner = new MigrationRunner(connection);
     return await runner.reset();
   });
@@ -351,7 +396,10 @@ export async function resetDatabase(): Promise<MigrationResult[]> {
 /**
  * Validate migration integrity
  */
-export async function validateMigrations(): Promise<{ valid: boolean; errors: string[] }> {
+export async function validateMigrations(): Promise<{
+  valid: boolean;
+  errors: string[];
+}> {
   const connection = await getConnection();
   try {
     const runner = new MigrationRunner(connection);
@@ -366,26 +414,31 @@ export async function validateMigrations(): Promise<{ valid: boolean; errors: st
  */
 export async function initializeSchema(): Promise<void> {
   console.log('Initializing database schema...');
-  
+
   try {
     // Validate migrations first
     const validation = await validateMigrations();
     if (!validation.valid) {
-      throw new Error(`Migration validation failed:\n${validation.errors.join('\n')}`);
+      throw new Error(
+        `Migration validation failed:\n${validation.errors.join('\n')}`
+      );
     }
 
     // Run pending migrations
     const results = await runMigrations();
-    
+
     const failedMigrations = results.filter(r => !r.success);
     if (failedMigrations.length > 0) {
-      const errors = failedMigrations.map(r => `${r.version}: ${r.error}`).join('\n');
+      const errors = failedMigrations
+        .map(r => `${r.version}: ${r.error}`)
+        .join('\n');
       throw new Error(`Migration failures:\n${errors}`);
     }
 
     const status = await getMigrationStatus();
-    console.log(`Database schema initialized successfully. Current version: ${status.currentVersion}`);
-    
+    console.log(
+      `Database schema initialized successfully. Current version: ${status.currentVersion}`
+    );
   } catch (error) {
     console.error('Failed to initialize database schema:', error);
     throw error;
