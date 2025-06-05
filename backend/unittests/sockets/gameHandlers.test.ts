@@ -1,5 +1,4 @@
 import {
-    setupMockTransaction,
     resetAllMocks,
     mockedDbUtils,
 } from '../test-helpers';
@@ -24,7 +23,6 @@ describe('Socket.IO Game Handlers', () => {
     let httpServer: any;
     let clientSocket: ClientSocket;
     let serverSocket: any;
-    let mockTransaction: any;
 
     beforeAll((done) => {
         httpServer = createServer();
@@ -51,7 +49,6 @@ describe('Socket.IO Game Handlers', () => {
     });
 
     beforeEach(() => {
-        mockTransaction = setupMockTransaction();
         resetAllMocks();
     });
 

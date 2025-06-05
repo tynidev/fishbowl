@@ -2,16 +2,15 @@ import request from 'supertest';
 import { Application } from 'express';
 import {
   setupTestApp,
-  setupMockTransaction,
   resetAllMocks,
   createGameScenario,
-  createMockDataStoreFromScenario,
   expectInvalidGameCode,
   expectGameNotFound,
   expectGameAlreadyStarted
 } from '../test-helpers';
 import { gameFactory } from '../test-factories';
 import { UpdateConfigRequest } from '../../src/types/rest-api';
+import { createMockDataStoreFromScenario } from '../mockDbUtils';
 
 describe('Game Configuration API', () => {
   let app: Application;
@@ -19,7 +18,6 @@ describe('Game Configuration API', () => {
 
   beforeEach(() => {
     app = setupTestApp();
-    mockTransaction = setupMockTransaction();
     resetAllMocks();
   });
 

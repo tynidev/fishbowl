@@ -5,10 +5,10 @@ import {
   resetAllMocks,
   createMockGame,
   createMockTeam,
-  setupGameWithPlayers,
-  createMockDataStore,
+  createGameScenario,
 } from '../test-helpers';
 import { playerFactory } from '../test-factories';
+import { createMockDataStoreFromScenario } from '../mockDbUtils';
 
 describe('Players API', () => {
   let app: Application;
@@ -22,12 +22,14 @@ describe('Players API', () => {
     const gameCode = 'ABC123';
 
     it('should return players list successfully', async () => {
-      const scenario = setupGameWithPlayers({
-        gameCode,
+      const scenario = createGameScenario({
+        gameCode: gameCode,
         teamCount: 2,
         playerCount: 2,
         gameStatus: 'waiting'
       });
+      const store = createMockDataStoreFromScenario(scenario)
+        .setupMocks();
 
       const response = await request(app)
         .get(`/api/games/${gameCode}/players`)
@@ -55,14 +57,16 @@ describe('Players API', () => {
       // Create players with different connection states using factories
       const connectedPlayer = playerFactory.connected(gameCode, 'team-1', 'Connected Player');
       const disconnectedPlayer = playerFactory.disconnected(gameCode, 'team-2', 'Disconnected Player');
+      
+      const scenario = createGameScenario({
+          gameCode: gameCode,
+          teamCount:2,
+          playerCount: 2,
+          gameName: 'Test Game',
+          gameStatus: 'waiting',
+        });
 
-      const store = createMockDataStore()
-        .addGame(createMockGame({
-          id: gameCode,
-          name: 'Test Game',
-          status: 'waiting',
-          host_player_id: connectedPlayer.id
-        }))
+      const store = createMockDataStoreFromScenario(scenario)
         .addPlayer(connectedPlayer)
         .addPlayer(disconnectedPlayer)
         .addTeam(createMockTeam({ id: 'team-1', game_id: gameCode, name: 'Team 1', color: '#FF0000' }))
@@ -81,13 +85,14 @@ describe('Players API', () => {
     });
 
     it('should include team assignments in response', async () => {
-      // Use createGameScenario for setup
-      const scenario = setupGameWithPlayers({
-        gameCode,
-        teamCount: 2,
-        playerCount: 2,
-        gameStatus: 'waiting'
-      });
+      const scenario = createGameScenario({
+          gameCode: gameCode,
+          teamCount:2,
+          playerCount: 2,
+          gameStatus: 'waiting'
+        });
+      
+      const store = createMockDataStoreFromScenario(scenario).setupMocks();
 
       const response = await request(app)
         .get(`/api/games/${gameCode}/players`)
@@ -109,12 +114,14 @@ describe('Players API', () => {
     });
 
     it('should return 404 for non-existent game', async () => {
-      const scenario = setupGameWithPlayers({
-        gameCode,
-        teamCount: 2,
-        playerCount: 2,
-        gameStatus: 'waiting'
-      });
+      const scenario = createGameScenario({
+          gameCode: gameCode,
+          teamCount:2,
+          playerCount: 2,
+          gameStatus: 'waiting'
+        });
+      
+      const store = createMockDataStoreFromScenario(scenario).setupMocks();
 
       const response = await request(app)
         .get(`/api/games/XXXXXX/players`)

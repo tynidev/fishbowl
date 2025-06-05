@@ -3,26 +3,23 @@ import { Application } from 'express';
 import {
   setupTestApp,
   resetAllMocks,
-  setupGameWithPlayers,
-  setupMockTransaction,
   createGameScenario,
   expectGameAlreadyStarted,
   expectInvalidGameCode,
   expectPlayerNotInGame,
-  createMockDataStoreFromScenario,
 } from '../test-helpers';
 import {
   SubmitPhrasesRequest,
   UpdatePhraseRequest
 } from '../../src/types/rest-api';
 import { phraseFactory, playerFactory } from '../test-factories';
+import { createMockDataStoreFromScenario } from '../mockDbUtils';
 
 describe('Phrases API', () => {
   let app: Application;
 
   beforeEach(() => {
     app = setupTestApp();
-    setupMockTransaction();
     resetAllMocks();
   });
 
@@ -31,8 +28,15 @@ describe('Phrases API', () => {
 
     describe('Game Code Validation', () => {
       it('should return 400 for invalid game code', async () => {
-        const game = setupGameWithPlayers({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2 });
-
+        const scenario = createGameScenario({
+          gameCode: gameCode,
+          teamCount: 2,
+          playerCount: 2,
+          gameStatus: 'phrase_submission'
+        });
+        const store = createMockDataStoreFromScenario(scenario)
+          .setupMocks();
+          
         const response = await request(app)
           .post('/api/games/INVALID/phrases')
           .send({ phrases: ['Test Phrase'], playerId: 'player-1' })
@@ -44,7 +48,14 @@ describe('Phrases API', () => {
 
     describe('Game State Validation', () => {
       it('should return 400 when game has started', async () => {
-        const game = setupGameWithPlayers({ gameCode, gameStatus: 'playing' , playerCount: 2 , teamCount: 2 });
+        const scenario = createGameScenario({
+          gameCode: gameCode,
+          teamCount: 2,
+          playerCount: 2,
+          gameStatus: 'playing'
+        });
+        const store = createMockDataStoreFromScenario(scenario)
+          .setupMocks();
 
         const response = await request(app)
           .post(`/api/games/${gameCode}/phrases`)
@@ -59,7 +70,14 @@ describe('Phrases API', () => {
       let scenario: ReturnType<typeof createGameScenario>;
 
       beforeEach(() => {
-        scenario = setupGameWithPlayers({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2 });
+        scenario = createGameScenario({
+          gameCode: gameCode,
+          teamCount: 2,
+          playerCount: 2,
+          gameStatus: 'phrase_submission'
+        });
+        const store = createMockDataStoreFromScenario(scenario)
+          .setupMocks();
       });
 
       it('should submit multiple phrases successfully', async () => {
