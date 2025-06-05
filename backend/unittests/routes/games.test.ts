@@ -11,7 +11,7 @@ import {
 import {
   CreateGameRequest,
   JoinGameRequest
-} from '../../src/routes/REST-API';
+} from '../../src/types/rest-api';
 import { Game, Player, Team } from '../../src/db/schema';
 
 describe('Games API', () => {

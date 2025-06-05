@@ -12,7 +12,7 @@ import {
 import {
   SubmitPhrasesRequest,
   UpdatePhraseRequest
-} from '../../src/routes/REST-API'
+} from '../../src/types/rest-api';
 import { Player, Phrase } from '../../src/db/schema';
 
 describe('Phrases API', () => {

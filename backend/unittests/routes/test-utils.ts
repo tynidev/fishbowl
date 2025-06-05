@@ -1,12 +1,9 @@
 import express, { Application } from 'express';
 import { jest } from '@jest/globals';
-import gameRoutes from '../../src/routes/REST-API';
 import * as dbUtils from '../../src/db/utils';
 import * as dbConnection from '../../src/db/connection';
 import { Game, Player, Team, Phrase } from '../../src/db/schema';
-import { exec } from 'child_process';
-import { serialize } from 'v8';
-import { close } from 'fs';
+import router from '../../src/routes/index';
 
 // Mock the database modules
 jest.mock('../../src/db/utils');
@@ -21,7 +18,7 @@ export const mockedDbConnection = dbConnection as jest.Mocked<typeof dbConnectio
 export function setupTestApp(): Application {
   const app = express();
   app.use(express.json());
-  app.use('/api', gameRoutes);
+  app.use('/api', router);
   return app;
 }
 

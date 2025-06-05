@@ -5,7 +5,7 @@ import path from 'path';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { initializeForEnvironment, getDatabaseStatus, cleanup } from './db';
-import gameRoutes from './routes/REST-API';
+import mainRoutes from './routes';
 import { registerSocketHandlers } from './sockets/SOCKET-API';
 
 // Initialize Express application
@@ -127,7 +127,7 @@ app.get('/api/database/status', async (req: Request, res: Response) => {
 });
 
 // Game routes
-app.use('/api', gameRoutes);
+app.use('/api', mainRoutes);
 
 // API routes placeholder
 app.get('/api', (req: Request, res: Response) => {
