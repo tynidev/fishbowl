@@ -2,7 +2,7 @@ import {
     setupMockTransaction,
     resetAllMocks,
     mockedDbUtils,
-} from '../routes/test-utils';
+} from '../test-helpers';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer } from 'http';
 import { io as Client, Socket as ClientSocket } from 'socket.io-client';

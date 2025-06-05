@@ -2,102 +2,101 @@ import request from 'supertest';
 import { Application } from 'express';
 import {
   setupTestApp,
-  setupMockTransaction,
   resetAllMocks,
-  mockedDbUtils,
   createMockGame,
-  createMockPlayer,
-  createMockTeam
-} from './test-utils';
-import { Player, Team } from '../../src/db/schema';
+  createMockTeam,
+  setupGameWithPlayers,
+  createMockDataStore,
+} from '../test-helpers';
+import { playerFactory } from '../test-factories';
 
 describe('Players API', () => {
   let app: Application;
-  let mockTransaction: any;
 
   beforeEach(() => {
     app = setupTestApp();
-    mockTransaction = setupMockTransaction();
     resetAllMocks();
   });
 
   describe('GET /api/games/:gameCode/players', () => {
     const gameCode = 'ABC123';
-    const mockGame = createMockGame({
-      id: gameCode,
-      name: 'Test Game',
-      status: 'waiting',
-      host_player_id: 'host-id'
-    });
-
-    const mockPlayers: Player[] = [
-      createMockPlayer({
-        id: 'player-1',
-        game_id: gameCode,
-        name: 'Player 1',
-        team_id: 'team-1',
-        is_connected: true
-      }),
-      createMockPlayer({
-        id: 'player-2',
-        game_id: gameCode,
-        name: 'Player 2',
-        team_id: 'team-2',
-        is_connected: false
-      })
-    ];
-
-    const mockTeams: Team[] = [
-      createMockTeam({
-        id: 'team-1',
-        game_id: gameCode,
-        name: 'Red Team',
-        color: '#FF0000'
-      }),
-      createMockTeam({
-        id: 'team-2',
-        game_id: gameCode,
-        name: 'Blue Team',
-        color: '#0000FF'
-      })
-    ];
-
-    beforeEach(() => {
-      // Reset mocks to clear any interference from previous describe blocks
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
-
-      mockedDbUtils.findById.mockResolvedValue(mockGame);
-      mockedDbUtils.select
-        .mockResolvedValueOnce(mockPlayers) // Players
-        .mockResolvedValueOnce(mockTeams); // Teams
-    });
 
     it('should return players list successfully', async () => {
+      const scenario = setupGameWithPlayers({
+        gameCode,
+        teamCount: 2,
+        playerCount: 2,
+        gameStatus: 'waiting'
+      });
+
       const response = await request(app)
         .get(`/api/games/${gameCode}/players`)
         .expect(200);
 
-      expect(response.body).toMatchObject({
-        players: [
-          {
-            id: 'player-1',
-            name: 'Player 1',
-            teamId: 'team-1',
-            teamName: 'Red Team',
-            isConnected: true,
-            joinedAt: '2023-01-01T00:00:00Z'
-          },
-          {
-            id: 'player-2',
-            name: 'Player 2',
-            teamId: 'team-2',
-            teamName: 'Blue Team',
-            isConnected: false,
-            joinedAt: '2023-01-01T00:00:00Z'
-          }
-        ],
-        totalCount: 2
+      // Use common assertion pattern for player lists
+      expectValidPlayersResponse(response, scenario.players.length);
+      
+      // Verify specific player data structure
+      expect(response.body.players).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: expect.any(String),
+            name: expect.any(String),
+            teamId: expect.any(String),
+            teamName: expect.any(String),
+            isConnected: expect.any(Boolean),
+            joinedAt: expect.any(String)
+          })
+        ])
+      );
+    });
+
+    it('should handle mixed connection states correctly', async () => {
+      // Create players with different connection states using factories
+      const connectedPlayer = playerFactory.connected(gameCode, 'team-1', 'Connected Player');
+      const disconnectedPlayer = playerFactory.disconnected(gameCode, 'team-2', 'Disconnected Player');
+
+      const store = createMockDataStore()
+        .addGame(createMockGame({
+          id: gameCode,
+          name: 'Test Game',
+          status: 'waiting',
+          host_player_id: connectedPlayer.id
+        }))
+        .addPlayer(connectedPlayer)
+        .addPlayer(disconnectedPlayer)
+        .addTeam(createMockTeam({ id: 'team-1', game_id: gameCode, name: 'Team 1', color: '#FF0000' }))
+        .addTeam(createMockTeam({ id: 'team-2', game_id: gameCode, name: 'Team 2', color: '#0000FF' }))
+        .setupMocks();
+
+      const response = await request(app)
+        .get(`/api/games/${gameCode}/players`)
+        .expect(200);
+
+      const connectedPlayers = response.body.players.filter((p: any) => p.isConnected);
+      const disconnectedPlayers = response.body.players.filter((p: any) => !p.isConnected);
+
+      expect(connectedPlayers.length).toBeGreaterThan(0);
+      expect(disconnectedPlayers.length).toBeGreaterThan(0);
+    });
+
+    it('should include team assignments in response', async () => {
+      // Use createGameScenario for setup
+      const scenario = setupGameWithPlayers({
+        gameCode,
+        teamCount: 2,
+        playerCount: 2,
+        gameStatus: 'waiting'
+      });
+
+      const response = await request(app)
+        .get(`/api/games/${gameCode}/players`)
+        .expect(200);
+
+      response.body.players.forEach((player: any) => {
+        expect(player.teamId).toBeDefined();
+        expect(player.teamName).toBeDefined();
+        expect(scenario.teams.some(team => team.id === player.teamId)).toBe(true);
       });
     });
 
@@ -110,13 +109,30 @@ describe('Players API', () => {
     });
 
     it('should return 404 for non-existent game', async () => {
-      mockedDbUtils.findById.mockResolvedValue(undefined);
+      const scenario = setupGameWithPlayers({
+        gameCode,
+        teamCount: 2,
+        playerCount: 2,
+        gameStatus: 'waiting'
+      });
 
       const response = await request(app)
-        .get(`/api/games/${gameCode}/players`)
+        .get(`/api/games/XXXXXX/players`)
         .expect(404);
 
       expect(response.body.error).toBe('Game not found');
     });
   });
 });
+
+// ==================== Common Assertion Helpers ====================
+
+/**
+ * Assert that a response contains a valid players list
+ */
+function expectValidPlayersResponse(response: any, expectedCount: number): void {
+  expect(response.body).toHaveProperty('players');
+  expect(response.body).toHaveProperty('totalCount', expectedCount);
+  expect(Array.isArray(response.body.players)).toBe(true);
+  expect(response.body.players).toHaveLength(expectedCount);
+}

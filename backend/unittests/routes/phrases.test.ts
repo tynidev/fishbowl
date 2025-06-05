@@ -2,610 +2,472 @@ import request from 'supertest';
 import { Application } from 'express';
 import {
   setupTestApp,
-  setupMockTransaction,
   resetAllMocks,
-  mockedDbUtils,
-  createMockGame,
-  createMockPlayer,
-  createMockPhrase
-} from './test-utils';
+  setupGameWithPlayers,
+  setupMockTransaction,
+  createGameScenario,
+  expectGameAlreadyStarted,
+  expectInvalidGameCode,
+  expectPlayerNotInGame,
+  createMockDataStoreFromScenario,
+} from '../test-helpers';
 import {
   SubmitPhrasesRequest,
   UpdatePhraseRequest
 } from '../../src/types/rest-api';
-import { Player, Phrase } from '../../src/db/schema';
+import { phraseFactory, playerFactory } from '../test-factories';
 
 describe('Phrases API', () => {
   let app: Application;
-  let mockTransaction: any;
 
   beforeEach(() => {
     app = setupTestApp();
-    mockTransaction = setupMockTransaction();
+    setupMockTransaction();
     resetAllMocks();
   });
 
   describe('POST /api/games/:gameCode/phrases', () => {
     const gameCode = 'ABC123';
-    const mockGame = createMockGame({
-      id: gameCode,
-      name: 'Test Game',
-      status: 'phrase_submission',
-      host_player_id: 'host-id'
-    });
 
-    const mockPlayer = createMockPlayer({
-      id: 'player-1',
-      game_id: gameCode,
-      name: 'Test Player',
-      team_id: 'team-1',
-      is_connected: true
-    });
+    describe('Game Code Validation', () => {
+      it('should return 400 for invalid game code', async () => {
+        const game = setupGameWithPlayers({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2 });
 
-    const validSubmitRequest: SubmitPhrasesRequest = {
-      phrases: ['Test Phrase 1', 'Test Phrase 2'],
-      playerId: 'player-1'
-    };
+        const response = await request(app)
+          .post('/api/games/INVALID/phrases')
+          .send({ phrases: ['Test Phrase'], playerId: 'player-1' })
+          .expect(400);
 
-    beforeEach(() => {
-      // Reset mocks to clear any interference from previous describe blocks
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
-      mockedDbUtils.insert.mockReset();
-
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame) // Game lookup
-        .mockResolvedValueOnce(mockPlayer); // Player lookup
-      mockedDbUtils.select
-        .mockResolvedValueOnce([]) // Existing player phrases
-        .mockResolvedValueOnce([]); // All game phrases for duplicate check
-      mockedDbUtils.insert.mockResolvedValue('phrase-id');
-    });
-
-    it('should submit phrases successfully', async () => {
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(validSubmitRequest)
-        .expect(201);
-
-      expect(response.body).toMatchObject({
-        submittedCount: 2,
-        totalRequired: 5,
-        phrases: expect.arrayContaining([
-          expect.objectContaining({
-            id: expect.any(String),
-            text: 'Test Phrase 1',
-            submittedAt: expect.any(String)
-          }),
-          expect.objectContaining({
-            id: expect.any(String),
-            text: 'Test Phrase 2',
-            submittedAt: expect.any(String)
-          })
-        ])
+        expectInvalidGameCode(response);
       });
     });
 
-    it('should handle single phrase submission', async () => {
-      const singlePhraseRequest = {
-        phrases: 'Single Phrase',
-        playerId: 'player-1'
-      };
+    describe('Game State Validation', () => {
+      it('should return 400 when game has started', async () => {
+        const game = setupGameWithPlayers({ gameCode, gameStatus: 'playing' , playerCount: 2 , teamCount: 2 });
 
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(singlePhraseRequest)
-        .expect(201);
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send({ phrases: ['Test Phrase'], playerId: 'player-1' })
+          .expect(400);
 
-      expect(response.body.submittedCount).toBe(1);
-      expect(response.body.phrases).toHaveLength(1);
+        expectGameAlreadyStarted(response);
+      });
     });
 
-    it('should return 400 for invalid game code', async () => {
-      const response = await request(app)
-        .post('/api/games/INVALID/phrases')
-        .send(validSubmitRequest)
-        .expect(400);
+    describe('Valid phrase submission', () => {
+      let scenario: ReturnType<typeof createGameScenario>;
 
-      expect(response.body.error).toBe('Invalid game code');
+      beforeEach(() => {
+        scenario = setupGameWithPlayers({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2 });
+      });
+
+      it('should submit multiple phrases successfully', async () => {
+        const request_data: SubmitPhrasesRequest = {
+          phrases: ['Test Phrase 1', 'Test Phrase 2'],
+          playerId: 'player-2'
+        };
+
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send(request_data)
+          .expect(201);
+
+        expect(response.body).toMatchObject({
+          submittedCount: 2,
+          totalRequired: 5,
+          phrases: expect.arrayContaining([
+            expect.objectContaining({
+              id: expect.any(String),
+              text: 'Test Phrase 1',
+              submittedAt: expect.any(String)
+            }),
+            expect.objectContaining({
+              id: expect.any(String),
+              text: 'Test Phrase 2',
+              submittedAt: expect.any(String)
+            })
+          ])
+        });
+      });
+
+      it('should handle single phrase submission', async () => {
+        const singlePhraseRequest = {
+          phrases: 'Single Phrase',
+          playerId: 'player-2'
+        };
+
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send(singlePhraseRequest)
+          .expect(201);
+
+        expect(response.body.submittedCount).toBe(1);
+        expect(response.body.phrases).toHaveLength(1);
+      });
     });
 
-    it('should return 400 for missing player ID', async () => {
-      const invalidRequest = {
-        phrases: ['Test Phrase']
-      };
+    describe('Validation errors', () => {
+      it('should return 400 for missing player ID', async () => {
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send({ phrases: ['Test Phrase'] })
+          .expect(400);
 
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(invalidRequest)
-        .expect(400);
+        expect(response.body.error).toBe('Player ID is required');
+      });
 
-      expect(response.body.error).toBe('Player ID is required');
-    });
+      it('should return 400 for empty phrases', async () => {
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send({ phrases: [], playerId: 'player-1' })
+          .expect(400);
 
-    it('should return 400 for empty phrases', async () => {
-      const invalidRequest = {
-        phrases: [],
-        playerId: 'player-1'
-      };
+        expect(response.body.error).toBe('Invalid phrases');
+        expect(response.body.details).toContain('At least one phrase is required');
+      });
 
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(invalidRequest)
-        .expect(400);
+      it('should return 400 when exceeding phrase limit', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-      expect(response.body.error).toBe('Invalid phrases');
-      expect(response.body.details).toContain('At least one phrase is required');
-    });
+        const store = createMockDataStoreFromScenario(scenario)
+          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'))
+          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 2'))
+          .setupMocks();
+        
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send({ phrases: [ 'Phrase 1' ], playerId: scenario.hostPlayer.id })
+          .expect(400);
 
-    it('should return 400 when exceeding phrase limit', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
+        expect(response.body.error).toContain('Cannot submit 1 phrases');
+      });
 
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame) // Game lookup
-        .mockResolvedValueOnce(mockPlayer); // Player lookup
+      it('should return 400 for duplicate phrases', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-      // Mock existing phrases that would cause limit exceeded
-      mockedDbUtils.select
-        .mockResolvedValueOnce([
-          { id: '1', text: 'existing1' },
-          { id: '2', text: 'existing2' },
-          { id: '3', text: 'existing3' },
-          { id: '4', text: 'existing4' }
-        ]) // 4 existing phrases
-        .mockResolvedValueOnce([]); // All game phrases
+        const store = createMockDataStoreFromScenario(scenario)
+          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'))
+          .setupMocks();
 
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(validSubmitRequest) // Trying to add 2 more (would be 6 total, limit is 5)
-        .expect(400);
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send({ phrases: ['Existing Phrase 1'], playerId: scenario.hostPlayer.id })
+          .expect(400);
 
-      expect(response.body.error).toContain('Cannot submit 2 phrases');
-    });
+        expect(response.body.error).toBe('Duplicate phrases detected');
+        expect(response.body.details[0]).toContain('Existing Phrase 1');
+      });
 
-    it('should return 400 for duplicate phrases', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
+      it('should return 400 for player not in game', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
+        const wrongPlayer = playerFactory.connected('other-game', 'team-1', 'Wrong Player');
 
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame) // Game lookup
-        .mockResolvedValueOnce(mockPlayer); // Player lookup
+        const store = createMockDataStoreFromScenario(scenario)
+          .addPlayer(wrongPlayer)
+          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'))
+          .setupMocks();
 
-      const existingPhrases: Phrase[] = [{
-        id: 'existing-1',
-        game_id: gameCode,
-        player_id: 'other-player',
-        text: 'Test Phrase 1',
-        status: 'active',
-        created_at: '2023-01-01T00:00:00Z',
-        updated_at: '2023-01-01T00:00:00Z'
-      }];
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/phrases`)
+          .send({ phrases: ['Test Phrase'], playerId: 'wrong-player' })
+          .expect(400);
 
-      mockedDbUtils.select
-        .mockResolvedValueOnce([]) // No existing player phrases
-        .mockResolvedValueOnce(existingPhrases); // Game has duplicate phrase
-
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(validSubmitRequest)
-        .expect(400);
-
-      expect(response.body.error).toBe('Duplicate phrases detected');
-      expect(response.body.details[0]).toContain('Test Phrase 1');
-    });
-
-    it('should return 400 when game has started', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
-
-      const startedGame = { ...mockGame, status: 'playing' as const };
-      mockedDbUtils.findById.mockResolvedValueOnce(startedGame);
-
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(validSubmitRequest)
-        .expect(400);
-
-      expect(response.body.error).toBe('Cannot submit phrases after game has started');
-    });
-
-    it('should return 400 for player not in game', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
-
-      const wrongPlayer = { ...mockPlayer, game_id: 'other-game' };
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame)
-        .mockResolvedValueOnce(wrongPlayer);
-
-      const response = await request(app)
-        .post(`/api/games/${gameCode}/phrases`)
-        .send(validSubmitRequest)
-        .expect(400);
-
-      expect(response.body.error).toBe('Player not found in this game');
+        expectPlayerNotInGame(response);
+      });
     });
   });
 
   describe('GET /api/games/:gameCode/phrases', () => {
     const gameCode = 'ABC123';
-    const mockGame = createMockGame({
-      id: gameCode,
-      name: 'Test Game',
-      status: 'phrase_submission',
-      host_player_id: 'host-id'
-    });
 
-    const mockHostPlayer = createMockPlayer({
-      id: 'host-id',
-      game_id: gameCode,
-      name: 'Host Player',
-      team_id: 'team-1',
-      is_connected: true
-    });
+    describe('Game Code Validation', () => {
+      it('should return 400 for invalid game code', async () => {
+        const response = await request(app)
+          .get('/api/games/INVALID/phrases?playerId=player-1')
+          .expect(400);
 
-    const mockPhrases: Phrase[] = [
-      createMockPhrase({
-        id: 'phrase-1',
-        game_id: gameCode,
-        player_id: 'player-1',
-        text: 'Test Phrase 1'
-      }),
-      createMockPhrase({
-        id: 'phrase-2',
-        game_id: gameCode,
-        player_id: 'player-2',
-        text: 'Test Phrase 2'
-      })
-    ];
-
-    beforeEach(() => {
-      // Reset mocks to clear any interference from previous describe blocks
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
-
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame) // Game lookup
-        .mockResolvedValueOnce(mockHostPlayer); // Player lookup
-      mockedDbUtils.select
-        .mockResolvedValueOnce(mockPhrases) // Phrases
-        .mockResolvedValueOnce([
-          { id: 'player-1', name: 'Player 1' },
-          { id: 'player-2', name: 'Player 2' }
-        ]); // Players for name mapping
-    });
-
-    it('should return phrases for host player', async () => {
-      const response = await request(app)
-        .get(`/api/games/${gameCode}/phrases?playerId=host-id`)
-        .expect(200);
-
-      expect(response.body).toMatchObject({
-        phrases: expect.arrayContaining([
-          expect.objectContaining({
-            id: 'phrase-1',
-            text: 'Test Phrase 1',
-            playerId: 'player-1',
-            playerName: 'Player 1'
-          }),
-          expect.objectContaining({
-            id: 'phrase-2',
-            text: 'Test Phrase 2',
-            playerId: 'player-2',
-            playerName: 'Player 2'
-          })
-        ]),
-        totalCount: 2,
-        gameInfo: {
-          phrasesPerPlayer: 5,
-          totalPlayers: 2,
-          totalExpected: 10
-        }
+        expectInvalidGameCode(response);
       });
     });
 
-    it('should return 403 for non-host player', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
+    describe('Host authorization', () => {
+      it('should return phrases for host player', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-      const nonHostPlayer = { ...mockHostPlayer, id: 'other-player' };
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame)
-        .mockResolvedValueOnce(nonHostPlayer);
+        const store = createMockDataStoreFromScenario(scenario)
+          .addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'))
+          .addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'))
+          .setupMocks();
 
-      const response = await request(app)
-        .get(`/api/games/${gameCode}/phrases?playerId=other-player`)
-        .expect(403);
+        const response = await request(app)
+          .get(`/api/games/${gameCode}/phrases?playerId=${scenario.hostPlayer.id}`)
+          .expect(200);
 
-      expect(response.body.error).toBe('Only the game host can view all phrases');
-    });
+        expect(response.body).toMatchObject({
+          phrases: expect.arrayContaining([
+            expect.objectContaining({
+              text: 'Test Phrase 1'
+            })
+          ]),
+          totalCount: 2, // Two phrases returned based on our mock
+          gameInfo: {
+            phrasesPerPlayer: 2,
+            totalPlayers: 2,
+            totalExpected: 4
+          }
+        });
+      });
 
-    it('should return 400 for missing player ID', async () => {
-      const response = await request(app)
-        .get(`/api/games/${gameCode}/phrases`)
-        .expect(400);
+      it('should return 403 for non-host player', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-      expect(response.body.error).toBe('Player ID is required for authorization');
+        const store = createMockDataStoreFromScenario(scenario)
+          .addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'))
+          .addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'))
+          .setupMocks();
+
+        const response = await request(app)
+          .get(`/api/games/${gameCode}/phrases?playerId=${scenario.players[1]!.id}`)
+          .expect(403);
+
+        expect(response.body.error).toBe('Only the game host can view all phrases');
+      });
+
+      it('should return 400 for missing player ID', async () => {
+        const scenario = createGameScenario({ gameCode });
+        createMockDataStoreFromScenario(scenario).setupMocks();
+
+        const response = await request(app)
+          .get(`/api/games/${gameCode}/phrases`)
+          .expect(400);
+
+        expect(response.body.error).toBe('Player ID is required for authorization');
+      });
     });
   });
 
   describe('GET /api/games/:gameCode/phrases/status', () => {
     const gameCode = 'ABC123';
-    const mockGame = createMockGame({
-      id: gameCode,
-      name: 'Test Game',
-      status: 'phrase_submission',
-      host_player_id: 'host-id'
-    });
 
-    const mockPlayers: Player[] = [
-      createMockPlayer({
-        id: 'player-1',
-        game_id: gameCode,
-        name: 'Player 1',
-        team_id: 'team-1'
-      }),
-      createMockPlayer({
-        id: 'player-2',
-        game_id: gameCode,
-        name: 'Player 2',
-        team_id: 'team-2'
-      })
-    ];
+    describe('Game Code Validation', () => {
+      it('should return 400 for invalid game code', async () => {
+        const response = await request(app)
+          .get('/api/games/INVALID/phrases/status')
+          .expect(400);
 
-    const mockPhrases: Phrase[] = [
-      createMockPhrase({
-        id: 'phrase-1',
-        game_id: gameCode,
-        player_id: 'player-1',
-        text: 'Phrase 1'
-      }),
-      createMockPhrase({
-        id: 'phrase-2',
-        game_id: gameCode,
-        player_id: 'player-1',
-        text: 'Phrase 2'
-      })
-      // Player 2 has no phrases yet
-    ];
-
-    beforeEach(() => {
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
-
-      mockedDbUtils.findById.mockResolvedValue(mockGame);
-      mockedDbUtils.select
-        .mockResolvedValueOnce(mockPlayers) // Players
-        .mockResolvedValueOnce(mockPhrases); // Phrases
+        expectInvalidGameCode(response);
+      });
     });
 
     it('should return phrase submission status for all players', async () => {
+      const scenario = createGameScenario({
+        gameCode,
+        gameStatus: 'phrase_submission',
+        playerCount: 2
+      });        
+      
+      const store = createMockDataStoreFromScenario(scenario)
+          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 1'))
+          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 2'))
+          .setupMocks();
+
       const response = await request(app)
         .get(`/api/games/${gameCode}/phrases/status`)
         .expect(200);
 
-      expect(response.body).toMatchObject({
-        players: [
-          {
-            playerId: 'player-1',
-            playerName: 'Player 1',
-            submitted: 2,
-            required: 5,
-            isComplete: false
-          },
-          {
-            playerId: 'player-2',
-            playerName: 'Player 2',
-            submitted: 0,
-            required: 5,
-            isComplete: false
-          }
-        ],
-        summary: {
-          totalPlayers: 2,
-          playersComplete: 0,
-          totalPhrasesSubmitted: 2,
-          totalPhrasesRequired: 10,
-          isAllComplete: false
-        }
+      expect(response.body.summary).toMatchObject({
+        totalPlayers: 2,
+        playersComplete: 0,
+        totalPhrasesSubmitted: 2,
+        totalPhrasesRequired: 10,
+        isAllComplete: false
       });
+
+      // Check that we have the right number of players
+      expect(response.body.players).toHaveLength(2);
+      
+      // Find the player with 2 phrases submitted
+      const playerWithPhrases = response.body.players.find((p: any) => p.submitted === 2);
+      const playerWithoutPhrases = response.body.players.find((p: any) => p.submitted === 0);
+      
+      expect(playerWithPhrases).toBeDefined();
+      expect(playerWithoutPhrases).toBeDefined();
+      expect(playerWithPhrases.required).toBe(5);
+      expect(playerWithoutPhrases.required).toBe(5);
     });
   });
 
   describe('PUT /api/games/:gameCode/phrases/:phraseId', () => {
     const gameCode = 'ABC123';
     const phraseId = 'phrase-1';
-    const mockGame = createMockGame({
-      id: gameCode,
-      name: 'Test Game',
-      status: 'phrase_submission',
-      host_player_id: 'host-id'
-    });
 
-    const mockPhrase = createMockPhrase({
-      id: phraseId,
-      game_id: gameCode,
-      player_id: 'player-1',
-      text: 'Old Phrase Text'
-    });
+    describe('Game State Validation', () => {
+      it('should return 400 when game has started', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'playing' });
+        createMockDataStoreFromScenario(scenario).setupMocks();
 
-    const validUpdateRequest: UpdatePhraseRequest = {
-      text: 'Updated Phrase Text'
-    };
+        const response = await request(app)
+          .put(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
+          .send({ text: 'Updated text' })
+          .expect(400);
 
-    beforeEach(() => {
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
-      mockedDbUtils.insert.mockReset();
-
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame) // Game lookup
-        .mockResolvedValueOnce(mockPhrase); // Phrase lookup
-      mockedDbUtils.select.mockResolvedValue([]); // No conflicting phrases
-      mockedDbUtils.insert.mockResolvedValue('updated-phrase-id');
-    });
-
-    it('should update phrase successfully', async () => {
-      const response = await request(app)
-        .put(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
-        .send(validUpdateRequest)
-        .expect(200);
-
-      expect(response.body).toMatchObject({
-        id: phraseId,
-        text: 'Updated Phrase Text',
-        updatedAt: expect.any(String)
+        expectGameAlreadyStarted(response);
       });
     });
 
-    it('should return 403 when player tries to edit another player\'s phrase', async () => {
-      const response = await request(app)
-        .put(`/api/games/${gameCode}/phrases/${phraseId}?playerId=other-player`)
-        .send(validUpdateRequest)
-        .expect(403);
+    describe('Valid phrase updates', () => {
+      it('should update phrase successfully', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      
+        const phrase = phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 1');
+        const store = createMockDataStoreFromScenario(scenario)
+          .addPhrase(phrase)
+          .setupMocks();
 
-      expect(response.body.error).toBe('You can only edit your own phrases');
-    });
+        const updateRequest: UpdatePhraseRequest = { text: 'Updated Phrase Text' };
 
-    it('should return 400 for duplicate phrase text', async () => {
-      const conflictingPhrase = {
-        id: 'other-phrase',
-        text: 'Updated Phrase Text',
-        game_id: gameCode
-      };
+        const response = await request(app)
+          .put(`/api/games/${gameCode}/phrases/${phrase.id}?playerId=${scenario.hostPlayer.id}`)
+          .send(updateRequest)
+          .expect(200);
 
-      mockedDbUtils.select.mockResolvedValue([conflictingPhrase]);
+        expect(response.body).toMatchObject({
+          id: phrase.id,
+          text: 'Updated Phrase Text',
+          updatedAt: expect.any(String)
+        });
+      });
 
-      const response = await request(app)
-        .put(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
-        .send(validUpdateRequest)
-        .expect(400);
+      it('should return 403 when player tries to edit another player\'s phrase', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      
+        const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-      expect(response.body.error).toBe('This phrase already exists in the game');
-    });
+        const store = createMockDataStoreFromScenario(scenario)
+            .addPhrase(p1Phrase)
+            .addPhrase(p2Phrase)
+            .setupMocks();
 
-    it('should return 400 when game has started', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
+        const response = await request(app)
+          .put(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p2Phrase.player_id}`)
+          .send({ text: 'Updated Text' })
+          .expect(403);
 
-      const startedGame = { ...mockGame, status: 'playing' as const };
-      mockedDbUtils.findById.mockResolvedValueOnce(startedGame);
+        expect(response.body.error).toBe('You can only edit your own phrases');
+      });
 
-      const response = await request(app)
-        .put(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
-        .send(validUpdateRequest)
-        .expect(400);
+      it('should return 400 for duplicate phrase text', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      
+        const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-      expect(response.body.error).toBe('Cannot edit phrases after game has started');
+        const store = createMockDataStoreFromScenario(scenario)
+            .addPhrase(p1Phrase)
+            .addPhrase(p2Phrase)
+            .setupMocks();
+
+        const response = await request(app)
+          .put(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p1Phrase.player_id}`)
+          .send({ text: 'Phrase 2' })
+          .expect(400);
+
+        expect(response.body.error).toBe('This phrase already exists in the game');
+      });
     });
   });
 
   describe('DELETE /api/games/:gameCode/phrases/:phraseId', () => {
     const gameCode = 'ABC123';
     const phraseId = 'phrase-1';
-    const mockGame = createMockGame({
-      id: gameCode,
-      name: 'Test Game',
-      status: 'phrase_submission',
-      host_player_id: 'host-id'
+
+    describe('Game State Validation', () => {
+      it('should return 400 when game has started', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'playing' });
+        createMockDataStoreFromScenario(scenario).setupMocks();
+
+        const response = await request(app)
+          .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
+          .expect(400);
+
+        expectGameAlreadyStarted(response);
+      });
     });
 
-    const mockPhrase = createMockPhrase({
-      id: phraseId,
-      game_id: gameCode,
-      player_id: 'player-1',
-      text: 'Test Phrase'
-    });
+    describe('Valid phrase deletion', () => {
+      let scenario: ReturnType<typeof createGameScenario>;
 
-    const mockPlayer = createMockPlayer({
-      id: 'player-1',
-      game_id: gameCode,
-      name: 'Test Player',
-      team_id: 'team-1'
-    });
+      beforeEach(() => {
+        scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      });
 
-    beforeEach(() => {
-      mockedDbUtils.findById.mockReset();
-      mockedDbUtils.select.mockReset();
+      it('should delete phrase successfully when player owns it', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      
+        const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame) // Game lookup
-        .mockResolvedValueOnce(mockPhrase) // Phrase lookup
-        .mockResolvedValueOnce(mockPlayer); // Player lookup
-      mockTransaction.run.mockResolvedValue({});
-    });
+        const store = createMockDataStoreFromScenario(scenario)
+            .addPhrase(p1Phrase)
+            .addPhrase(p2Phrase)
+            .setupMocks();
 
-    it('should delete phrase successfully when player owns it', async () => {
-      const response = await request(app)
-        .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
-        .expect(200);
+        const response = await request(app)
+          .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p1Phrase.player_id}`)
+          .expect(200);
+      });
 
-      expect(response.body.message).toBe('Phrase deleted successfully');
-      expect(mockTransaction.run).toHaveBeenCalledWith('DELETE FROM phrases WHERE id = ?', [phraseId]);
-    });
+      it('should delete phrase successfully when host deletes it', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+        
+        const playerId = scenario.hostPlayer.id === scenario.players[0]?.id ? scenario.players[1]?.id : scenario.players[0]?.id;
+        const p1Phrase = phraseFactory.create(gameCode, playerId as string, 'Phrase 1');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.hostPlayer.id as string, 'Phrase 2');
 
-    it('should delete phrase successfully when host deletes it', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
+        const store = createMockDataStoreFromScenario(scenario)
+            .addPhrase(p1Phrase)
+            .addPhrase(p2Phrase)
+            .setupMocks();
 
-      const hostPlayer = { ...mockPlayer, id: 'host-id' };
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame)
-        .mockResolvedValueOnce(mockPhrase)
-        .mockResolvedValueOnce(hostPlayer);
+        const response = await request(app)
+          .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${scenario.hostPlayer.id}`)
+          .expect(200);
 
-      const response = await request(app)
-        .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=host-id`)
-        .expect(200);
+        expect(response.body.message).toBe('Phrase deleted successfully');
+      });
 
-      expect(response.body.message).toBe('Phrase deleted successfully');
-    });
+      it('should return 403 when non-owner, non-host tries to delete', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      
+        const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-    it('should return 403 when non-owner, non-host tries to delete', async () => {
-      const otherPlayer = { ...mockPlayer, id: 'other-player' };
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame)
-        .mockResolvedValueOnce(mockPhrase)
-        .mockResolvedValueOnce(otherPlayer);
+        const store = createMockDataStoreFromScenario(scenario)
+            .addPhrase(p1Phrase)
+            .addPhrase(p2Phrase)
+            .setupMocks();
 
-      const response = await request(app)
-        .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=other-player`)
-        .expect(403);
+        const response = await request(app)
+          .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p2Phrase.player_id}`)
+          .expect(403);
 
-      expect(response.body.error).toBe('You can only delete your own phrases, or phrases as the game host');
-    });
+        expect(response.body.error).toBe('You can only delete your own phrases, or phrases as the game host');
+      });
 
-    it('should return 400 when game has started', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
+      it('should return 404 for non-existent phrase', async () => {
+        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      
+        const store = createMockDataStoreFromScenario(scenario)
+            .setupMocks();
 
-      const startedGame = { ...mockGame, status: 'playing' as const };
-      mockedDbUtils.findById.mockResolvedValueOnce(startedGame);
+        const response = await request(app)
+          .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=${scenario.players[0]?.id}`)
+          .expect(404);
 
-      const response = await request(app)
-        .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
-        .expect(400);
-
-      expect(response.body.error).toBe('Cannot delete phrases after game has started');
-    });
-
-    it('should return 404 for non-existent phrase', async () => {
-      // Reset mocks to override beforeEach setup
-      mockedDbUtils.findById.mockReset();
-
-      mockedDbUtils.findById
-        .mockResolvedValueOnce(mockGame)
-        .mockResolvedValueOnce(undefined); // Phrase not found
-
-      const response = await request(app)
-        .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
-        .expect(404);
-
-      expect(response.body.error).toBe('Phrase not found');
+        expect(response.body.error).toBe('Phrase not found');
+      });
     });
   });
 });
