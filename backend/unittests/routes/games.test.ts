@@ -194,7 +194,9 @@ describe('Games API', () => {
         
         const response = await request(app)
           .post(`/api/games/${gameCode}/join`)
-          .send(validJoinRequest);
+          .send({
+            playerName: 'Zoom Player'
+          });
 
         // Accept either 200 success or specific error codes for now
         expect([200, 400, 404, 500]).toContain(response.status);
@@ -203,6 +205,8 @@ describe('Games API', () => {
         if (response.status === 200) {
           expect(response.body).toHaveProperty('playerId');
           expect(response.body).toHaveProperty('playerName');
+          expect(response.body.playerName).toEqual('Zoom Player');
+          expect(response.body).toHaveProperty('teamId');
         }
       });
 
@@ -234,7 +238,10 @@ describe('Games API', () => {
           .post(`/api/games/${gameCode}/join`)
           .send(validJoinRequest)
           .expect(200);
+
         expect(response.body).toHaveProperty('playerId');
+        expect(response.body).toHaveProperty('playerName');
+        expect(response.body.playerName).toEqual('Test Player');
         expect(response.body).toHaveProperty('teamId');
       });
     });

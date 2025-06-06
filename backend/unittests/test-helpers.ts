@@ -141,28 +141,6 @@ export function setupMockTransaction() {
 }
 
 /**
- * Setup mock connection for database operations
- */
-export function setupMockConnection(){
-  const mockConnection = {
-    db: {} as any,
-    run: jest.fn(),
-    get: jest.fn(),
-    all: jest.fn(),
-    exec: jest.fn(),
-    serialize: jest.fn(),
-    close: jest.fn(),
-    isHealthy: jest.fn(), 
-  } as any;
-
-  mockedDbConnection.withConnection.mockImplementation(async (callback) => {
-      return await callback(mockConnection);
-  });
-
-  return mockConnection;
-}
-
-/**
  * Reset all mocks - call this in beforeEach
  */
 export function resetAllMocks() {

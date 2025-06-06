@@ -13,19 +13,59 @@ function mockSelect(
   phrases: Record<string, Phrase> = {}
 ): void {
   mockedDbUtils.select.mockImplementation(
-    async <T = any>(tableName: string, _options?: QueryOptions, _connection?: any): Promise<T[]> => {
+    async <T = any>(tableName: string, options?: QueryOptions, _connection?: any): Promise<T[]> => {
+      let results: T[] = [];
+      
       switch (tableName) {
         case 'games':
-          return games && Object.keys(games).length > 0 ? (Object.values(games) as unknown as T[]) : [];
+          results = games && Object.keys(games).length > 0 ? (Object.values(games) as unknown as T[]) : [];
+          break;
         case 'players':
-            return players && Object.keys(players).length > 0 ? (Object.values(players) as unknown as T[]) : [];
+          results = players && Object.keys(players).length > 0 ? (Object.values(players) as unknown as T[]) : [];
+          break;
         case 'teams':
-          return teams && Object.keys(teams).length > 0 ? (Object.values(teams) as unknown as T[]) : [];
+          results = teams && Object.keys(teams).length > 0 ? (Object.values(teams) as unknown as T[]) : [];
+          break;
         case 'phrases':
-          return phrases && Object.keys(phrases).length > 0 ? (Object.values(phrases) as unknown as T[]) : [];
+          results = phrases && Object.keys(phrases).length > 0 ? (Object.values(phrases) as unknown as T[]) : [];
+          break;
         default:
           return [] as T[];
       }
+
+      // Apply filtering if options are provided
+      if (options && options.where && Array.isArray(options.where) && options.where.length > 0) {
+        results = results.filter((item: any) => {
+          return options.where!.every((condition: any) => {
+            const { field, operator, value } = condition;
+            const itemValue = item[field];
+            
+            switch (operator) {
+              case '=':
+                return itemValue === value;
+              case '!=':
+                return itemValue !== value;
+              case '>':
+                return itemValue > value;
+              case '<':
+                return itemValue < value;
+              case '>=':
+                return itemValue >= value;
+              case '<=':
+                return itemValue <= value;
+              case 'LIKE':
+                return typeof itemValue === 'string' && typeof value === 'string' && 
+                       itemValue.toLowerCase().includes(value.toLowerCase());
+              case 'IN':
+                return Array.isArray(value) && value.includes(itemValue);
+              default:
+                return itemValue === value;
+            }
+          });
+        });
+      }
+
+      return results;
     }
   );
 }
