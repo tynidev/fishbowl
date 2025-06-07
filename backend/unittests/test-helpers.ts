@@ -9,21 +9,7 @@ import {
   // DeviceSession
 } from '../src/db/schema';
 
-import {
-  // Add specific types from rest-api as needed, e.g.:
-  // CreateGameRequest,
-  // CreateGameResponse,
-  // JoinGameRequest,
-  // JoinGameResponse,
-  // PlayerState,
-  // GameState,
-  // TeamState,
-  // PhraseState,
-  // RoundState,
-  // TurnState,
-  // GameConfigState,
-  // ErrorResponse
-} from '../src/types/rest-api';
+import { PlayersResponse } from '../src/types/rest-api';
 
 // ==================== TypeScript Interfaces for Helper Functions ====================
 
@@ -212,10 +198,20 @@ export function createMockPhrase(overrides: Partial<Phrase> = {}): Phrase {
 // ==================== Test Scenario Builders ====================
 
 /**
+ * Result of creating a game scenario with all related entities
+ */
+export interface GameScenario {
+  game: Game;
+  teams: Team[];
+  players: Player[];
+  hostPlayer: Player;
+}
+
+/**
  * Create a complete game scenario with teams, players, and host
  * Returns all the related entities for easy test setup
  */
-export function createGameScenario(options: GameScenarioOptions = {}) {
+export function createGameScenario(options: GameScenarioOptions = {}): GameScenario {
   const {
     teamCount = 2,
     playerCount = 4,
@@ -356,6 +352,88 @@ export function expectPlayerNotInGame(response: any): void {
 export function expectGameAlreadyStarted(response: any): void {
   expect(response.status).toBe(400);
   expect(response.body.error).toMatch(/after game has started/);
+}
+
+/**
+ * Assert that a response contains a valid players list and matches expected players
+ * Validates the PlayersResponse structure and performs deep comparison of player data
+ * including team assignments.
+ * 
+ * @param playersListResponse - The API response from /api/games/:gameCode/players
+ * @param expectedPlayers - Array of expected Player objects from the database
+ * @param expectedTeams - Array of Team objects for validating team assignments
+ */
+export function expectValidPlayersResponse(playersListResponse: any, expectedPlayers: Player[], expectedTeams: Team[]): void {
+  // Basic structure validation
+  expect(playersListResponse.body).toBeDefined();
+  expect(playersListResponse.body).toHaveProperty('players');
+  expect(playersListResponse.body).toHaveProperty('totalCount', expectedPlayers.length);
+
+  // Validate players array
+  const actualPlayers = playersListResponse.body.players;
+  expect(Array.isArray(actualPlayers)).toBe(true);
+  expect(actualPlayers).toHaveLength(expectedPlayers.length);
+  
+  // Deep comparison of players
+  const responsePlayersSorted = [...actualPlayers].sort((a, b) => a.id.localeCompare(b.id));
+  const expectedPlayersSorted = [...expectedPlayers].sort((a, b) => a.id.localeCompare(b.id));
+  
+  expectedPlayersSorted.forEach((expectedPlayer, index) => {
+    const actualPlayer = responsePlayersSorted[index];
+    
+    // Compare each field
+    expect(actualPlayer.id).toBe(expectedPlayer.id);
+    expect(actualPlayer.name).toBe(expectedPlayer.name);
+    expect(actualPlayer.teamId).toBe(expectedPlayer.team_id || undefined);
+    expect(actualPlayer.isConnected).toBe(expectedPlayer.is_connected);
+    expect(actualPlayer.joinedAt).toBe(expectedPlayer.created_at);
+    
+    // Validate team assignments match the teams array
+    if (actualPlayer.teamId) {
+      expect(actualPlayer.teamName).toBeDefined();
+      expect(typeof actualPlayer.teamName).toBe('string');
+      
+      // Find the corresponding team and verify the name matches
+      const expectedTeam = expectedTeams.find(team => team.id === actualPlayer.teamId);
+      expect(expectedTeam).toBeDefined();
+      expect(actualPlayer.teamName).toBe(expectedTeam!.name);
+    } else {
+      expect(actualPlayer.teamName).toBeUndefined();
+    }
+  });
+}
+
+/**
+ * Validates that a join game response matches the expected structure and data
+ * @param response - The response object from the join game endpoint
+ * @param scenario - The game scenario containing expected data
+ * @param playerName - The name of the player who joined
+ */
+export function expectValidJoinGameResponse(
+  response: any,
+  scenario: GameScenario,
+  playerName: string,
+): void {
+  // Basic response structure validation
+  expect(response.body).toHaveProperty('playerId');
+  expect(response.body).toHaveProperty('playerName', playerName);
+  expect(response.body).toHaveProperty('teamId');
+  expect(response.body).toHaveProperty('teamName');
+  expect(response.body).toHaveProperty('gameInfo');
+
+  // Team validation - verify the assigned team exists in scenario
+  expect(scenario.teams!.map(t => t.id)).toContain(response.body.teamId);
+  expect(scenario.teams!.map(t => t.name)).toContain(response.body.teamName);
+
+  // Game info validation
+  const { gameInfo } = response.body;
+  expect(gameInfo.id).toBe(scenario.game.id);
+  expect(gameInfo.name).toBe(scenario.game.name);
+  expect(gameInfo.status).toBe(scenario.game.status);
+  expect(gameInfo.playerCount).toBe(scenario.players.length + 1); // existing players + new player
+  expect(gameInfo.teamCount).toBe(scenario.teams.length);
+  expect(gameInfo.phrasesPerPlayer).toBe(scenario.game.phrases_per_player);
+  expect(gameInfo.timerDuration).toBe(scenario.game.timer_duration);
 }
 
 /**
