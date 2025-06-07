@@ -1,6 +1,5 @@
 import request from 'supertest';
 import {
-  createMockTeam,
   createGameScenario,
   resetAllMocks,
 } from '../test-helpers';
@@ -57,23 +56,22 @@ describe('Players API', () => {
     });
 
     it('should handle mixed connection states correctly', async () => {
-      // Create players with different connection states using factories
-      const connectedPlayer = playerFactory.connected(gameCode, 'team-1', 'Connected Player');
-      const disconnectedPlayer = playerFactory.disconnected(gameCode, 'team-2', 'Disconnected Player');
-      
       const scenario = createGameScenario({
           gameCode: gameCode,
           teamCount:2,
-          playerCount: 2,
+          playerCount: 0, // Don't create players automatically
           gameName: 'Test Game',
           gameStatus: 'waiting',
         });
 
       const store = await createRealDataStoreFromScenario(scenario).initDb();
+      
+      // Create players with different connection states using factories
+      const connectedPlayer = playerFactory.connected(gameCode, scenario.teams![0]!.id, 'Connected Player');
+      const disconnectedPlayer = playerFactory.disconnected(gameCode, scenario.teams![1]!.id, 'Disconnected Player');
+      
       await store.addPlayer(connectedPlayer);
       await store.addPlayer(disconnectedPlayer);
-      await store.addTeam(createMockTeam({ id: 'team-1', game_id: gameCode, name: 'Team 1', color: '#FF0000' }));
-      await store.addTeam(createMockTeam({ id: 'team-2', game_id: gameCode, name: 'Team 2', color: '#0000FF' }));
 
       const response = await request(app)
         .get(`/api/games/${gameCode}/players`)
