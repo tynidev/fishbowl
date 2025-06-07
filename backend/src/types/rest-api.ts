@@ -128,3 +128,94 @@ export interface GetPhraseStatusResponse {
 export interface UpdatePhraseRequest {
   text: string;
 }
+
+// ==================== Device Session Interfaces ====================
+
+export interface DeviceSessionResponse {
+  id: string;
+  deviceId: string;
+  socketId: string | null;
+  lastSeen: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlayerInfoResponse {
+  id: string;
+  name: string;
+  gameId: string;
+  teamId: string | null;
+  isConnected: boolean;
+}
+
+export interface GameInfoResponse {
+  id: string;
+  name: string;
+  status: string;
+  hostPlayerId: string;
+  teamCount: number;
+  phrasesPerPlayer: number;
+  timerDuration: number;
+  currentRound: number;
+  currentTeam: number;
+  playerCount: number;
+  createdAt: string;
+  startedAt: string | undefined;
+}
+
+export interface DeviceSessionGameInfoResponse {
+  id: string;
+  name: string;
+  status: string;
+  hostPlayerId: string;
+}
+
+export interface GetDeviceSessionResponse {
+  success: boolean;
+  session: DeviceSessionResponse;
+  player: PlayerInfoResponse | null;
+  game: DeviceSessionGameInfoResponse | null;
+}
+
+export interface GenerateDeviceIdResponse {
+  success: boolean;
+  deviceId: string;
+}
+
+export interface CheckActiveSessionResponse {
+  success: boolean;
+  hasActiveSession: boolean;
+}
+
+export interface ActiveSessionInfo {
+  id: string;
+  deviceId: string;
+  socketId: string | null;
+  lastSeen: string;
+  isActive: boolean;
+  player: PlayerInfoResponse | null;
+}
+
+export interface GetActiveSessionsResponse {
+  success: boolean;
+  gameId: string;
+  activeSessions: ActiveSessionInfo[];
+  count: number;
+}
+
+export interface DeactivateSessionRequest {
+  gameId?: string;
+}
+
+export interface DeactivateSessionResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface CleanupSessionsResponse {
+  success: boolean;
+  message: string;
+  staleSessionsDeactivated: number;
+  oldSessionsRemoved: number;
+}
