@@ -2,7 +2,7 @@
 
 Phrase endpoints manage phrase submission, editing, and tracking for Fishbowl games.
 
-[← Back to API Documentation](../documentation.md)
+[← Back to API Documentation](../README.md)
 
 ## Endpoints
 
@@ -152,4 +152,4 @@ Delete a specific phrase (only before game starts).
 - [Player Endpoints](./player-endpoints.md) - Player registration for phrase submission
 - [Device Sessions](./device-session-endpoints.md) - Session management for phrase tracking
 
-[← Back to API Documentation](../documentation.md)
+[← Back to API Documentation](../README.md)
