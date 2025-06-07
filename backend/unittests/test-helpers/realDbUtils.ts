@@ -1,6 +1,6 @@
-import { Game, Phrase, Player, Team } from "../src/db/schema";
-import * as dbUtils from '../src/db/utils';
-import { withTransaction } from '../src/db/connection';
+import { Game, Phrase, Player, Team } from "../../src/db/schema";
+import * as dbUtils from '../../src/db/utils';
+import { withTransaction } from '../../src/db/connection';
 
 export function createRealDataStoreFromScenario(scenario: { 
   game: Game; 

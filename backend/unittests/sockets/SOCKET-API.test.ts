@@ -1,8 +1,8 @@
 import { Server as SocketIOServer } from "socket.io";
 import { io as Client, Socket as ClientSocket } from "socket.io-client";
-import { createRealDataStoreFromScenario } from "../realDbUtils";
-import * as factories from "../test-factories";
-import * as helpers from "../test-helpers";
+import { createRealDataStoreFromScenario } from "../test-helpers/realDbUtils";
+import * as factories from "../test-helpers/test-factories";
+import * as helpers from "../test-helpers/test-helpers";
 import * as SocketAPI from "../../src/sockets/SOCKET-API";
 import { TransactionConnection, withTransaction } from "../../src/db/connection";
 import {

@@ -5,9 +5,9 @@ import {
   expectGameNotFound,
   expectGameAlreadyStarted,
   resetAllMocks
-} from '../test-helpers';
+} from '../test-helpers/test-helpers';
 import { UpdateConfigRequest } from '../../src/types/rest-api';
-import { createRealDataStoreFromScenario } from '../realDbUtils';
+import { createRealDataStoreFromScenario } from '../test-helpers/realDbUtils';
 import { app } from '../setupTests';
 
 describe('Game Configuration API', () => {

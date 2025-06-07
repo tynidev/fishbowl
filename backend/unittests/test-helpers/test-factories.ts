@@ -1,4 +1,4 @@
-import { Game, Player, Team, Phrase } from '../src/db/schema';
+import { Game, Player, Team, Phrase } from '../../src/db/schema';
 
 // ==================== Types ====================
 

@@ -4,10 +4,10 @@ import {
   expectValidJoinGameResponse,
   expectValidPlayersResponse,
   resetAllMocks,
-} from '../test-helpers';
-import { playerFactory } from '../test-factories';
+} from '../test-helpers/test-helpers';
+import { playerFactory } from '../test-helpers/test-factories';
 import { app } from '../setupTests';
-import { createRealDataStoreFromScenario } from '../realDbUtils';
+import { createRealDataStoreFromScenario } from '../test-helpers/realDbUtils';
 
 describe('Players API', () => {
 

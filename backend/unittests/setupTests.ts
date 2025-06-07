@@ -3,7 +3,7 @@
 
 import { Application } from "express";
 import { initializeTestDatabase } from "../src/db/init";
-import { resetAllMocks, setupTestApp } from "./test-helpers";
+import { resetAllMocks, setupTestApp } from "./test-helpers/test-helpers";
 
 let app: Application;
 

@@ -7,9 +7,9 @@ import {
   // Turn,
   // GameConfig,
   // DeviceSession
-} from '../src/db/schema';
+} from '../../src/db/schema';
 
-import { PlayersResponse } from '../src/types/rest-api';
+import { PlayersResponse } from '../../src/types/rest-api';
 
 // ==================== TypeScript Interfaces for Helper Functions ====================
 
@@ -82,13 +82,13 @@ export interface SetupGameOptions {
 // Import necessary modules for mocking
 import express, { Application } from 'express';
 import { jest } from '@jest/globals';
-import * as dbUtils from '../src/db/utils';
-import * as dbConnection from '../src/db/connection';
-import router from '../src/routes/index';
+import * as dbUtils from '../../src/db/utils';
+import * as dbConnection from '../../src/db/connection';
+import router from '../../src/routes/index';
 
 // Update imports
-import { initializeTestDatabase } from '../src/db/init';
-import { withTransaction } from '../src/db/connection';
+import { initializeTestDatabase } from '../../src/db/init';
+import { withTransaction } from '../../src/db/connection';
 
 /**
  * Setup Express app with game routes for testing

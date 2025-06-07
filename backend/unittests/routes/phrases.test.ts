@@ -1,41 +1,34 @@
-import request from 'supertest';
 import {
   createGameScenario,
   expectGameAlreadyStarted,
   expectInvalidGameCode,
   expectPlayerNotInGame,
   resetAllMocks,
-} from '../test-helpers';
+} from '../test-helpers/test-helpers';
 import {
   SubmitPhrasesRequest,
   UpdatePhraseRequest
 } from '../../src/types/rest-api';
-import { phraseFactory, playerFactory } from '../test-factories';
-import { createRealDataStoreFromScenario } from '../realDbUtils';
-import { app } from '../setupTests';
+import { phraseFactory, playerFactory } from '../test-helpers/test-factories';
+import { createRealDataStoreFromScenario } from '../test-helpers/realDbUtils';
+import { createPhraseApi, PhraseApiHelper } from '../test-helpers/phrase-api-helper';
+import { setupGameWithPhrases } from '../test-helpers/phrase-test-helpers';
 
 describe('Phrases API', () => {
+  let api: PhraseApiHelper;
+  const gameCode = 'ABC123';
 
   beforeEach(async () => {
     await resetAllMocks();
+    api = createPhraseApi(gameCode);
   });
 
   describe('POST /api/games/:gameCode/phrases', () => {
-    const gameCode = 'ABC123';
-
-    describe('Game Code Validation', () => {
-      it('should return 400 for invalid game code', async () => {
-        const scenario = createGameScenario({
-          gameCode: gameCode,
-          teamCount: 2,
-          playerCount: 2,
-          gameStatus: 'phrase_submission'
-        });
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
+    describe('Game Code Validation', () => {      it('should return 400 for invalid game code', async () => {
+        await setupGameWithPhrases({ gameCode });
           
-        const response = await request(app)
-          .post('/api/games/INVALID/phrases')
-          .send({ phrases: ['Test Phrase'], playerId: 'player-1' })
+        const response = await api
+          .submitPhrasesInvalidGameCode(['Test Phrase'], 'player-1')
           .expect(400);
 
         expectInvalidGameCode(response);
@@ -44,17 +37,13 @@ describe('Phrases API', () => {
 
     describe('Game State Validation', () => {
       it('should return 400 when game has started', async () => {
-        const scenario = createGameScenario({
-          gameCode: gameCode,
-          teamCount: 2,
-          playerCount: 2,
-          gameStatus: 'playing'
+        await setupGameWithPhrases({ 
+          gameCode, 
+          gameStatus: 'playing' 
         });
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
 
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send({ phrases: ['Test Phrase'], playerId: 'player-1' })
+        const response = await api
+          .submitPhrases('player-1', ['Test Phrase'])
           .expect(400);
 
         expectGameAlreadyStarted(response);
@@ -65,24 +54,13 @@ describe('Phrases API', () => {
       let scenario: ReturnType<typeof createGameScenario>;
 
       beforeEach(async () => {
-        scenario = createGameScenario({
-          gameCode: gameCode,
-          teamCount: 2,
-          playerCount: 2,
-          gameStatus: 'phrase_submission'
-        });
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        const setup = await setupGameWithPhrases({ gameCode });
+        scenario = setup.scenario;
       });
 
       it('should submit multiple phrases successfully', async () => {
-        const request_data: SubmitPhrasesRequest = {
-          phrases: ['Test Phrase 1', 'Test Phrase 2'],
-          playerId: 'player-2'
-        };
-
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send(request_data)
+        const response = await api
+          .submitPhrases('player-2', ['Test Phrase 1', 'Test Phrase 2'])
           .expect(201);
 
         expect(response.body).toMatchObject({
@@ -104,14 +82,8 @@ describe('Phrases API', () => {
       });
 
       it('should handle single phrase submission', async () => {
-        const singlePhraseRequest = {
-          phrases: 'Single Phrase',
-          playerId: 'player-2'
-        };
-
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send(singlePhraseRequest)
+        const response = await api
+          .submitPhrases('player-2', 'Single Phrase')
           .expect(201);
 
         expect(response.body.submittedCount).toBe(1);
@@ -121,18 +93,16 @@ describe('Phrases API', () => {
 
     describe('Validation errors', () => {
       it('should return 400 for missing player ID', async () => {
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send({ phrases: ['Test Phrase'] })
+        const response = await api
+          .submitPhrasesInvalid(['Test Phrase'])
           .expect(400);
 
         expect(response.body.error).toBe('Player ID is required');
       });
 
       it('should return 400 for empty phrases', async () => {
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send({ phrases: [], playerId: 'player-1' })
+        const response = await api
+          .submitPhrases('player-1', [])
           .expect(400);
 
         expect(response.body.error).toBe('Invalid phrases');
@@ -140,30 +110,33 @@ describe('Phrases API', () => {
       });
 
       it('should return 400 when exceeding phrase limit', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
-
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'));
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 2'));
-          
+        const { scenario } = await setupGameWithPhrases({
+          gameCode,
+          phrasesPerPlayer: 2,
+          phrases: [
+            { playerId: 'host-player-id', text: 'Existing Phrase 1' },
+            { playerId: 'host-player-id', text: 'Existing Phrase 2' }
+          ]
+        });
         
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send({ phrases: [ 'Phrase 1' ], playerId: scenario.hostPlayer.id })
+        const response = await api
+          .submitPhrases(scenario.hostPlayer.id, ['Phrase 1'])
           .expect(400);
 
         expect(response.body.error).toContain('Cannot submit 1 phrases');
       });
 
       it('should return 400 for duplicate phrases', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
+        const { scenario } = await setupGameWithPhrases({
+          gameCode,
+          phrasesPerPlayer: 2,
+          phrases: [
+            { playerId: 'host-player-id', text: 'Existing Phrase 1' }
+          ]
+        });
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'));
-
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send({ phrases: ['Existing Phrase 1'], playerId: scenario.hostPlayer.id })
+        const response = await api
+          .submitPhrases(scenario.hostPlayer.id, ['Existing Phrase 1'])
           .expect(400);
 
         expect(response.body.error).toBe('Duplicate phrases detected');
@@ -171,16 +144,19 @@ describe('Phrases API', () => {
       });
 
       it('should return 400 for player not in game', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
+        const { scenario, store } = await setupGameWithPhrases({
+          gameCode,
+          phrasesPerPlayer: 2,
+          phrases: [
+            { playerId: 'host-player-id', text: 'Existing Phrase 1' }
+          ]
+        });
+
         const wrongPlayer = playerFactory.connected('other-game', 'team-1', 'Wrong Player');
-
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
         await store.addPlayer(wrongPlayer);
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'));
 
-        const response = await request(app)
-          .post(`/api/games/${gameCode}/phrases`)
-          .send({ phrases: ['Test Phrase'], playerId: 'wrong-player' })
+        const response = await api
+          .submitPhrases('wrong-player', ['Test Phrase'])
           .expect(400);
 
         expectPlayerNotInGame(response);
@@ -189,12 +165,10 @@ describe('Phrases API', () => {
   });
 
   describe('GET /api/games/:gameCode/phrases', () => {
-    const gameCode = 'ABC123';
-
     describe('Game Code Validation', () => {
       it('should return 400 for invalid game code', async () => {
-        const response = await request(app)
-          .get('/api/games/INVALID/phrases?playerId=player-1')
+        const response = await api
+          .getPhrasesInvalid('player-1')
           .expect(400);
 
         expectInvalidGameCode(response);
@@ -203,14 +177,17 @@ describe('Phrases API', () => {
 
     describe('Host authorization', () => {
       it('should return phrases for host player', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
+        const { scenario, store } = await setupGameWithPhrases({
+          gameCode,
+          phrasesPerPlayer: 2,
+          phrases: [
+            { playerId: 'player-1-id', text: 'Test Phrase 1' },
+            { playerId: 'player-2-id', text: 'Test Phrase 2' }
+          ]
+        });
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'));
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'));
-
-        const response = await request(app)
-          .get(`/api/games/${gameCode}/phrases?playerId=${scenario.hostPlayer.id}`)
+        const response = await api
+          .getPhrases(scenario.hostPlayer.id)
           .expect(200);
 
         expect(response.body).toMatchObject({
@@ -219,7 +196,7 @@ describe('Phrases API', () => {
               text: 'Test Phrase 1'
             })
           ]),
-          totalCount: 2, // Two phrases returned based on our mock
+          totalCount: 2,
           gameInfo: {
             phrasesPerPlayer: 2,
             totalPlayers: 2,
@@ -229,25 +206,29 @@ describe('Phrases API', () => {
       });
 
       it('should return 403 for non-host player', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
+        const { scenario, store } = await setupGameWithPhrases({
+          gameCode,
+          phrasesPerPlayer: 2,
+          phrases: [
+            { playerId: 'player-1-id', text: 'Test Phrase 1' },
+            { playerId: 'player-2-id', text: 'Test Phrase 2' }
+          ]
+        });
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'));
-        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'));
+        const nonHostPlayer = scenario.players.find(p => p.id !== scenario.hostPlayer.id);
 
-        const response = await request(app)
-          .get(`/api/games/${gameCode}/phrases?playerId=${scenario.players[1]!.id}`)
+        const response = await api
+          .getPhrases(nonHostPlayer!.id)
           .expect(403);
 
         expect(response.body.error).toBe('Only the game host can view all phrases');
       });
 
       it('should return 400 for missing player ID', async () => {
-        const scenario = createGameScenario({ gameCode });
-        await createRealDataStoreFromScenario(scenario).initDb();
+        await setupGameWithPhrases({ gameCode });
 
-        const response = await request(app)
-          .get(`/api/games/${gameCode}/phrases`)
+        const response = await api
+          .getPhrasesWithoutPlayerId()
           .expect(400);
 
         expect(response.body.error).toBe('Player ID is required for authorization');
@@ -256,12 +237,10 @@ describe('Phrases API', () => {
   });
 
   describe('GET /api/games/:gameCode/phrases/status', () => {
-    const gameCode = 'ABC123';
-
     describe('Game Code Validation', () => {
       it('should return 400 for invalid game code', async () => {
-        const response = await request(app)
-          .get('/api/games/INVALID/phrases/status')
+        const response = await api
+          .getPhrasesStatusInvalid()
           .expect(400);
 
         expectInvalidGameCode(response);
@@ -269,18 +248,16 @@ describe('Phrases API', () => {
     });
 
     it('should return phrase submission status for all players', async () => {
-      const scenario = createGameScenario({
+      const { scenario } = await setupGameWithPhrases({
         gameCode,
-        gameStatus: 'phrase_submission',
-        playerCount: 2
-      });        
-      
-      const store = await createRealDataStoreFromScenario(scenario).initDb();
-      await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 1'));
-      await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 2'));
+        phrases: [
+          { playerId: 'host-player-id', text: 'Phrase 1' },
+          { playerId: 'host-player-id', text: 'Phrase 2' }
+        ]
+      });
 
-      const response = await request(app)
-        .get(`/api/games/${gameCode}/phrases/status`)
+      const response = await api
+        .getPhrasesStatus()
         .expect(200);
 
       expect(response.body.summary).toMatchObject({
@@ -291,10 +268,8 @@ describe('Phrases API', () => {
         isAllComplete: false
       });
 
-      // Check that we have the right number of players
       expect(response.body.players).toHaveLength(2);
       
-      // Find the player with 2 phrases submitted
       const playerWithPhrases = response.body.players.find((p: any) => p.submitted === 2);
       const playerWithoutPhrases = response.body.players.find((p: any) => p.submitted === 0);
       
@@ -306,17 +281,15 @@ describe('Phrases API', () => {
   });
 
   describe('PUT /api/games/:gameCode/phrases/:phraseId', () => {
-    const gameCode = 'ABC123';
-    const phraseId = 'phrase-1';
-
     describe('Game State Validation', () => {
       it('should return 400 when game has started', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'playing' });
-        await createRealDataStoreFromScenario(scenario).initDb();
+        await setupGameWithPhrases({ 
+          gameCode, 
+          gameStatus: 'playing' 
+        });
 
-        const response = await request(app)
-          .put(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
-          .send({ text: 'Updated text' })
+        const response = await api
+          .updatePhrase('phrase-1', 'player-1', 'Updated text')
           .expect(400);
 
         expectGameAlreadyStarted(response);
@@ -325,17 +298,15 @@ describe('Phrases API', () => {
 
     describe('Valid phrase updates', () => {
       it('should update phrase successfully', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+        const { scenario, store } = await setupGameWithPhrases({ 
+          gameCode 
+        });
       
         const phrase = phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 1');
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
         await store.addPhrase(phrase);
 
-        const updateRequest: UpdatePhraseRequest = { text: 'Updated Phrase Text' };
-
-        const response = await request(app)
-          .put(`/api/games/${gameCode}/phrases/${phrase.id}?playerId=${scenario.hostPlayer.id}`)
-          .send(updateRequest)
+        const response = await api
+          .updatePhrase(phrase.id, scenario.hostPlayer.id, 'Updated Phrase Text')
           .expect(200);
 
         expect(response.body).toMatchObject({
@@ -343,39 +314,35 @@ describe('Phrases API', () => {
           text: 'Updated Phrase Text',
           updatedAt: expect.any(String)
         });
-      });
-
-      it('should return 403 when player tries to edit another player\'s phrase', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      });      it('should return 403 when player tries to edit another player\'s phrase', async () => {
+        const { scenario, store } = await setupGameWithPhrases({ 
+          gameCode 
+        });
       
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
-        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Phrase 2');
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
         await store.addPhrase(p1Phrase);
         await store.addPhrase(p2Phrase);
 
-        const response = await request(app)
-          .put(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p2Phrase.player_id}`)
-          .send({ text: 'Updated Text' })
+        const response = await api
+          .updatePhrase(p1Phrase.id, p2Phrase.player_id, 'Updated Text')
           .expect(403);
 
         expect(response.body.error).toBe('You can only edit your own phrases');
-      });
-
-      it('should return 400 for duplicate phrase text', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      });      it('should return 400 for duplicate phrase text', async () => {
+        const { scenario, store } = await setupGameWithPhrases({ 
+          gameCode 
+        });
       
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
-        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Phrase 2');
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
         await store.addPhrase(p1Phrase);
         await store.addPhrase(p2Phrase);
 
-        const response = await request(app)
-          .put(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p1Phrase.player_id}`)
-          .send({ text: 'Phrase 2' })
+        const response = await api
+          .updatePhrase(p1Phrase.id, p1Phrase.player_id, 'Phrase 2')
           .expect(400);
 
         expect(response.body.error).toBe('This phrase already exists in the game');
@@ -384,87 +351,79 @@ describe('Phrases API', () => {
   });
 
   describe('DELETE /api/games/:gameCode/phrases/:phraseId', () => {
-    const gameCode = 'ABC123';
-    const phraseId = 'phrase-1';
-
     describe('Game State Validation', () => {
       it('should return 400 when game has started', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'playing' });
-        await createRealDataStoreFromScenario(scenario).initDb();
+        await setupGameWithPhrases({ 
+          gameCode, 
+          gameStatus: 'playing' 
+        });
 
-        const response = await request(app)
-          .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
+        const response = await api
+          .deletePhrase('phrase-1', 'player-1')
           .expect(400);
 
         expectGameAlreadyStarted(response);
       });
     });
 
-    describe('Valid phrase deletion', () => {
-      let scenario: ReturnType<typeof createGameScenario>;
-
-      beforeEach(() => {
-        scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
-      });
-
-      it('should delete phrase successfully when player owns it', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+    describe('Valid phrase deletion', () => {      it('should delete phrase successfully when player owns it', async () => {
+        const { scenario, store } = await setupGameWithPhrases({ 
+          gameCode 
+        });
       
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
-        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Phrase 2');
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
         await store.addPhrase(p1Phrase);
         await store.addPhrase(p2Phrase);
 
-        const response = await request(app)
-          .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p1Phrase.player_id}`)
+        await api
+          .deletePhrase(p1Phrase.id, p1Phrase.player_id)
           .expect(200);
       });
 
       it('should delete phrase successfully when host deletes it', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+        const { scenario, store } = await setupGameWithPhrases({ 
+          gameCode 
+        });
         
         const playerId = scenario.hostPlayer.id === scenario.players[0]?.id ? scenario.players[1]?.id : scenario.players[0]?.id;
         const p1Phrase = phraseFactory.create(gameCode, playerId as string, 'Phrase 1');
         const p2Phrase = phraseFactory.create(gameCode, scenario.hostPlayer.id as string, 'Phrase 2');
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
         await store.addPhrase(p1Phrase);
         await store.addPhrase(p2Phrase);
 
-        const response = await request(app)
-          .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${scenario.hostPlayer.id}`)
+        const response = await api
+          .deletePhrase(p1Phrase.id, scenario.hostPlayer.id)
           .expect(200);
 
         expect(response.body.message).toBe('Phrase deleted successfully');
-      });
-
-      it('should return 403 when non-owner, non-host tries to delete', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
+      });      it('should return 403 when non-owner, non-host tries to delete', async () => {
+        const { scenario, store } = await setupGameWithPhrases({ 
+          gameCode 
+        });
       
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
-        const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
+        const p2Phrase = phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Phrase 2');
 
-        const store = await createRealDataStoreFromScenario(scenario).initDb();
         await store.addPhrase(p1Phrase);
         await store.addPhrase(p2Phrase);
 
-        const response = await request(app)
-          .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p2Phrase.player_id}`)
+        const response = await api
+          .deletePhrase(p1Phrase.id, p2Phrase.player_id)
           .expect(403);
 
         expect(response.body.error).toBe('You can only delete your own phrases, or phrases as the game host');
       });
 
       it('should return 404 for non-existent phrase', async () => {
-        const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
-      
-        const store = await createRealDataStoreFromScenario(scenario)
-            .initDb();
+        const { scenario } = await setupGameWithPhrases({ 
+          gameCode 
+        });
 
-        const response = await request(app)
-          .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=${scenario.players[0]?.id}`)
+        const response = await api
+          .deletePhrase('phrase-1', scenario.players[0]?.id as string)
           .expect(404);
 
         expect(response.body.error).toBe('Phrase not found');

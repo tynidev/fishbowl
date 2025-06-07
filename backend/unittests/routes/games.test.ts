@@ -2,15 +2,15 @@ import request from 'supertest';
 import {
   createGameScenario,
   resetAllMocks,
-} from '../test-helpers';
+} from '../test-helpers/test-helpers';
 import {
   playerFactory
-} from '../test-factories';
+} from '../test-helpers/test-factories';
 import {
   CreateGameRequest,
   JoinGameRequest
 } from '../../src/types/rest-api';
-import { createRealDataStoreFromScenario } from '../realDbUtils';
+import { createRealDataStoreFromScenario } from '../test-helpers/realDbUtils';
 import { app } from '../setupTests';
 
 describe('Games API', () => {
