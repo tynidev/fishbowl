@@ -2,7 +2,7 @@
 
 Device session endpoints manage device identification, session tracking, and connection monitoring across the Fishbowl application.
 
-[← Back to API Documentation](../documentation.md)
+[← Back to API Documentation](../README.md)
 
 ## Endpoints
 
