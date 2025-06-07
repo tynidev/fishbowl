@@ -2,7 +2,7 @@
 
 Game endpoints provide functionality for creating, configuring, and managing Fishbowl games.
 
-[← Back to API Documentation](../documentation.md)
+[← Back to API Documentation](../README.md)
 
 ## Endpoints
 
