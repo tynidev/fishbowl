@@ -100,12 +100,10 @@ import * as dbUtils from '../src/db/utils';
 import * as dbConnection from '../src/db/connection';
 import router from '../src/routes/index';
 
-// Mock the database modules
-jest.mock('../src/db/utils');
-jest.mock('../src/db/connection');
+// Update imports
+import { initializeTestDatabase } from '../src/db/init';
+import { withTransaction } from '../src/db/connection';
 
-export const mockedDbUtils = dbUtils as jest.Mocked<typeof dbUtils>;
-export const mockedDbConnection = dbConnection as jest.Mocked<typeof dbConnection>;
 /**
  * Setup Express app with game routes for testing
  */
@@ -120,31 +118,22 @@ export function setupTestApp(): Application {
  * Setup mock transaction for database operations
  */
 export function setupMockTransaction() {
-  const mockTransaction = {
-    db: {} as any,
-    commit: jest.fn(),
-    rollback: jest.fn(),
-    close: jest.fn(),
-    run: jest.fn(),
-    get: jest.fn(),
-    all: jest.fn(),
-    exec: jest.fn(),
-    serialize: jest.fn(),
-    isHealthy: jest.fn(),
-  } as any;
-
-  mockedDbConnection.withTransaction.mockImplementation(async (callback) => {
-    return await callback(mockTransaction);
-  });
-
-  return mockTransaction;
+  // No longer needed - using real transactions
+  return {};
 }
 
 /**
  * Reset all mocks - call this in beforeEach
  */
-export function resetAllMocks() {
-  setupMockTransaction();
+export async function resetAllMocks() {
+  // Clear all data from test database
+  await withTransaction(async (transaction) => {
+    await transaction.run('DELETE FROM phrases');
+    await transaction.run('DELETE FROM players');
+    await transaction.run('DELETE FROM teams');
+    await transaction.run('DELETE FROM games');
+  });
+  
   jest.clearAllMocks();
 }
 
@@ -327,7 +316,7 @@ export function createPlayerInTeam(options: PlayerInTeamOptions): Player {
     game_id: gameId,
     name: playerName,
     team_id: teamId,
-    is_connected: isConnected
+    is_connected: Boolean(isConnected)
   });
 }
 
@@ -367,4 +356,11 @@ export function expectPlayerNotInGame(response: any): void {
 export function expectGameAlreadyStarted(response: any): void {
   expect(response.status).toBe(400);
   expect(response.body.error).toMatch(/after game has started/);
+}
+
+/**
+ * Ensure the test database is initialized
+ */
+export async function ensureTestDatabase() {
+  await initializeTestDatabase();
 }

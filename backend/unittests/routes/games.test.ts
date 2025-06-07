@@ -1,9 +1,7 @@
 import request from 'supertest';
-import { Application } from 'express';
 import {
-  setupTestApp,
-  resetAllMocks,
   createGameScenario,
+  resetAllMocks,
 } from '../test-helpers';
 import {
   playerFactory
@@ -12,14 +10,13 @@ import {
   CreateGameRequest,
   JoinGameRequest
 } from '../../src/types/rest-api';
-import { createMockDataStoreFromScenario } from '../mockDbUtils';
+import { createRealDataStoreFromScenario } from '../realDbUtils';
+import { app } from '../setupTests';
 
 describe('Games API', () => {
-  let app: Application;
 
-  beforeEach(() => {
-    app = setupTestApp();
-    resetAllMocks();
+  beforeEach(async () => {
+    await resetAllMocks();
   });
 
   describe('POST /api/games', () => {
@@ -40,7 +37,7 @@ describe('Games API', () => {
       
       // For create game tests, we need to mock that no game exists initially
       // and that insert operations succeed - this is handled by the dynamic mocks
-      createMockDataStoreFromScenario(scenario).setupMocks();
+      await createRealDataStoreFromScenario(scenario).initDb();
 
       const response = await request(app)
         .post('/api/games')
@@ -67,7 +64,7 @@ describe('Games API', () => {
         gameCode: 'ABC123',
         gameStatus: 'waiting'
       });
-      createMockDataStoreFromScenario(scenario).setupMocks();
+      await createRealDataStoreFromScenario(scenario).initDb();
 
       const minimalRequest = {
         name: 'Test Game',
@@ -190,7 +187,7 @@ describe('Games API', () => {
           teamCount: 2,
           playerCount: 1
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
         
         const response = await request(app)
           .post(`/api/games/${gameCode}/join`)
@@ -230,9 +227,9 @@ describe('Games API', () => {
         existingPlayer.is_connected = false;
 
         // Add the existing player to the scenario's data store
-        createMockDataStoreFromScenario(scenario)
-          .addPlayer(existingPlayer)
-          .setupMocks();
+        await (await createRealDataStoreFromScenario(scenario)
+          .initDb())
+          .addPlayer(existingPlayer);
 
         const response = await request(app)
           .post(`/api/games/${gameCode}/join`)
@@ -260,7 +257,7 @@ describe('Games API', () => {
         const scenario = createGameScenario({
           gameCode: 'DIFFERENT_CODE' // Different game code so it won't be found
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .post(`/api/games/${gameCode}/join`)
@@ -275,7 +272,7 @@ describe('Games API', () => {
           gameCode,
           gameStatus: 'finished'
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .post(`/api/games/${gameCode}/join`)
@@ -326,7 +323,7 @@ describe('Games API', () => {
         teamCount: 2,
         playerCount: 2
       });
-      createMockDataStoreFromScenario(scenario).setupMocks();
+      await createRealDataStoreFromScenario(scenario).initDb();
 
       const response = await request(app)
         .get(`/api/games/${gameCode}`)
@@ -360,7 +357,7 @@ describe('Games API', () => {
       const scenario = createGameScenario({
         gameCode: 'DIFFERENT_CODE' // Different game code so it won't be found
       });
-      createMockDataStoreFromScenario(scenario).setupMocks();
+      await createRealDataStoreFromScenario(scenario).initDb();
 
       const response = await request(app)
         .get(`/api/games/${gameCode}`)

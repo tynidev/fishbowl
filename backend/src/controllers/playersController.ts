@@ -189,14 +189,12 @@ export async function getGamePlayers(req: Request, res: Response): Promise<void>
       where: [{ field: 'game_id', operator: '=', value: gameCode }],
     });
 
-    const teamMap = new Map(teams.map(team => [team.id, team]));
-
-    const playerInfos: PlayerInfo[] = players.map(player => ({
+    const teamMap = new Map(teams.map(team => [team.id, team]));    const playerInfos: PlayerInfo[] = players.map(player => ({
       id: player.id,
       name: player.name,
       teamId: player.team_id,
       teamName: player.team_id ? teamMap.get(player.team_id)?.name : undefined,
-      isConnected: player.is_connected,
+      isConnected: Boolean(player.is_connected),
       joinedAt: player.created_at,
     }));
 

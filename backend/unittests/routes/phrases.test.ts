@@ -1,26 +1,23 @@
 import request from 'supertest';
-import { Application } from 'express';
 import {
-  setupTestApp,
-  resetAllMocks,
   createGameScenario,
   expectGameAlreadyStarted,
   expectInvalidGameCode,
   expectPlayerNotInGame,
+  resetAllMocks,
 } from '../test-helpers';
 import {
   SubmitPhrasesRequest,
   UpdatePhraseRequest
 } from '../../src/types/rest-api';
 import { phraseFactory, playerFactory } from '../test-factories';
-import { createMockDataStoreFromScenario } from '../mockDbUtils';
+import { createRealDataStoreFromScenario } from '../realDbUtils';
+import { app } from '../setupTests';
 
 describe('Phrases API', () => {
-  let app: Application;
 
-  beforeEach(() => {
-    app = setupTestApp();
-    resetAllMocks();
+  beforeEach(async () => {
+    await resetAllMocks();
   });
 
   describe('POST /api/games/:gameCode/phrases', () => {
@@ -34,8 +31,7 @@ describe('Phrases API', () => {
           playerCount: 2,
           gameStatus: 'phrase_submission'
         });
-        const store = createMockDataStoreFromScenario(scenario)
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
           
         const response = await request(app)
           .post('/api/games/INVALID/phrases')
@@ -54,8 +50,7 @@ describe('Phrases API', () => {
           playerCount: 2,
           gameStatus: 'playing'
         });
-        const store = createMockDataStoreFromScenario(scenario)
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .post(`/api/games/${gameCode}/phrases`)
@@ -69,15 +64,14 @@ describe('Phrases API', () => {
     describe('Valid phrase submission', () => {
       let scenario: ReturnType<typeof createGameScenario>;
 
-      beforeEach(() => {
+      beforeEach(async () => {
         scenario = createGameScenario({
           gameCode: gameCode,
           teamCount: 2,
           playerCount: 2,
           gameStatus: 'phrase_submission'
         });
-        const store = createMockDataStoreFromScenario(scenario)
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
       });
 
       it('should submit multiple phrases successfully', async () => {
@@ -148,10 +142,10 @@ describe('Phrases API', () => {
       it('should return 400 when exceeding phrase limit', async () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-        const store = createMockDataStoreFromScenario(scenario)
-          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'))
-          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 2'))
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'));
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 2'));
+          
         
         const response = await request(app)
           .post(`/api/games/${gameCode}/phrases`)
@@ -164,9 +158,8 @@ describe('Phrases API', () => {
       it('should return 400 for duplicate phrases', async () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-        const store = createMockDataStoreFromScenario(scenario)
-          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'))
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'));
 
         const response = await request(app)
           .post(`/api/games/${gameCode}/phrases`)
@@ -181,10 +174,9 @@ describe('Phrases API', () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
         const wrongPlayer = playerFactory.connected('other-game', 'team-1', 'Wrong Player');
 
-        const store = createMockDataStoreFromScenario(scenario)
-          .addPlayer(wrongPlayer)
-          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'))
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPlayer(wrongPlayer);
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Existing Phrase 1'));
 
         const response = await request(app)
           .post(`/api/games/${gameCode}/phrases`)
@@ -213,10 +205,9 @@ describe('Phrases API', () => {
       it('should return phrases for host player', async () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-        const store = createMockDataStoreFromScenario(scenario)
-          .addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'))
-          .addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'))
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'));
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'));
 
         const response = await request(app)
           .get(`/api/games/${gameCode}/phrases?playerId=${scenario.hostPlayer.id}`)
@@ -240,10 +231,9 @@ describe('Phrases API', () => {
       it('should return 403 for non-host player', async () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' , playerCount: 2 , teamCount: 2, phrasesPerPlayer: 2 });
 
-        const store = createMockDataStoreFromScenario(scenario)
-          .addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'))
-          .addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'))
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Test Phrase 1'));
+        await store.addPhrase(phraseFactory.create(gameCode, scenario.players[1]?.id as string, 'Test Phrase 2'));
 
         const response = await request(app)
           .get(`/api/games/${gameCode}/phrases?playerId=${scenario.players[1]!.id}`)
@@ -254,7 +244,7 @@ describe('Phrases API', () => {
 
       it('should return 400 for missing player ID', async () => {
         const scenario = createGameScenario({ gameCode });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .get(`/api/games/${gameCode}/phrases`)
@@ -285,10 +275,9 @@ describe('Phrases API', () => {
         playerCount: 2
       });        
       
-      const store = createMockDataStoreFromScenario(scenario)
-          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 1'))
-          .addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 2'))
-          .setupMocks();
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
+      await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 1'));
+      await store.addPhrase(phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 2'));
 
       const response = await request(app)
         .get(`/api/games/${gameCode}/phrases/status`)
@@ -323,7 +312,7 @@ describe('Phrases API', () => {
     describe('Game State Validation', () => {
       it('should return 400 when game has started', async () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'playing' });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .put(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
@@ -339,9 +328,8 @@ describe('Phrases API', () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
       
         const phrase = phraseFactory.create(gameCode, scenario.hostPlayer.id, 'Phrase 1');
-        const store = createMockDataStoreFromScenario(scenario)
-          .addPhrase(phrase)
-          .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(phrase);
 
         const updateRequest: UpdatePhraseRequest = { text: 'Updated Phrase Text' };
 
@@ -363,10 +351,9 @@ describe('Phrases API', () => {
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
         const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-        const store = createMockDataStoreFromScenario(scenario)
-            .addPhrase(p1Phrase)
-            .addPhrase(p2Phrase)
-            .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(p1Phrase);
+        await store.addPhrase(p2Phrase);
 
         const response = await request(app)
           .put(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p2Phrase.player_id}`)
@@ -382,10 +369,9 @@ describe('Phrases API', () => {
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
         const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-        const store = createMockDataStoreFromScenario(scenario)
-            .addPhrase(p1Phrase)
-            .addPhrase(p2Phrase)
-            .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(p1Phrase);
+        await store.addPhrase(p2Phrase);
 
         const response = await request(app)
           .put(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p1Phrase.player_id}`)
@@ -404,7 +390,7 @@ describe('Phrases API', () => {
     describe('Game State Validation', () => {
       it('should return 400 when game has started', async () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'playing' });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=player-1`)
@@ -427,10 +413,9 @@ describe('Phrases API', () => {
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
         const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-        const store = createMockDataStoreFromScenario(scenario)
-            .addPhrase(p1Phrase)
-            .addPhrase(p2Phrase)
-            .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(p1Phrase);
+        await store.addPhrase(p2Phrase);
 
         const response = await request(app)
           .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p1Phrase.player_id}`)
@@ -444,10 +429,9 @@ describe('Phrases API', () => {
         const p1Phrase = phraseFactory.create(gameCode, playerId as string, 'Phrase 1');
         const p2Phrase = phraseFactory.create(gameCode, scenario.hostPlayer.id as string, 'Phrase 2');
 
-        const store = createMockDataStoreFromScenario(scenario)
-            .addPhrase(p1Phrase)
-            .addPhrase(p2Phrase)
-            .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(p1Phrase);
+        await store.addPhrase(p2Phrase);
 
         const response = await request(app)
           .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${scenario.hostPlayer.id}`)
@@ -462,10 +446,9 @@ describe('Phrases API', () => {
         const p1Phrase = phraseFactory.create(gameCode, scenario.players[0]?.id as string, 'Phrase 1');
         const p2Phrase = phraseFactory.create(gameCode, scenario.players[2]?.id as string, 'Phrase 2');
 
-        const store = createMockDataStoreFromScenario(scenario)
-            .addPhrase(p1Phrase)
-            .addPhrase(p2Phrase)
-            .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario).initDb();
+        await store.addPhrase(p1Phrase);
+        await store.addPhrase(p2Phrase);
 
         const response = await request(app)
           .delete(`/api/games/${gameCode}/phrases/${p1Phrase.id}?playerId=${p2Phrase.player_id}`)
@@ -477,8 +460,8 @@ describe('Phrases API', () => {
       it('should return 404 for non-existent phrase', async () => {
         const scenario = createGameScenario({ gameCode, gameStatus: 'phrase_submission' });
       
-        const store = createMockDataStoreFromScenario(scenario)
-            .setupMocks();
+        const store = await createRealDataStoreFromScenario(scenario)
+            .initDb();
 
         const response = await request(app)
           .delete(`/api/games/${gameCode}/phrases/${phraseId}?playerId=${scenario.players[0]?.id}`)

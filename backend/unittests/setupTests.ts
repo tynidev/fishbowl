@@ -1,6 +1,12 @@
 // Test setup file for backend
 // This file is executed before each test file
 
+import { Application } from "express";
+import { initializeTestDatabase } from "../src/db/init";
+import { resetAllMocks, setupTestApp } from "./test-helpers";
+
+let app: Application;
+
 // Mock console methods to reduce noise in test output
 const originalConsole = {
   log: console.log,
@@ -11,7 +17,7 @@ const originalConsole = {
   trace: console.trace
 };
 
-beforeAll(() => {
+beforeAll(async () => {
   // Suppress console output during tests unless VERBOSE is set
   if (!process.env.VERBOSE) {
     // Replace with silent mock functions
@@ -24,6 +30,10 @@ beforeAll(() => {
     // Keep console.error for actual test failures, but you can uncomment to suppress it too
     console.error = jest.fn();
   }
+
+  // Initialize test database
+  await initializeTestDatabase();
+  app = setupTestApp();
 });
 
 afterAll(() => {
@@ -41,3 +51,5 @@ afterAll(() => {
 // Set test environment variables
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = ':memory:'; // Use in-memory SQLite for tests
+
+export { app }; // Export the app for use in tests

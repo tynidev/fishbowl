@@ -1,24 +1,19 @@
 import request from 'supertest';
-import { Application } from 'express';
 import {
-  setupTestApp,
-  resetAllMocks,
   createGameScenario,
   expectInvalidGameCode,
   expectGameNotFound,
-  expectGameAlreadyStarted
+  expectGameAlreadyStarted,
+  resetAllMocks
 } from '../test-helpers';
-import { gameFactory } from '../test-factories';
 import { UpdateConfigRequest } from '../../src/types/rest-api';
-import { createMockDataStoreFromScenario } from '../mockDbUtils';
+import { createRealDataStoreFromScenario } from '../realDbUtils';
+import { app } from '../setupTests';
 
 describe('Game Configuration API', () => {
-  let app: Application;
-  let mockTransaction: any;
 
-  beforeEach(() => {
-    app = setupTestApp();
-    resetAllMocks();
+  beforeEach(async () => {
+    await resetAllMocks();
   });
 
   describe('PUT /api/games/:gameCode/config', () => {
@@ -43,7 +38,7 @@ describe('Game Configuration API', () => {
         const scenario = createGameScenario({
           gameCode: 'DIFFERENT_CODE' // Different game code so it won't be found
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .put(`/api/games/${gameCode}/config`)
@@ -58,7 +53,7 @@ describe('Game Configuration API', () => {
           gameCode: gameCode.toUpperCase(),
           gameStatus: 'waiting'
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .put('/api/games/abc123/config')
@@ -74,7 +69,7 @@ describe('Game Configuration API', () => {
           gameCode,
           gameStatus: 'playing'
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .put(`/api/games/${gameCode}/config`)
@@ -88,7 +83,7 @@ describe('Game Configuration API', () => {
           gameCode,
           gameStatus: 'finished'
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
 
         const response = await request(app)
           .put(`/api/games/${gameCode}/config`)
@@ -101,13 +96,13 @@ describe('Game Configuration API', () => {
     describe('Successful Configuration Updates', () => {
       let scenario: ReturnType<typeof createGameScenario>;
 
-      beforeEach(() => {
+      beforeEach(async () => {
         scenario = createGameScenario({
           gameCode,
           gameStatus: 'waiting',
           playerCount: 1
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
       });
 
       it('should update game configuration successfully', async () => {
@@ -127,12 +122,12 @@ describe('Game Configuration API', () => {
     describe('Configuration Validation', () => {
       let scenario: ReturnType<typeof createGameScenario>;
 
-      beforeEach(() => {
+      beforeEach(async () => {
         scenario = createGameScenario({
           gameCode,
           gameStatus: 'waiting'
         });
-        createMockDataStoreFromScenario(scenario).setupMocks();
+        await createRealDataStoreFromScenario(scenario).initDb();
       });
 
       it('should return 400 for invalid team count (too high)', async () => {

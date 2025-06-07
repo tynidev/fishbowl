@@ -1,5 +1,18 @@
 // Basic test to verify Jest setup for backend
+import { initializeTestDatabase } from '../src/db/init';
+
 describe('Backend Test Setup', () => {
+  beforeAll(async () => {
+    // Initialize test database before running any tests
+    await initializeTestDatabase();
+  });
+
+  afterAll(async () => {
+    // Clean up database connections
+    const { cleanup } = await import('../src/db');
+    await cleanup();
+  });
+
   it('should pass a basic test', () => {
     expect(true).toBe(true);
   });

@@ -113,7 +113,7 @@ function transformPlayer(player: Player): PlayerInfoResponse {
     name: player.name,
     gameId: player.game_id,
     teamId: player.team_id || null,
-    isConnected: player.is_connected,
+    isConnected: Boolean(player.is_connected),
   };
 }
 

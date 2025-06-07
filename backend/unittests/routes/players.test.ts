@@ -1,21 +1,17 @@
 import request from 'supertest';
-import { Application } from 'express';
 import {
-  setupTestApp,
-  resetAllMocks,
-  createMockGame,
   createMockTeam,
   createGameScenario,
+  resetAllMocks,
 } from '../test-helpers';
 import { playerFactory } from '../test-factories';
-import { createMockDataStoreFromScenario } from '../mockDbUtils';
+import { app } from '../setupTests';
+import { createRealDataStoreFromScenario } from '../realDbUtils';
 
 describe('Players API', () => {
-  let app: Application;
 
-  beforeEach(() => {
-    app = setupTestApp();
-    resetAllMocks();
+  beforeEach(async () => {
+    await resetAllMocks();
   });
 
   describe('GET /api/games/:gameCode/players', () => {
@@ -28,8 +24,7 @@ describe('Players API', () => {
         playerCount: 2,
         gameStatus: 'waiting'
       });
-      const store = createMockDataStoreFromScenario(scenario)
-        .setupMocks();
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
 
       const response = await request(app)
         .get(`/api/games/${gameCode}/players`)
@@ -41,6 +36,14 @@ describe('Players API', () => {
       // Verify specific player data structure
       expect(response.body.players).toEqual(
         expect.arrayContaining([
+          expect.objectContaining({
+            id: expect.any(String),
+            name: 'Host Player',
+            teamId: expect.any(String),
+            teamName: expect.any(String),
+            isConnected: expect.any(Boolean),
+            joinedAt: expect.any(String)
+          }),
           expect.objectContaining({
             id: expect.any(String),
             name: expect.any(String),
@@ -66,12 +69,11 @@ describe('Players API', () => {
           gameStatus: 'waiting',
         });
 
-      const store = createMockDataStoreFromScenario(scenario)
-        .addPlayer(connectedPlayer)
-        .addPlayer(disconnectedPlayer)
-        .addTeam(createMockTeam({ id: 'team-1', game_id: gameCode, name: 'Team 1', color: '#FF0000' }))
-        .addTeam(createMockTeam({ id: 'team-2', game_id: gameCode, name: 'Team 2', color: '#0000FF' }))
-        .setupMocks();
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
+      await store.addPlayer(connectedPlayer);
+      await store.addPlayer(disconnectedPlayer);
+      await store.addTeam(createMockTeam({ id: 'team-1', game_id: gameCode, name: 'Team 1', color: '#FF0000' }));
+      await store.addTeam(createMockTeam({ id: 'team-2', game_id: gameCode, name: 'Team 2', color: '#0000FF' }));
 
       const response = await request(app)
         .get(`/api/games/${gameCode}/players`)
@@ -92,7 +94,7 @@ describe('Players API', () => {
           gameStatus: 'waiting'
         });
       
-      const store = createMockDataStoreFromScenario(scenario).setupMocks();
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
 
       const response = await request(app)
         .get(`/api/games/${gameCode}/players`)
@@ -121,7 +123,7 @@ describe('Players API', () => {
           gameStatus: 'waiting'
         });
       
-      const store = createMockDataStoreFromScenario(scenario).setupMocks();
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
 
       const response = await request(app)
         .get(`/api/games/XXXXXX/players`)

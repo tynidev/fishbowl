@@ -587,7 +587,7 @@ async function sendGameStateToPlayer(
         id: player.id,
         name: player.name,
         teamId: player.team_id,
-        isConnected: player.is_connected,
+        isConnected: Boolean(player.is_connected),
         joinedAt: player.created_at,
       })),
     });
