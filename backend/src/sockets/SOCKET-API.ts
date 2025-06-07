@@ -137,6 +137,7 @@ export async function handleJoinGameRoom(
 
       // Create or update device session
       await createOrUpdateDeviceSession(
+        transaction,
         deviceId,
         socket.id,
         playerId,
@@ -165,7 +166,7 @@ export async function handleJoinGameRoom(
           existingSocket.disconnect();
 
           // Deactivate the old session
-          await deactivateDeviceSessionBySocket(existingSocketId);
+          await deactivateDeviceSessionBySocket(transaction, existingSocketId);
         }
         // Clean up old connection data
         connectedPlayers.delete(existingSocketId);
@@ -339,7 +340,7 @@ export async function handleDisconnect(
     if (playerConnection) {
       await withTransaction(async transaction => {
         // Deactivate device session
-        await deactivateDeviceSessionBySocket(socket.id);
+        await deactivateDeviceSessionBySocket(transaction, socket.id);
 
         // Update player connection status in database
         await update(
@@ -646,7 +647,7 @@ export function getPlayerSocket(
 /**
  * Register all Socket.IO event handlers
  */
-export function registerSocketHandlers(io: SocketIOServer): void {
+export function registerSocketHandlers(io: SocketIOServer, cleanup: boolean = true): void {
   io.on('connection', (socket: Socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
@@ -749,6 +750,7 @@ export function registerSocketHandlers(io: SocketIOServer): void {
     );
   });
 
+  if(!cleanup) return;
   // Start periodic cleanup of stale sessions (every 30 minutes)
   setInterval(
     async () => {

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { insert, select, update, deleteRecords } from '../db/utils';
 import { DeviceSession } from '../db/schema';
-import { withTransaction } from '../db/connection';
+import { TransactionConnection, withTransaction } from '../db/connection';
 
 // ==================== Device Session Management ====================
 
@@ -16,80 +16,79 @@ export function generateDeviceId(): string {
  * Create or update a device session
  */
 export async function createOrUpdateDeviceSession(
+  transaction: TransactionConnection,
   deviceId: string,
   socketId: string,
   playerId?: string,
-  gameId?: string
+  gameId?: string,
 ): Promise<DeviceSession> {
-  return await withTransaction(async transaction => {
-    const sessionId = uuidv4();
-    const now = new Date().toISOString();
+  const sessionId = uuidv4();
+  const now = new Date().toISOString();
 
-    // Check if a session already exists for this device and game
-    let existingSession: DeviceSession | null = null;
+  // Check if a session already exists for this device and game
+  let existingSession: DeviceSession | null = null;
 
-    if (gameId) {
-      const sessions = await select<DeviceSession>(
-        'device_sessions',
-        {
-          where: [
-            { field: 'device_id', operator: '=', value: deviceId },
-            { field: 'game_id', operator: '=', value: gameId },
-          ],
-        },
-        transaction
-      );
+  if (gameId) {
+    const sessions = await select<DeviceSession>(
+      'device_sessions',
+      {
+        where: [
+          { field: 'device_id', operator: '=', value: deviceId },
+          { field: 'game_id', operator: '=', value: gameId },
+        ],
+      },
+      transaction
+    );
 
-      existingSession = sessions.length > 0 && sessions[0] ? sessions[0] : null;
-    }
+    existingSession = sessions.length > 0 && sessions[0] ? sessions[0] : null;
+  }
 
-    if (existingSession) {
-      // Update existing session
-      await update(
-        'device_sessions',
-        {
-          socket_id: socketId,
-          player_id:
-            playerId !== undefined ? playerId : existingSession.player_id,
-          last_seen: now,
-          is_active: true,
-        },
-        [{ field: 'id', operator: '=', value: existingSession.id }],
-        transaction
-      );
-
-      return {
-        ...existingSession,
+  if (existingSession) {
+    // Update existing session
+    await update(
+      'device_sessions',
+      {
         socket_id: socketId,
         player_id:
           playerId !== undefined ? playerId : existingSession.player_id,
         last_seen: now,
         is_active: true,
-        updated_at: now,
-      } as DeviceSession;
-    } else {
-      // Create new session
-      const newSession: DeviceSession = {
-        id: sessionId,
-        device_id: deviceId,
-        socket_id: socketId,
-        last_seen: now,
-        is_active: true,
-        created_at: now,
-        updated_at: now,
-      };
+      },
+      [{ field: 'id', operator: '=', value: existingSession.id }],
+      transaction
+    );
 
-      if (playerId) {
-        newSession.player_id = playerId;
-      }
-      if (gameId) {
-        newSession.game_id = gameId;
-      }
+    return {
+      ...existingSession,
+      socket_id: socketId,
+      player_id:
+        playerId !== undefined ? playerId : existingSession.player_id,
+      last_seen: now,
+      is_active: true,
+      updated_at: now,
+    } as DeviceSession;
+  } else {
+    // Create new session
+    const newSession: DeviceSession = {
+      id: sessionId,
+      device_id: deviceId,
+      socket_id: socketId,
+      last_seen: now,
+      is_active: true,
+      created_at: now,
+      updated_at: now,
+    };
 
-      await insert('device_sessions', newSession, transaction);
-      return newSession;
+    if (playerId) {
+      newSession.player_id = playerId;
     }
-  });
+    if (gameId) {
+      newSession.game_id = gameId;
+    }
+
+    await insert('device_sessions', newSession, transaction);
+    return newSession;
+  }
 }
 
 /**
@@ -212,20 +211,19 @@ export async function deactivateDeviceSession(
  * Deactivate device session by socket ID
  */
 export async function deactivateDeviceSessionBySocket(
+  transaction: TransactionConnection,
   socketId: string
 ): Promise<void> {
-  await withTransaction(async transaction => {
-    await update(
-      'device_sessions',
-      {
-        is_active: false,
-        socket_id: null,
-        last_seen: new Date().toISOString(),
-      },
-      [{ field: 'socket_id', operator: '=', value: socketId }],
-      transaction
-    );
-  });
+  await update(
+    'device_sessions',
+    {
+      is_active: false,
+      socket_id: null,
+      last_seen: new Date().toISOString(),
+    },
+    [{ field: 'socket_id', operator: '=', value: socketId }],
+    transaction
+  );
 }
 
 /**
