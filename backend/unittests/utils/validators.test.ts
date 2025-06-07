@@ -7,7 +7,7 @@ import {
   validatePlayerName,
   validatePhrase,
   validatePhrases
-} from '../src/utils/validators';
+} from '../../src/utils/validators';
 
 describe('validateGameConfig', () => {  // Test data for valid configurations
   const validConfigs = [
