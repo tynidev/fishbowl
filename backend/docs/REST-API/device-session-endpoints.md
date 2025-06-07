@@ -176,4 +176,4 @@ Administrative endpoint to cleanup stale and old sessions.
 - [Player Endpoints](./player-endpoints.md) - Players linked to device sessions
 - [WebSocket API](../sockets/SOCKET-API.md) - Real-time connection management
 
-[← Back to API Documentation](../documentation.md)
+[← Back to API Documentation](../README.md)
