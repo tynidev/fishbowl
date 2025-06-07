@@ -16,7 +16,7 @@ For comprehensive API documentation, see [documentation.md](./documentation.md)
 
 ## Quick Links
 
-- 📖 [Complete API Documentation](../../docs/documentation.md)
+- 📖 [Complete API Documentation](../../docs/README.md)
 - 🎮 [Game Endpoints](../../docs/REST-API/game-endpoints.md)
 - 👥 [Player Endpoints](../../docs/REST-API/player-endpoints.md)
 - 📝 [Phrase Endpoints](../../docs/REST-API/phrase-endpoints.md)
