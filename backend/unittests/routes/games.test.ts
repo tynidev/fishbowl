@@ -67,7 +67,8 @@ describe('Games API', () => {
     it('should use default values for optional parameters', async () => {
       const scenario = createGameScenario({
         gameCode: 'ABC123',
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -189,6 +190,7 @@ describe('Games API', () => {
         const scenario = createGameScenario({
           gameCode,
           gameStatus: 'setup',
+          gameSubStatus: 'waiting_for_players',
           teamCount: 2,
           playerCount: 1
         });
@@ -216,6 +218,7 @@ describe('Games API', () => {
         const scenario = createGameScenario({
           gameCode,
           gameStatus: 'setup',
+          gameSubStatus: 'waiting_for_players',
           teamCount: 2,
           playerCount: 2
         });
@@ -326,6 +329,7 @@ describe('Games API', () => {
       const scenario = createGameScenario({
         gameCode,
         gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players',
         teamCount: 2,
         playerCount: 2
       });

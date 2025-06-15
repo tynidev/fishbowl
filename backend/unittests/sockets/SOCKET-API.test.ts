@@ -67,8 +67,11 @@ describe("SOCKET-API Tests", () => {
     describe("handleJoinGameRoom Tests", () => {
         // 4. Test successful game room join
         test("should allow a player to successfully join a game room and receive correct events", async () => {
-            // 4.1. Create game scenario with `createGameSetup` factory
-            const gameSetup = factories.createGameSetup({}); // Use default config
+            // 4.1. Create game scenario with `createGameSetup` factory with specific sub-status
+            const gameSetup = factories.createGameSetup({
+                gameStatus: 'setup',
+                gameSubStatus: 'waiting_for_players'
+            });
             const { game, players } = gameSetup;
 
             // Setup database with `createRealDataStoreFromScenario`
@@ -251,6 +254,35 @@ describe("SOCKET-API Tests", () => {
         clientSocket.emit('join-gameroom', otherPlayerPayload);
 
         await expectErrorEvent(clientSocket, "Player not found in this game. Make sure to join via REST API first.");
+    });
+
+    // Test with different game sub-status to demonstrate new gameSubStatus parameter
+    test("should allow player to join game with specific sub-status (ready_to_start)", async () => {
+        // Create game setup with specific sub-status using new gameSubStatus parameter
+        const gameSetup = factories.createGameSetup({
+            gameStatus: 'setup',
+            gameSubStatus: 'ready_to_start'
+        });
+        const { game, players } = gameSetup;
+
+        // Setup database
+        await createRealDataStoreFromScenario(gameSetup).initDb();
+
+        const joinPayload = {
+            gameCode: game.id,
+            playerId: players[0]!.id,
+            playerName: players[0]!.name,
+            deviceId: "test-device-ready-to-start",
+        };
+
+        // Connect player to the game room
+        clientSocket.emit('join-gameroom', joinPayload);
+
+        // Wait for join completion
+        await hasJoinedGame(clientSocket, game, players, joinPayload);
+
+        // Verify the game has the correct sub-status
+        expect(game.sub_status).toBe('ready_to_start');
     });
 
     // 5.4. Test with invalid player ID for game

@@ -82,7 +82,8 @@ describe('Game Configuration API', () => {
       it('should return 400 when game is in finished state', async () => {
         const scenario = createGameScenario({
           gameCode,
-          gameStatus: 'finished'
+          gameStatus: 'finished',
+          gameSubStatus: 'game_complete'
         });
         await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -101,6 +102,7 @@ describe('Game Configuration API', () => {
         scenario = createGameScenario({
           gameCode,
           gameStatus: 'setup',
+          gameSubStatus: 'waiting_for_players',
           playerCount: 1
         });
         await createRealDataStoreFromScenario(scenario).initDb();
@@ -126,7 +128,8 @@ describe('Game Configuration API', () => {
       beforeEach(async () => {
         scenario = createGameScenario({
           gameCode,
-          gameStatus: 'setup'
+          gameStatus: 'setup',
+          gameSubStatus: 'waiting_for_players'
         });
         await createRealDataStoreFromScenario(scenario).initDb();
       });

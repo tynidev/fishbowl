@@ -39,7 +39,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 2,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -136,7 +137,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0, // No players in the game
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -354,7 +356,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0, // No players initially
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -377,7 +380,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -398,7 +402,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -525,7 +530,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -561,7 +567,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 3,
         playerCount: 1, // Only the host player initially
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -618,7 +625,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 3,
         playerCount: 0,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -644,7 +652,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -665,7 +674,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -687,7 +697,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 3,
         playerCount: 0,
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -737,7 +748,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 1, // Only the host player initially
-        gameStatus: 'setup'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 

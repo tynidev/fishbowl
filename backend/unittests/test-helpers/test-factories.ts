@@ -355,6 +355,7 @@ export const phraseFactory = {
  */
 export function createGameSetup(config: {
   gameStatus?: Game['status'];
+  gameSubStatus?: Game['sub_status'];
   teamCount?: number;
   playersPerTeam?: number;
   phrasesPerPlayer?: number;
@@ -364,10 +365,31 @@ export function createGameSetup(config: {
     phrasesPerPlayer: config.phrasesPerPlayer || 5,
     timerDuration: 60
   };
-  const game = gameFactory.withConfig(gameConfig, { 
+
+  // Determine sub_status: use provided gameSubStatus if available, otherwise determine based on main status
+  let subStatus: Game['sub_status'];
+  if (config.gameSubStatus) {
+    subStatus = config.gameSubStatus;
+  } else {
+    const gameStatus = config.gameStatus || 'setup';
+    switch (gameStatus) {
+      case 'setup':
+        subStatus = 'waiting_for_players';
+        break;
+      case 'playing':
+        subStatus = 'turn_active';
+        break;
+      case 'finished':
+        subStatus = 'game_complete';
+        break;
+      default:
+        subStatus = 'waiting_for_players';
+    }
+  }
+
+  const game = gameFactory.withConfig(gameConfig, {
     status: config.gameStatus || 'setup',
-    sub_status: config.gameStatus === 'playing' ? 'turn_active' : 
-                config.gameStatus === 'finished' ? 'game_complete' : 'waiting_for_players'
+    sub_status: subStatus
   });
   
   const teams = teamFactory.createMultiple(game.id, gameConfig.teamCount);
