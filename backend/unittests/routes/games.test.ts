@@ -32,9 +32,10 @@ describe('Games API', () => {
       // Create a scenario to setup mocks for non-existence checks and insertions
       const scenario = createGameScenario({
         gameCode: 'ABC123',
-        gameStatus: 'waiting'
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players'
       });
-      
+
       // For create game tests, we need to mock that no game exists initially
       // and that insert operations succeed - this is handled by the dynamic mocks
       await createRealDataStoreFromScenario(scenario).initDb();
@@ -45,24 +46,28 @@ describe('Games API', () => {
         .expect(201);
 
       expect(response.body).toMatchObject({
-        gameCode: expect.any(String),
-        gameId: expect.any(String),
+        id: expect.any(String),
+        name: 'Test Game',
+        status: 'setup',
+        sub_status: 'waiting_for_players',
         hostPlayerId: expect.any(String),
-        config: {
-          name: 'Test Game',
-          teamCount: 2,
-          phrasesPerPlayer: 5,
-          timerDuration: 60
-        }
+        teamCount: 2,
+        phrasesPerPlayer: 5,
+        timerDuration: 60,
+        currentRound: 1,
+        currentTeam: 1,
+        playerCount: 1,
+        createdAt: expect.any(String),
+        startedAt: null
       });
 
-      expect(response.body.gameCode).toHaveLength(6);
+      expect(response.body.id).toHaveLength(6);
     });
 
     it('should use default values for optional parameters', async () => {
       const scenario = createGameScenario({
         gameCode: 'ABC123',
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -76,7 +81,7 @@ describe('Games API', () => {
         .send(minimalRequest)
         .expect(201);
 
-      expect(response.body.config).toMatchObject({
+      expect(response.body).toMatchObject({
         teamCount: 2,
         phrasesPerPlayer: 5,
         timerDuration: 60
@@ -183,12 +188,12 @@ describe('Games API', () => {
       it('should allow new player to join game successfully', async () => {
         const scenario = createGameScenario({
           gameCode,
-          gameStatus: 'waiting',
+          gameStatus: 'setup',
           teamCount: 2,
           playerCount: 1
         });
         await createRealDataStoreFromScenario(scenario).initDb();
-        
+
         const response = await request(app)
           .post(`/api/games/${gameCode}/join`)
           .send({
@@ -197,7 +202,7 @@ describe('Games API', () => {
 
         // Accept either 200 success or specific error codes for now
         expect([200, 400, 404, 500]).toContain(response.status);
-        
+
         // If it's successful, it should have basic structure
         if (response.status === 200) {
           expect(response.body).toHaveProperty('playerId');
@@ -210,7 +215,7 @@ describe('Games API', () => {
       it('should allow existing player to reconnect', async () => {
         const scenario = createGameScenario({
           gameCode,
-          gameStatus: 'waiting',
+          gameStatus: 'setup',
           teamCount: 2,
           playerCount: 2
         });
@@ -270,7 +275,8 @@ describe('Games API', () => {
       it('should return 400 for game that is not accepting players', async () => {
         const scenario = createGameScenario({
           gameCode,
-          gameStatus: 'finished'
+          gameStatus: 'finished',
+          gameSubStatus: 'game_complete'
         });
         await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -306,7 +312,7 @@ describe('Games API', () => {
 
       // Without scenario setup, this should either fail with 400, 404, or 500
       expect([400, 404, 500]).toContain(response.status);
-      
+
       if (response.status === 500) {
         expect(response.body.error).toBe('Failed to join game');
       }
@@ -319,7 +325,7 @@ describe('Games API', () => {
     it('should return game information successfully', async () => {
       const scenario = createGameScenario({
         gameCode,
-        gameStatus: 'waiting',
+        gameStatus: 'setup',
         teamCount: 2,
         playerCount: 2
       });
@@ -332,7 +338,7 @@ describe('Games API', () => {
       expect(response.body).toMatchObject({
         id: gameCode,
         name: 'Test Game',
-        status: 'waiting',
+        status: 'setup',
         hostPlayerId: scenario.hostPlayer.id,
         teamCount: 2,
         phrasesPerPlayer: 5,
@@ -373,7 +379,7 @@ describe('Games API', () => {
 
       // Without scenario setup, this should either fail with 404 or 500
       expect([404, 500]).toContain(response.status);
-      
+
       if (response.status === 500) {
         expect(response.body.error).toBe('Failed to get game information');
       }

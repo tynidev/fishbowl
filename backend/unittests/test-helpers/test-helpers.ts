@@ -21,8 +21,10 @@ export interface GameScenarioOptions {
   teamCount?: number;
   /** Number of players to create (default: 4) */
   playerCount?: number;
-  /** Game status (default: 'waiting') */
-  gameStatus?: 'waiting' | 'phrase_submission' | 'playing' | 'finished';
+  /** Game status (default: 'setup') */
+  gameStatus?: 'setup' | 'playing' | 'finished';
+  /** Game sub-status (default: determined by gameStatus) */
+  gameSubStatus?: Game['sub_status'];
   /** Game code (default: generated) */
   gameCode?: string;
   /** Game name (default: 'Test Game') */
@@ -126,11 +128,11 @@ export async function resetAllMocks() {
 /**
  * Create a mock game object for testing
  */
-export function createMockGame(overrides: Partial<Game> = {}): Game {
-  return {
+export function createMockGame(overrides: Partial<Game> = {}): Game {  return {
     id: 'ABC123',
     name: 'Test Game',
-    status: 'waiting',
+    status: 'setup',
+    sub_status: 'waiting_for_players',
     host_player_id: 'host-id',
     team_count: 2,
     phrases_per_player: 5,
@@ -215,7 +217,8 @@ export function createGameScenario(options: GameScenarioOptions = {}): GameScena
   const {
     teamCount = 2,
     playerCount = 4,
-    gameStatus = 'waiting',
+    gameStatus = 'setup',
+    gameSubStatus,
     gameCode = 'ABC123',
     gameName = 'Test Game',
     hostPlayerName = 'Host Player',
@@ -225,12 +228,32 @@ export function createGameScenario(options: GameScenarioOptions = {}): GameScena
     currentTeam = 1
   } = options;
 
+  // Determine sub_status: use provided gameSubStatus if available, otherwise determine based on main status
+  let subStatus: Game['sub_status'];
+  if (gameSubStatus) {
+    subStatus = gameSubStatus;
+  } else {
+    switch (gameStatus) {
+      case 'setup':
+        subStatus = 'waiting_for_players';
+        break;
+      case 'playing':
+        subStatus = 'turn_active';
+        break;
+      case 'finished':
+        subStatus = 'game_complete';
+        break;
+      default:
+        subStatus = 'waiting_for_players';
+    }
+  }
 
   // Create the game
   const game = createMockGame({
     id: gameCode,
     name: gameName,
     status: gameStatus,
+    sub_status: subStatus,
     team_count: teamCount,
     phrases_per_player: phrasesPerPlayer,
     timer_duration: timerDuration,

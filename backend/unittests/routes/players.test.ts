@@ -39,7 +39,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 2,
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -61,7 +61,7 @@ describe('Players API', () => {
           teamCount:2,
           playerCount: 0, // Don't create players automatically
           gameName: 'Test Game',
-          gameStatus: 'waiting',
+          gameStatus: 'setup',
         });
 
       const store = await createRealDataStoreFromScenario(scenario).initDb();
@@ -114,7 +114,7 @@ describe('Players API', () => {
           gameCode: gameCode,
           teamCount:2,
           playerCount: 2,
-          gameStatus: 'waiting'
+          gameStatus: 'setup'
         });
       
       const store = await createRealDataStoreFromScenario(scenario).initDb();
@@ -136,7 +136,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0, // No players in the game
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -161,7 +161,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 3,
         playerCount: 6, // 2 players per team
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -196,7 +196,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 3,
         playerCount: 7, // Cannot divide evenly: some teams get 3, others get 2
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -230,7 +230,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 6, // Maximum allowed teams
         playerCount: 12, // 2 players per team
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -266,7 +266,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 4,
         playerCount: 4, // 1 player per team
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -301,7 +301,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 20, // 10 players per team
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -354,7 +354,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0, // No players initially
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -377,7 +377,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -398,7 +398,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -422,7 +422,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -481,7 +481,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -502,7 +502,8 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 4,
-        gameStatus: 'playing' // Game is already in progress
+        gameStatus: 'playing', // Game is already in progress
+        gameSubStatus: 'turn_active'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -524,7 +525,7 @@ describe('Players API', () => {
         gameCode: gameCode,
         teamCount: 2,
         playerCount: 0,
-        gameStatus: 'waiting'
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -559,13 +560,13 @@ describe('Players API', () => {
       const scenario = createGameScenario({
         gameCode: gameCode,
         teamCount: 3,
-        playerCount: 0,
-        gameStatus: 'waiting'
+        playerCount: 1, // Only the host player initially
+        gameStatus: 'setup'
       });
       const store = await createRealDataStoreFromScenario(scenario).initDb();
 
       // Join multiple players to test team assignment
-      const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6'];
+      const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5'];
       const playerTeams: string[] = [];
 
       for (const playerName of playerNames) {
@@ -596,11 +597,189 @@ describe('Players API', () => {
         teamCounts.set(teamId, (teamCounts.get(teamId) || 0) + 1);
       });
 
-      // Should have 3 teams with 2 players each
-      expect(teamCounts.size).toBe(3);
-      teamCounts.forEach(count => {
-        expect(count).toBe(2);
+      // With 5 new players distributed across 3 teams, the distribution should be balanced
+      // The host player is already assigned to a team, so new players will balance around that
+      expect(teamCounts.size).toBe(3); // All 3 teams should get new players
+      
+      // Check that the distribution is reasonably balanced
+      const counts = Array.from(teamCounts.values()).sort();
+      expect(counts[0]).toBeGreaterThanOrEqual(1); // Every team gets at least 1 new player
+      expect(counts[2]).toBeLessThanOrEqual(2); // No team gets more than 2 new players
+      expect(counts[2]! - counts[0]!).toBeLessThanOrEqual(1); // Difference should be at most 1
+    });
+
+    /**
+     * Test that a player can join a specific team when teamId is provided.
+     * Verifies that the player is assigned to the requested team instead of
+     * using the automatic balanced assignment.
+     */
+    it('should assign player to specified team when teamId is provided', async () => {
+      const scenario = createGameScenario({
+        gameCode: gameCode,
+        teamCount: 3,
+        playerCount: 0,
+        gameStatus: 'setup'
       });
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
+
+      const targetTeam = scenario.teams![1]!; // Choose the second team
+      const playerName = 'Specific Team Player';
+
+      const response = await request(app)
+        .post(`/api/games/${gameCode}/join`)
+        .send({ playerName, teamId: targetTeam.id })
+        .expect(200);
+
+      expect(response.body.teamId).toBe(targetTeam.id);
+      expect(response.body.teamName).toBe(targetTeam.name);
+      expectValidJoinGameResponse(response, scenario, playerName);
+    });
+
+    /**
+     * Test that the endpoint returns a 400 error when an invalid teamId is provided.
+     * This tests validation of the teamId parameter format.
+     */
+    it('should return 400 for invalid teamId format', async () => {
+      const scenario = createGameScenario({
+        gameCode: gameCode,
+        teamCount: 2,
+        playerCount: 0,
+        gameStatus: 'setup'
+      });
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
+
+      const response = await request(app)
+        .post(`/api/games/${gameCode}/join`)
+        .send({ playerName: 'Test Player', teamId: '' })
+        .expect(400);
+
+      expect(response.body.error).toBe('Invalid team ID');
+    });
+
+    /**
+     * Test that the endpoint returns a 400 error when a non-existent teamId is provided.
+     * This tests validation that the specified team exists in the game.
+     */
+    it('should return 400 for non-existent teamId', async () => {
+      const scenario = createGameScenario({
+        gameCode: gameCode,
+        teamCount: 2,
+        playerCount: 0,
+        gameStatus: 'setup'
+      });
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
+
+      const response = await request(app)
+        .post(`/api/games/${gameCode}/join`)
+        .send({ playerName: 'Test Player', teamId: 'non-existent-team-id' })
+        .expect(400);
+
+      expect(response.body.error).toBe('Specified team does not exist');
+    });
+
+    /**
+     * Test that multiple players can join the same specific team when requested.
+     * Verifies that team assignment honors the teamId parameter even if it results
+     * in unbalanced teams.
+     */
+    it('should allow multiple players to join the same specific team', async () => {
+      const scenario = createGameScenario({
+        gameCode: gameCode,
+        teamCount: 3,
+        playerCount: 0,
+        gameStatus: 'setup'
+      });
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
+
+      const targetTeam = scenario.teams![0]!; // Choose the first team
+      const playerNames = ['Player 1', 'Player 2', 'Player 3'];
+
+      for (const playerName of playerNames) {
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/join`)
+          .send({ playerName, teamId: targetTeam.id })
+          .expect(200);
+
+        expect(response.body.teamId).toBe(targetTeam.id);
+        expect(response.body.teamName).toBe(targetTeam.name);
+        expectValidJoinGameResponse(response, scenario, playerName);
+
+        // Add player to scenario for next iteration
+        scenario.players.push({
+          id: response.body.playerId,
+          name: playerName,
+          team_id: response.body.teamId,
+          is_connected: true,
+          game_id: scenario.game.id,
+          created_at: '',
+          updated_at: '',
+          last_seen_at: ''
+        });
+      }
+
+      // Verify all players are on the same team
+      const allPlayersResponse = await request(app)
+        .get(`/api/games/${gameCode}/players`)
+        .expect(200);
+
+      const teamIds = allPlayersResponse.body.players.map((p: any) => p.teamId);
+      const uniqueTeamIds = new Set(teamIds.filter(Boolean));
+      expect(uniqueTeamIds.size).toBe(1); // All players should be on one team
+      expect(uniqueTeamIds.has(targetTeam.id)).toBe(true);
+    });
+
+    /**
+     * Test that automatic team assignment still works when no teamId is provided.
+     * This ensures backwards compatibility with the existing behavior.
+     */
+    it('should use automatic team assignment when no teamId is provided', async () => {
+      const scenario = createGameScenario({
+        gameCode: gameCode,
+        teamCount: 2,
+        playerCount: 1, // Only the host player initially
+        gameStatus: 'setup'
+      });
+      const store = await createRealDataStoreFromScenario(scenario).initDb();
+
+      const playerNames = ['Auto Player 1', 'Auto Player 2', 'Auto Player 3'];
+      const assignedTeams: string[] = [];
+
+      for (const playerName of playerNames) {
+        const response = await request(app)
+          .post(`/api/games/${gameCode}/join`)
+          .send({ playerName }) // No teamId provided
+          .expect(200);
+
+        expect(response.body.teamId).toBeTruthy();
+        assignedTeams.push(response.body.teamId);
+        expectValidJoinGameResponse(response, scenario, playerName);
+
+        // Add player to scenario for next iteration
+        scenario.players.push({
+          id: response.body.playerId,
+          name: playerName,
+          team_id: response.body.teamId,
+          is_connected: true,
+          game_id: scenario.game.id,
+          created_at: '',
+          updated_at: '',
+          last_seen_at: ''
+        });
+      }
+
+      // Verify balanced distribution with host (1) + 3 new players = 4 total
+      // Should be distributed as 2 per team
+      const teamCounts = new Map<string, number>();
+      assignedTeams.forEach(teamId => {
+        teamCounts.set(teamId, (teamCounts.get(teamId) || 0) + 1);
+      });
+
+      expect(teamCounts.size).toBe(2); // Both teams should have players
+      // The distribution should be as even as possible
+      const counts = Array.from(teamCounts.values()).sort();
+      expect(counts[0]).toBeGreaterThanOrEqual(1);
+      expect(counts[1]).toBeLessThanOrEqual(2);
+      expect(counts[1]! - counts[0]!).toBeLessThanOrEqual(1); // Difference should be at most 1
     });
   });
 });

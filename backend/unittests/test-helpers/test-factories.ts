@@ -26,16 +26,16 @@ function getCurrentTimestamp(): string {
 
 // ==================== Game Factory ====================
 
-export const gameFactory = {
-  /**
-   * Creates a game in waiting status
+export const gameFactory = {  /**
+   * Creates a game in setup status, waiting for players
    */
   waiting(overrides: Partial<Game> = {}): Game {
     const timestamp = getCurrentTimestamp();
     return {
       id: generateId('game'),
       name: 'Test Game',
-      status: 'waiting',
+      status: 'setup',
+      sub_status: 'waiting_for_players',
       host_player_id: generateId('host'),
       team_count: 2,
       phrases_per_player: 5,
@@ -45,18 +45,19 @@ export const gameFactory = {
       created_at: timestamp,
       updated_at: timestamp,
       ...overrides
-    };
+    } as Game;
   },
 
   /**
-   * Creates a game in phrase_submission status
+   * Creates a game in setup status, ready to start
    */
   phraseSubmission(overrides: Partial<Game> = {}): Game {
     const timestamp = getCurrentTimestamp();
     return {
       id: generateId('game'),
       name: 'Test Game',
-      status: 'phrase_submission',
+      status: 'setup',
+      sub_status: 'waiting_for_players',
       host_player_id: generateId('host'),
       team_count: 2,
       phrases_per_player: 5,
@@ -67,9 +68,8 @@ export const gameFactory = {
       updated_at: timestamp,
       started_at: timestamp,
       ...overrides
-    };
+    } as Game;
   },
-
   /**
    * Creates a game in playing status
    */
@@ -79,6 +79,7 @@ export const gameFactory = {
       id: generateId('game'),
       name: 'Test Game',
       status: 'playing',
+      sub_status: 'turn_active',
       host_player_id: generateId('host'),
       team_count: 2,
       phrases_per_player: 5,
@@ -90,7 +91,7 @@ export const gameFactory = {
       updated_at: timestamp,
       started_at: timestamp,
       ...overrides
-    };
+    } as Game;
   },
 
   /**
@@ -103,6 +104,7 @@ export const gameFactory = {
       id: generateId('game'),
       name: 'Test Game',
       status: 'finished',
+      sub_status: 'game_complete',
       host_player_id: generateId('host'),
       team_count: 2,
       phrases_per_player: 5,
@@ -114,9 +116,8 @@ export const gameFactory = {
       started_at: startTime,
       finished_at: timestamp,
       ...overrides
-    };
+    } as Game;
   },
-
   /**
    * Creates a game with specific config
    */
@@ -125,7 +126,8 @@ export const gameFactory = {
     return {
       id: generateId('game'),
       name: 'Test Game',
-      status: 'waiting',
+      status: 'setup',
+      sub_status: 'waiting_for_players',
       host_player_id: generateId('host'),
       team_count: config.teamCount,
       phrases_per_player: config.phrasesPerPlayer,
@@ -135,7 +137,7 @@ export const gameFactory = {
       created_at: timestamp,
       updated_at: timestamp,
       ...overrides
-    };
+    } as Game;
   }
 };
 
@@ -362,9 +364,10 @@ export function createGameSetup(config: {
     phrasesPerPlayer: config.phrasesPerPlayer || 5,
     timerDuration: 60
   };
-
   const game = gameFactory.withConfig(gameConfig, { 
-    status: config.gameStatus || 'waiting' 
+    status: config.gameStatus || 'setup',
+    sub_status: config.gameStatus === 'playing' ? 'turn_active' : 
+                config.gameStatus === 'finished' ? 'game_complete' : 'waiting_for_players'
   });
   
   const teams = teamFactory.createMultiple(game.id, gameConfig.teamCount);

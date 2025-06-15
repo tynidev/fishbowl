@@ -19,7 +19,7 @@ import { Game, Player, Phrase } from '../db/schema';
 import { validatePhrase, validatePhrases } from '../utils/validators';
 import {
   SubmitPhrasesRequest,
-  SubmitPhrasesResponse,
+  SubmitOrUpdatePhraseResponse,
   GetPhrasesResponse,
   PhraseSubmissionStatus,
   GetPhraseStatusResponse,
@@ -67,8 +67,7 @@ export async function submitPhrases(req: Request, res: Response): Promise<void> 
         res.status(404).json({ error: 'Game not found' });
         return;
       }
-
-      if (game.status !== 'waiting' && game.status !== 'phrase_submission') {
+      if (game.status !== 'setup') {
         res
           .status(400)
           .json({ error: 'Cannot submit phrases after game has started' });
@@ -162,17 +161,10 @@ export async function submitPhrases(req: Request, res: Response): Promise<void> 
         });
       }
 
-      // Update game status if this was first phrase submission
-      if (game.status === 'waiting') {
-        await update(
-          'games',
-          { status: 'phrase_submission' },
-          [{ field: 'id', operator: '=', value: gameCode }],
-          transaction
-        );
-      }
+      // Note: Game stays in 'setup' status during phrase submission
+      // Status will change to 'playing' when host starts the game
 
-      const response: SubmitPhrasesResponse = {
+      const response: SubmitOrUpdatePhraseResponse = {
         submittedCount: phrasesArray.length,
         totalRequired: game.phrases_per_player,
         phrases: submittedPhrases,
@@ -392,7 +384,7 @@ export async function updatePhrase(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      if (game.status !== 'waiting' && game.status !== 'phrase_submission') {
+      if (game.status !== 'setup') {
         res
           .status(400)
           .json({ error: 'Cannot edit phrases after game has started' });
@@ -447,11 +439,17 @@ export async function updatePhrase(req: Request, res: Response): Promise<void> {
         transaction
       );
 
-      res.status(200).json({
-        id: phraseId,
-        text: text.trim(),
-        updatedAt: updatedAt,
-      });
+      const response: SubmitOrUpdatePhraseResponse = {
+        submittedCount: 1,
+        totalRequired: game.phrases_per_player,
+        phrases: [{
+          id: phraseId,
+          text: text.trim(),
+          submittedAt: updatedAt,
+        }],
+      };
+
+      res.status(200).json(response);
     });
   } catch (error) {
     console.error('Error updating phrase:', error);
@@ -494,7 +492,7 @@ export async function deletePhrase(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      if (game.status !== 'waiting' && game.status !== 'phrase_submission') {
+      if (game.status !== 'setup') {
         res
           .status(400)
           .json({ error: 'Cannot delete phrases after game has started' });

@@ -51,7 +51,7 @@ describe('Game Configuration API', () => {
         // Create scenario with uppercase game code, test with lowercase
         const scenario = createGameScenario({
           gameCode: gameCode.toUpperCase(),
-          gameStatus: 'waiting'
+          gameStatus: 'setup'
         });
         await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -67,7 +67,8 @@ describe('Game Configuration API', () => {
       it('should return 400 when game is in playing state', async () => {
         const scenario = createGameScenario({
           gameCode,
-          gameStatus: 'playing'
+          gameStatus: 'playing',
+          gameSubStatus: 'turn_active'
         });
         await createRealDataStoreFromScenario(scenario).initDb();
 
@@ -99,7 +100,7 @@ describe('Game Configuration API', () => {
       beforeEach(async () => {
         scenario = createGameScenario({
           gameCode,
-          gameStatus: 'waiting',
+          gameStatus: 'setup',
           playerCount: 1
         });
         await createRealDataStoreFromScenario(scenario).initDb();
@@ -125,7 +126,7 @@ describe('Game Configuration API', () => {
       beforeEach(async () => {
         scenario = createGameScenario({
           gameCode,
-          gameStatus: 'waiting'
+          gameStatus: 'setup'
         });
         await createRealDataStoreFromScenario(scenario).initDb();
       });

@@ -61,6 +61,11 @@ export interface TeamAssignmentData {
   teamId: string;
 }
 
+export interface GameStartedData {
+  gameCode: string;
+  startedAt: Date;
+}
+
 // ==================== Socket Connection Management ====================
 
 interface ConnectedPlayer {
@@ -411,8 +416,8 @@ export async function handleAssignedTeam(
         return;
       }
 
-      // Only allow team assignment before game starts
-      if (game.status !== 'waiting' && game.status !== 'phrase_submission') {
+      // Only allow team assignment during setup
+      if (game.status !== 'setup') {
         socket.emit('error', {
           message: 'Cannot change teams after game has started',
         });
@@ -542,6 +547,21 @@ export async function broadcastPlayerUpdate(
     );
   } catch (error) {
     console.error('Error broadcasting player update:', error);
+  }
+}
+
+/**
+ * Broadcast game started event to all players in a game
+ */
+export async function broadcastGameStarted(
+  io: SocketIOServer,
+  data: GameStartedData
+): Promise<void> {
+  try {
+    io.to(data.gameCode).emit('game:started', data);
+    console.log(`Broadcasting game started for game ${data.gameCode}`);
+  } catch (error) {
+    console.error('Error broadcasting game started:', error);
   }
 }
 

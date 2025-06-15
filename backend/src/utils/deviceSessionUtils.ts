@@ -58,6 +58,7 @@ export function transformGame(game: Game): DeviceSessionGameInfoResponse {
     id: game.id,
     name: game.name,
     status: game.status,
+    sub_status: game.sub_status,
     hostPlayerId: game.host_player_id,
   };
 }

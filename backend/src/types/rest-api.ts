@@ -8,20 +8,9 @@ export interface CreateGameRequest {
   timerDuration?: number;
 }
 
-export interface CreateGameResponse {
-  gameCode: string;
-  gameId: string;
-  hostPlayerId: string;
-  config: {
-    name: string;
-    teamCount: number;
-    phrasesPerPlayer: number;
-    timerDuration: number;
-  };
-}
-
 export interface JoinGameRequest {
   playerName: string;
+  teamId?: string;
 }
 
 export interface JoinGameResponse {
@@ -32,7 +21,21 @@ export interface JoinGameResponse {
   gameInfo: {
     id: string;
     name: string;
-    status: string;
+    status: 'setup' | 'playing' | 'finished';
+    sub_status:
+      // When status = 'setup'
+      | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
+      | 'ready_to_start'          // All players joined, all phrases submitted, host can start
+      
+      // When status = 'playing'
+      | 'round_intro'             // Showing round rules before starting
+      | 'turn_starting'           // Brief moment between turns (showing whose turn)
+      | 'turn_active'             // Active turn with timer running
+      | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
+      | 'round_complete'          // Round finished, showing scores before next round
+      
+      // When status = 'finished'
+      | 'game_complete';          // Final scores, game over
     playerCount: number;
     teamCount: number;
     phrasesPerPlayer: number;
@@ -43,7 +46,21 @@ export interface JoinGameResponse {
 export interface GameInfoResponse {
   id: string;
   name: string;
-  status: string;
+  status: 'setup' | 'playing' | 'finished';
+  sub_status:
+    // When status = 'setup'
+    | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start'          // All players joined, all phrases submitted, host can start
+    
+    // When status = 'playing'
+    | 'round_intro'             // Showing round rules before starting
+    | 'turn_starting'           // Brief moment between turns (showing whose turn)
+    | 'turn_active'             // Active turn with timer running
+    | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete'          // Round finished, showing scores before next round
+    
+    // When status = 'finished'
+    | 'game_complete';          // Final scores, game over
   hostPlayerId: string;
   teamCount: number;
   phrasesPerPlayer: number;
@@ -80,7 +97,7 @@ export interface SubmitPhrasesRequest {
   playerId: string;
 }
 
-export interface SubmitPhrasesResponse {
+export interface SubmitOrUpdatePhraseResponse {
   submittedCount: number;
   totalRequired: number;
   phrases: {
@@ -144,30 +161,29 @@ export interface DeviceSessionResponse {
 export interface PlayerInfoResponse {
   id: string;
   name: string;
-  gameId: string;
+  gameId: string;  
   teamId: string | null;
   isConnected: boolean;
-}
-
-export interface GameInfoResponse {
-  id: string;
-  name: string;
-  status: string;
-  hostPlayerId: string;
-  teamCount: number;
-  phrasesPerPlayer: number;
-  timerDuration: number;
-  currentRound: number;
-  currentTeam: number;
-  playerCount: number;
-  createdAt: string;
-  startedAt: string | undefined;
 }
 
 export interface DeviceSessionGameInfoResponse {
   id: string;
   name: string;
-  status: string;
+  status: 'setup' | 'playing' | 'finished';
+  sub_status:
+    // When status = 'setup'
+    | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start'          // All players joined, all phrases submitted, host can start
+    
+    // When status = 'playing'
+    | 'round_intro'             // Showing round rules before starting
+    | 'turn_starting'           // Brief moment between turns (showing whose turn)
+    | 'turn_active'             // Active turn with timer running
+    | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete'          // Round finished, showing scores before next round
+    
+    // When status = 'finished'
+    | 'game_complete';          // Final scores, game over
   hostPlayerId: string;
 }
 
@@ -219,3 +235,4 @@ export interface CleanupSessionsResponse {
   staleSessionsDeactivated: number;
   oldSessionsRemoved: number;
 }
+

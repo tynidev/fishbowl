@@ -108,37 +108,42 @@ export async function createDefaultTeams(
 }
 
 /**
- * Assigns a player to a team using a balanced distribution algorithm.
+ * Assigns a player to a team using a balanced distribution algorithm or a specific team.
  * 
- * This function implements a "fewest players first" strategy to ensure teams
- * remain balanced throughout the player joining process. It finds the team
- * with the minimum number of players and returns its ID for assignment.
+ * This function either assigns a player to a specific team (if teamId is provided) or
+ * implements a "fewest players first" strategy to ensure teams remain balanced throughout
+ * the player joining process. When no specific team is requested, it finds the team
+ * with the minimum number of players for assignment.
  * 
  * @param gameId - The unique identifier of the game
+ * @param playerId - The unique identifier of the player to assign
+ * @param preferredTeamId - Optional specific team ID to assign the player to
  * @param transaction - Optional database transaction for atomic operations
  * 
- * @returns Promise that resolves to the team ID where the player should be assigned,
+ * @returns Promise that resolves to the team ID where the player was assigned,
  *          or undefined if no teams exist for the game
  * 
- * @throws Will throw an error if the game does not exist or database operations fail
+ * @throws Will throw an error if the game does not exist, the preferred team doesn't exist,
+ *         or database operations fail
  * 
  * @example
  * ```typescript
  * // Assign a new player to the team with fewest members
- * const teamId = await assignPlayerToTeam('game-123');
- * if (teamId) {
- *   await assignPlayer(playerId, teamId);
- * }
+ * const teamId = await assignPlayerToTeam('game-123', 'player-456');
+ * 
+ * // Assign a player to a specific team
+ * const teamId = await assignPlayerToTeam('game-123', 'player-456', 'team-789');
  * 
  * // Use within a transaction
- * const teamId = await assignPlayerToTeam('game-123', trx);
+ * const teamId = await assignPlayerToTeam('game-123', 'player-456', undefined, trx);
  * ```
  */
 export async function assignPlayerToTeam(
   gameId: string,
+  playerId: string,
+  preferredTeamId?: string,
   transaction?: any
-): Promise<string | undefined> {
-  const operation = async (conn: any) => {
+): Promise<string | undefined> {  const operation = async (conn: any) => {
     // First validate that the game exists
     const gameExists = await conn.get(
       'SELECT 1 FROM games WHERE id = ? LIMIT 1',
@@ -153,12 +158,13 @@ export async function assignPlayerToTeam(
     const teamsWithCounts = await conn.all(`
       SELECT 
         t.id,
+        t.name,
         t.created_at,
         COALESCE(COUNT(p.id), 0) as player_count
       FROM teams t
       LEFT JOIN players p ON t.id = p.team_id AND p.game_id = ?
       WHERE t.game_id = ?
-      GROUP BY t.id, t.created_at
+      GROUP BY t.id, t.name, t.created_at
       ORDER BY t.created_at ASC
     `, [gameId, gameId]);
 
@@ -166,16 +172,37 @@ export async function assignPlayerToTeam(
       return undefined;
     }
 
-    // Find team with minimum players (first in creation order if tied)
-    let minCount = Infinity;
-    let targetTeamId = teamsWithCounts[0]?.id;
+    let targetTeamId: string;    if (preferredTeamId) {
+      // Check if the preferred team exists in this game
+      const preferredTeam = teamsWithCounts.find((team: any) => team.id === preferredTeamId);
+      if (!preferredTeam) {
+        throw new Error(`Team with ID ${preferredTeamId} does not exist in game ${gameId}`);
+      }
+      targetTeamId = preferredTeamId;
+    } else {
+      // Find team with minimum players (first in creation order if tied)
+      let minCount = Infinity;
+      targetTeamId = teamsWithCounts[0]?.id;
 
-    for (const team of teamsWithCounts) {
-      if (team.player_count < minCount) {
-        minCount = team.player_count;
-        targetTeamId = team.id;
+      for (const team of teamsWithCounts) {
+        if (team.player_count < minCount) {
+          minCount = team.player_count;
+          targetTeamId = team.id;
+        }
       }
     }
+
+    // Update the player's team assignment
+    const { update } = await import('../db/utils');
+    await update(
+      'players',
+      { 
+        team_id: targetTeamId,
+        updated_at: new Date().toISOString()
+      },
+      [{ field: 'id', operator: '=', value: playerId }],
+      conn
+    );
 
     return targetTeamId;
   };

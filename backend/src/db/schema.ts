@@ -5,7 +5,21 @@
 export interface Game {
   id: string;
   name: string;
-  status: 'waiting' | 'phrase_submission' | 'playing' | 'finished';
+  status: 'setup' | 'playing' | 'finished';
+  sub_status: 
+    // When status = 'setup'
+    | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start'          // All players joined, all phrases submitted, host can start
+    
+    // When status = 'playing'
+    | 'round_intro'             // Showing round rules before starting
+    | 'turn_starting'           // Brief moment between turns (showing whose turn)
+    | 'turn_active'             // Active turn with timer running
+    | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete'          // Round finished, showing scores before next round
+    
+    // When status = 'finished'
+    | 'game_complete';          // Final scores, game over
   host_player_id: string;
   team_count: number;
   phrases_per_player: number;
@@ -55,14 +69,27 @@ export interface Phrase {
   updated_at: string;
 }
 
+/**
+ * Represents a single turn in a Fishbowl game where a player acts out phrases for their team to guess.
+ * 
+ * In Fishbowl, teams take turns with one player acting/describing phrases while their teammates guess.
+ * Each turn is timed and tracked for scoring purposes. A turn ends when the timer runs out or
+ * all phrases in the bowl have been guessed.
+ * 
+ * @remarks
+ * Turns are the fundamental unit of gameplay in Fishbowl. Players can skip difficult phrases
+ * during their turn, but skipped phrases go back into the bowl for future turns.
+ */
 export interface Turn {
   id: string;
   game_id: string;
   round: number;
   team_id: string;
-  acting_player_id: string;
-  start_time: string;
+  player_id: string;
+  start_time?: string;
   end_time?: string;
+  paused_at?: string;
+  paused_reason?: 'player_disconnected' | 'host_paused' | 'dispute';
   duration: number; // seconds
   phrases_guessed: number;
   phrases_skipped: number;
@@ -98,7 +125,12 @@ export const CREATE_GAMES_TABLE = `
   CREATE TABLE IF NOT EXISTS games (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('waiting', 'phrase_submission', 'playing', 'finished')),
+    status TEXT NOT NULL CHECK (status IN ('setup', 'playing', 'finished')),
+    sub_status TEXT NOT NULL CHECK (sub_status IN (
+      'waiting_for_players', 'ready_to_start',
+      'round_intro', 'turn_starting', 'turn_active', 'turn_paused', 'round_complete',
+      'game_complete'
+    )),
     host_player_id TEXT NOT NULL,
     team_count INTEGER NOT NULL DEFAULT 2 CHECK (team_count >= 2 AND team_count <= 6),
     phrases_per_player INTEGER NOT NULL DEFAULT 5 CHECK (phrases_per_player >= 1 AND phrases_per_player <= 10),
@@ -170,9 +202,11 @@ export const CREATE_TURNS_TABLE = `
     game_id TEXT NOT NULL,
     round INTEGER NOT NULL CHECK (round >= 1 AND round <= 3),
     team_id TEXT NOT NULL,
-    acting_player_id TEXT NOT NULL,
-    start_time TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    start_time TEXT,
     end_time TEXT,
+    paused_at TEXT,
+    paused_reason TEXT CHECK (paused_reason IN (NULL, 'player_disconnected', 'host_paused', 'dispute')),
     duration INTEGER NOT NULL DEFAULT 0,
     phrases_guessed INTEGER NOT NULL DEFAULT 0,
     phrases_skipped INTEGER NOT NULL DEFAULT 0,
@@ -182,7 +216,7 @@ export const CREATE_TURNS_TABLE = `
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
-    FOREIGN KEY (acting_player_id) REFERENCES players(id) ON DELETE CASCADE
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
   );
 `;
 
@@ -244,7 +278,7 @@ export const CREATE_INDEXES = [
   // Turns indexes
   `CREATE INDEX IF NOT EXISTS idx_turns_game ON turns(game_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turns_team ON turns(team_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_turns_player ON turns(acting_player_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_turns_player ON turns(player_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turns_game_round ON turns(game_id, round);`,
   `CREATE INDEX IF NOT EXISTS idx_turns_complete ON turns(is_complete);`,
 

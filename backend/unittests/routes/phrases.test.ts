@@ -37,9 +37,9 @@ describe('Phrases API', () => {
 
     describe('Game State Validation', () => {
       it('should return 400 when game has started', async () => {
-        await setupGameWithPhrases({ 
-          gameCode, 
-          gameStatus: 'playing' 
+        await setupGameWithPhrases({
+          gameCode,
+          gameStatus: 'playing'
         });
 
         const response = await api
@@ -310,9 +310,15 @@ describe('Phrases API', () => {
           .expect(200);
 
         expect(response.body).toMatchObject({
-          id: phrase.id,
-          text: 'Updated Phrase Text',
-          updatedAt: expect.any(String)
+          submittedCount: 1,
+          totalRequired: 5,
+          phrases: expect.arrayContaining([
+            expect.objectContaining({
+              id: phrase.id,
+              text: 'Updated Phrase Text',
+              submittedAt: expect.any(String)
+            })
+          ])
         });
       });      it('should return 403 when player tries to edit another player\'s phrase', async () => {
         const { scenario, store } = await setupGameWithPhrases({ 

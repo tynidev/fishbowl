@@ -4,7 +4,7 @@ import { createRealDataStoreFromScenario } from './realDbUtils';
 
 export interface SetupGameWithPhrasesOptions {
   gameCode: string;
-  gameStatus?: "waiting" | "phrase_submission" | "playing" | "finished";
+  gameStatus?: "setup" | "playing" | "finished";
   playerCount?: number;
   teamCount?: number;
   phrasesPerPlayer?: number;
@@ -14,10 +14,9 @@ export interface SetupGameWithPhrasesOptions {
   }>;
 }
 
-export async function setupGameWithPhrases(options: SetupGameWithPhrasesOptions) {
-  const {
+export async function setupGameWithPhrases(options: SetupGameWithPhrasesOptions) {  const {
     gameCode,
-    gameStatus = 'phrase_submission',
+    gameStatus = 'setup',
     playerCount = 2,
     teamCount = 2,
     phrasesPerPlayer = 5,

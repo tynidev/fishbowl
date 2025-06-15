@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Game, Player } from '../db/schema';
+import { Game, Player, Team, Phrase, Turn } from '../db/schema';
 import {
   insert,
   select,
@@ -11,13 +11,14 @@ import {
 import { withTransaction, TransactionConnection } from '../db/connection';
 import {
   CreateGameRequest,
-  CreateGameResponse,
   GameInfoResponse,
   UpdateConfigRequest,
 } from '../types/rest-api';
 import { validateGameConfig, validatePlayerName } from '../utils/validators';
 import { generateGameCode } from '../utils/codeGenerator';
 import { createDefaultTeams, assignPlayerToTeam } from '../utils/teamUtils';
+import { broadcastGameStarted } from '../sockets/SOCKET-API';
+import { Server as SocketIOServer } from 'socket.io';
 
 /**
  * POST /api/games - Create a new game
@@ -103,7 +104,8 @@ export async function createGame(req: Request, res: Response): Promise<void> {
       const game: Omit<Game, 'created_at' | 'updated_at'> = {
         id: gameCode,
         name: name.trim(),
-        status: 'waiting',
+        status: 'setup',
+        sub_status: 'waiting_for_players',
         host_player_id: hostPlayerId,
         team_count: teamCount,
         phrases_per_player: phrasesPerPlayer,
@@ -126,18 +128,27 @@ export async function createGame(req: Request, res: Response): Promise<void> {
         await insert('players', updatedHostPlayer, transaction);
       } else {
         await insert('players', hostPlayer, transaction);
-      }
-
-      const response: CreateGameResponse = {
-        gameCode,
-        gameId: gameCode,
-        hostPlayerId,
-        config: {
-          name: name.trim(),
-          teamCount,
-          phrasesPerPlayer,
-          timerDuration,
-        },
+      }      
+      
+      
+      // Get updated game info for response
+      const updatedGameInfo = await findById<Game>('games', gameCode, transaction);
+      
+      // Prepare and send response
+      const response: GameInfoResponse = {
+        id: gameCode,
+        name: updatedGameInfo!.name,
+        status: updatedGameInfo!.status,
+        sub_status: updatedGameInfo!.sub_status,
+        hostPlayerId: updatedGameInfo!.host_player_id,
+        teamCount: updatedGameInfo!.team_count,
+        phrasesPerPlayer: updatedGameInfo!.phrases_per_player,
+        timerDuration: updatedGameInfo!.timer_duration,
+        currentRound: updatedGameInfo!.current_round,
+        currentTeam: updatedGameInfo!.current_team,
+        playerCount: 1, // Only host player at creation
+        createdAt: updatedGameInfo!.created_at,
+        startedAt: updatedGameInfo!.started_at,
       };
 
       res.status(201).json(response);
@@ -178,6 +189,7 @@ export async function getGameInfo(req: Request, res: Response): Promise<void> {
       id: game.id,
       name: game.name,
       status: game.status,
+      sub_status: game.sub_status,
       hostPlayerId: game.host_player_id,
       teamCount: game.team_count,
       phrasesPerPlayer: game.phrases_per_player,
@@ -253,7 +265,7 @@ export async function updateGameConfig(req: Request, res: Response): Promise<voi
         throw new Error('GAME_NOT_FOUND');
       }
 
-      if (game.status !== 'waiting') {
+      if (game.status !== 'setup') {
         throw new Error('GAME_ALREADY_STARTED');
       }
 
@@ -293,6 +305,7 @@ export async function updateGameConfig(req: Request, res: Response): Promise<voi
         id: updatedGame!.id,
         name: updatedGame!.name,
         status: updatedGame!.status,
+        sub_status: updatedGame!.sub_status,
         hostPlayerId: updatedGame!.host_player_id,
         teamCount: updatedGame!.team_count,
         phrasesPerPlayer: updatedGame!.phrases_per_player,
@@ -327,4 +340,155 @@ export async function updateGameConfig(req: Request, res: Response): Promise<voi
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
+}
+
+/**
+ * POST /api/games/:gameCode/start - Start the game
+ */
+export async function startGame(req: Request, res: Response): Promise<void> {
+  try {
+    const { gameCode } = req.params;
+
+    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
+      res.status(400).json({ error: 'Invalid game code' });
+      return;
+    }
+
+    await withTransaction(async (transaction: TransactionConnection) => {
+      // Check if game exists
+      const game = await findById<Game>('games', gameCode, transaction);
+      if (!game) {
+        res.status(404).json({ error: 'Game not found' });
+        return;
+      }
+
+      if (game.status !== 'setup') {
+        res.status(400).json({
+          error: 'Game has already started or is not in a startable state',
+        });
+        return;
+      }
+
+      // Get Teams and Players for validation
+      const teams = await select<Team>('teams', {
+        where: [{ field: 'game_id', operator: '=', value: gameCode }],
+      });
+      const players = await select<Player>('players', {
+        where: [{ field: 'game_id', operator: '=', value: gameCode }],
+      });
+
+      // Validate team count
+      if (teams.length < game.team_count) {
+        res.status(400).json({
+          error: 'Not enough teams to start the game',
+        });
+        return;
+      }
+
+      // Validate there are at least 2 * game.team_count players
+      if (players.length < 2 * game.team_count) {
+        res.status(400).json({
+          error: `Not enough players to start the game. Required: ${2 * game.team_count}, Found: ${players.length}`,
+        });
+        return;
+      }
+
+      // Validate all players have been assigned to teams
+      for (const player of players) {
+        if (!player.team_id) {
+          res.status(400).json({
+            error: `Player ${player.name} is not assigned to a team`,
+          });
+          return;
+        }
+      }
+
+      // Update game status to 'playing' and set start time
+      const startTime = new Date(); // Current time as start time
+      const updatedGame: Partial<Game> = {
+        status: 'playing',
+        sub_status: 'round_intro',
+        started_at: startTime.toISOString(),
+      };
+
+      await update(
+        'games',
+        updatedGame,
+        [{ field: 'id', operator: '=', value: gameCode }],
+        transaction
+      );
+
+      // Shuffle players for random turn order
+      const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+
+      // Pick first player and create a turn for them
+      const firstPlayer = shuffledPlayers[0];
+      const firstTurn: Omit<Turn, 'created_at' | 'updated_at'> = {
+        id: uuidv4(),
+        game_id: gameCode,
+        player_id: firstPlayer!.id,
+        team_id: firstPlayer!.team_id!,
+        round: 1,
+        is_complete: false,              // Turn is not complete
+        duration: 0,                     // No time elapsed yet
+        phrases_guessed: 0,              // No phrases guessed yet 
+        phrases_skipped: 0,              // No phrases skipped yet
+        points_scored: 0                 // No points scored yet
+      };
+
+      await insert('turns', firstTurn, transaction);
+
+      // Update game to reference the current turn
+      await update(
+        'games',
+        { current_turn_id: firstTurn.id },
+        [{ field: 'id', operator: '=', value: gameCode }],
+        transaction
+      );      
+      
+      // Get updated game info for response
+      const updatedGameInfo = await findById<Game>('games', gameCode, transaction);
+      
+      // Prepare and send response
+      const response: GameInfoResponse = {
+        id: gameCode,
+        name: updatedGameInfo!.name,
+        status: updatedGameInfo!.status,
+        sub_status: updatedGameInfo!.sub_status,
+        hostPlayerId: updatedGameInfo!.host_player_id,
+        teamCount: updatedGameInfo!.team_count,
+        phrasesPerPlayer: updatedGameInfo!.phrases_per_player,
+        timerDuration: updatedGameInfo!.timer_duration,
+        currentRound: updatedGameInfo!.current_round,
+        currentTeam: updatedGameInfo!.current_team,
+        playerCount: players.length,
+        createdAt: updatedGameInfo!.created_at,
+        startedAt: updatedGameInfo!.started_at,
+      };
+
+      // Broadcast game started event to all connected clients
+      if (socketServer) {
+        const gameStartedData = {
+          gameCode: game.id,
+          startedAt: startTime
+        };
+        broadcastGameStarted(socketServer, gameStartedData);
+      }
+
+      res.status(200).json(response);
+    });
+  } catch (error) {
+    console.error('Error starting game:', error);
+    res.status(500).json({
+      error: 'Failed to start game',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+// Store reference to socket server (will be set when server starts)
+let socketServer: SocketIOServer | null = null;
+
+export function setSocketServer(server: SocketIOServer): void {
+  socketServer = server;
 }
