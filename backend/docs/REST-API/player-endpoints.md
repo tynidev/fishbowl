@@ -20,6 +20,7 @@ Allows a player to join an existing game.
 ```typescript
 {
   playerName: string;              // Required: Player name (1-20 characters)
+  teamId?: string;                 // Optional: Preferred team ID to join
 }
 ```
 
@@ -33,7 +34,21 @@ Allows a player to join an existing game.
   gameInfo: {
     id: string;                    // Game code
     name: string;                  // Game name
-    status: string;                // Game status
+    status: 'setup' | 'playing' | 'finished';
+    sub_status:
+      // When status = 'setup'
+      | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
+      | 'ready_to_start'          // All players joined, all phrases submitted, host can start
+      
+      // When status = 'playing'
+      | 'round_intro'             // Showing round rules before starting
+      | 'turn_starting'           // Brief moment between turns (showing whose turn)
+      | 'turn_active'             // Active turn with timer running
+      | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
+      | 'round_complete'          // Round finished, showing scores before next round
+      
+      // When status = 'finished'
+      | 'game_complete';          // Final scores, game over
     playerCount: number;           // Current player count
     teamCount: number;             // Number of teams
     phrasesPerPlayer: number;      // Phrases per player

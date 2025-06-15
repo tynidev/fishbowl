@@ -376,6 +376,9 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       const players = await select<Player>('players', {
         where: [{ field: 'game_id', operator: '=', value: gameCode }],
       });
+      const phrases = await select<Phrase>('phrases', {
+        where: [{ field: 'game_id', operator: '=', value: gameCode }],
+      });
 
       // Validate team count
       if (teams.length < game.team_count) {
@@ -393,11 +396,24 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      // Validate all players have been assigned to teams
+      // For all players, check if they have a team assigned and have submitted the required number of phrases
       for (const player of players) {
+        
+        // Check if player has a team assigned
         if (!player.team_id) {
           res.status(400).json({
             error: `Player ${player.name} is not assigned to a team`,
+          });
+          return;
+        }
+
+        // Check if player has submitted the required number of phrases
+        const playerPhrases = phrases.filter(
+          (phrase) => phrase.player_id === player.id
+        );
+        if (playerPhrases.length < game.phrases_per_player) {
+          res.status(400).json({
+            error: `Player ${player.name} must submit ${game.phrases_per_player} phrases`,
           });
           return;
         }

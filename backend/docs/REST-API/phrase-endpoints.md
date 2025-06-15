@@ -14,7 +14,7 @@ Submit phrases for a player (supports single phrase or array).
 - Allowed characters: letters, numbers, spaces, and basic punctuation (.,!?()'-_)
 - No duplicates within the same game (case-insensitive)
 - Players cannot exceed the configured phrases per player limit
-- Phrase submission only allowed in 'waiting' or 'phrase_submission' status
+- Phrase submission only allowed in 'setup' status
 
 **Request Body:**
 ```typescript
@@ -89,7 +89,7 @@ Gets phrase submission status for all players (publicly accessible).
 Edit a specific phrase (only by submitting player, only before game starts).
 
 **Features:**
-- Phrase editing only allowed in 'waiting' or 'phrase_submission' status
+- Phrase editing only allowed in 'setup' status
 - Player can only edit their own phrases
 
 **Query Parameters:**
@@ -115,7 +115,7 @@ Edit a specific phrase (only by submitting player, only before game starts).
 Delete a specific phrase (only before game starts).
 
 **Features:**
-- Phrase deletion only allowed in 'waiting' or 'phrase_submission' status
+- Phrase deletion only allowed in 'setup' status
 - Player can delete their own phrases
 - Game host can delete any phrase
 
@@ -139,7 +139,7 @@ Delete a specific phrase (only before game starts).
 ### Editing Capabilities
 - **Player Editing**: Players can edit their own phrases before game starts
 - **Host Management**: Game hosts can delete any phrase for content moderation
-- **Status Restrictions**: Editing only allowed during waiting and phrase submission phases
+- **Status Restrictions**: Editing only allowed during setup phase
 
 ### Progress Tracking
 - **Individual Progress**: Track submission status per player

@@ -29,15 +29,32 @@ Creates a new game with a host player.
 **Response:**
 ```typescript
 {
-  gameCode: string;                // 6-character game code
-  gameId: string;                  // Same as gameCode
+  id: string;                      // Game code
+  name: string;                    // Game name
+  status: 'setup' | 'playing' | 'finished';
+  sub_status:
+    // When status = 'setup'
+    | 'waiting_for_players'       // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start'            // All players joined, all phrases submitted, host can start
+    
+    // When status = 'playing'
+    | 'round_intro'               // Showing round rules before starting
+    | 'turn_starting'             // Brief moment between turns (showing whose turn)
+    | 'turn_active'               // Active turn with timer running
+    | 'turn_paused'               // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete'            // Round finished, showing scores before next round
+    
+    // When status = 'finished'
+    | 'game_complete';            // Final scores, game over
   hostPlayerId: string;            // UUID of host player
-  config: {
-    name: string;
-    teamCount: number;
-    phrasesPerPlayer: number;
-    timerDuration: number;
-  }
+  teamCount: number;               // Number of teams
+  phrasesPerPlayer: number;        // Phrases per player
+  timerDuration: number;           // Timer duration
+  currentRound: number;            // Current round number
+  currentTeam: number;             // Current team number
+  playerCount: number;             // Total player count
+  createdAt: string;               // Creation timestamp
+  startedAt?: string;              // Start timestamp (if started)
 }
 ```
 
@@ -49,7 +66,21 @@ Retrieves information about a specific game.
 {
   id: string;                      // Game code
   name: string;                    // Game name
-  status: string;                  // Game status
+  status: 'setup' | 'playing' | 'finished';
+  sub_status:
+    // When status = 'setup'
+    | 'waiting_for_players'       // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start'            // All players joined, all phrases submitted, host can start
+    
+    // When status = 'playing'
+    | 'round_intro'               // Showing round rules before starting
+    | 'turn_starting'             // Brief moment between turns (showing whose turn)
+    | 'turn_active'               // Active turn with timer running
+    | 'turn_paused'               // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete'            // Round finished, showing scores before next round
+    
+    // When status = 'finished'
+    | 'game_complete';            // Final scores, game over
   hostPlayerId: string;            // Host player UUID
   teamCount: number;               // Number of teams
   phrasesPerPlayer: number;        // Phrases per player
@@ -66,7 +97,7 @@ Retrieves information about a specific game.
 Updates game configuration (only available before game starts).
 
 **Features:**
-- Game configuration changes only allowed in 'waiting' status
+- Game configuration changes only allowed in 'setup' status
 - Supports team reconfiguration when team count changes
 - Uses database transactions for data consistency
 
@@ -81,6 +112,55 @@ Updates game configuration (only available before game starts).
 
 **Response:**
 Same as GET /api/games/:gameCode with updated values.
+
+### <span style="color: orange;">POST /api/games/:gameCode/start</span>
+Starts a game after validation.
+
+**Features:**
+- Validates game is in 'setup' status
+- Requires at least 2 * teamCount players
+- All players must be assigned to teams
+- Creates first turn and updates game status to 'playing'
+- Shuffles players for random turn order
+- Broadcasts game started event to all connected clients
+
+**Validation Requirements:**
+- Game must exist and be in 'setup' status
+- Must have at least 2 players per team (2 * teamCount total)
+- All players must be assigned to teams
+- All required phrases should be submitted
+
+**Response:**
+```typescript
+{
+  id: string;                      // Game code
+  name: string;                    // Game name
+  status: 'setup' | 'playing' | 'finished';
+  sub_status:
+    // When status = 'setup'
+    | 'waiting_for_players'       // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start'            // All players joined, all phrases submitted, host can start
+    
+    // When status = 'playing'
+    | 'round_intro'               // Showing round rules before starting
+    | 'turn_starting'             // Brief moment between turns (showing whose turn)
+    | 'turn_active'               // Active turn with timer running
+    | 'turn_paused'               // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete'            // Round finished, showing scores before next round
+    
+    // When status = 'finished'
+    | 'game_complete';            // Final scores, game over
+  hostPlayerId: string;            // Host player UUID
+  teamCount: number;               // Number of teams
+  phrasesPerPlayer: number;        // Phrases per player
+  timerDuration: number;           // Timer duration
+  currentRound: number;            // Current round number
+  currentTeam: number;             // Current team number
+  playerCount: number;             // Total player count
+  createdAt: string;               // Creation timestamp
+  startedAt?: string;              // Start timestamp (if started)
+}
+```
 
 ## Related Documentation
 
