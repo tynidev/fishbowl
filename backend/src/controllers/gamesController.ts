@@ -381,7 +381,7 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       });
 
       // Validate team count
-      if (teams.length < game.team_count) {
+      if (!teams || teams.length < game.team_count) {
         res.status(400).json({
           error: 'Not enough teams to start the game',
         });
@@ -389,9 +389,17 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       }
 
       // Validate there are at least 2 * game.team_count players
-      if (players.length < 2 * game.team_count) {
+      if (!players || players.length < 2 * game.team_count) {
         res.status(400).json({
           error: `Not enough players to start the game. Required: ${2 * game.team_count}, Found: ${players.length}`,
+        });
+        return;
+      }
+      
+      // Validate phrases submitted
+      if (!phrases || phrases.length < players.length * game.phrases_per_player) {  
+        res.status(400).json({
+          error: `Not enough phrases submitted. Required: ${players.length * game.phrases_per_player}, Found: ${phrases.length}`,
         });
         return;
       }

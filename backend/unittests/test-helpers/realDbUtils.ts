@@ -1,6 +1,7 @@
 import { Game, Phrase, Player, Team } from "../../src/db/schema";
 import * as dbUtils from '../../src/db/utils';
 import { withTransaction } from '../../src/db/connection';
+import { WhereCondition } from "../../src/db/utils";
 
 export function createRealDataStoreFromScenario(scenario: { 
   game: Game; 
@@ -60,6 +61,20 @@ export function createRealDataStoreFromScenario(scenario: {
     async addPhrase(phrase: Phrase) {
       await dbUtils.insert('phrases', phrase);
       return this;
+    },
+
+    async findById(type: string, id: string) {
+      return await dbUtils.findById(type, id);
+    },
+
+    async deleteById(type: string, id: string) {
+      const condition: WhereCondition = { 'field': 'id', 'value': id, 'operator': '=' };
+      await dbUtils.deleteRecords(type, [condition]);
+    },
+
+    async updateById(type: string, id: string, data: any) {
+      const condition: WhereCondition = { 'field': 'id', 'value': id, 'operator': '=' };
+      await dbUtils.update(type, data, [condition]);
     }
   };
   
