@@ -2,7 +2,7 @@
 
 Game endpoints provide functionality for creating, configuring, and managing Fishbowl games.
 
-[← Back to API Documentation](../documentation.md)
+[← Back to API Documentation](../README.md)
 
 ## Endpoints
 
@@ -88,4 +88,4 @@ Same as GET /api/games/:gameCode with updated values.
 - [Phrase Endpoints](./phrase-endpoints.md) - Managing phrases for games
 - [Device Sessions](./device-session-endpoints.md) - Session tracking for games
 
-[← Back to API Documentation](../documentation.md)
+[← Back to API Documentation](../README.md)
