@@ -107,6 +107,17 @@ export interface TurnPhrase {
   timestamp: string;
 }
 
+export interface TurnOrder {
+  id: string;
+  game_id: string;
+  player_id: string;
+  team_id: string;
+  next_player_id: string;
+  prev_player_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DeviceSession {
   id: string;
   device_id: string;
@@ -233,6 +244,25 @@ export const CREATE_TURN_PHRASES_TABLE = `
   );
 `;
 
+export const CREATE_TURN_ORDER_TABLE = `
+  CREATE TABLE IF NOT EXISTS turn_order (
+    id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    next_player_id TEXT NOT NULL,
+    prev_player_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    FOREIGN KEY (next_player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (prev_player_id) REFERENCES players(id) ON DELETE CASCADE,
+    UNIQUE(game_id, player_id)
+  );
+`;
+
 export const CREATE_DEVICE_SESSIONS_TABLE = `
   CREATE TABLE IF NOT EXISTS device_sessions (
     id TEXT PRIMARY KEY,
@@ -287,6 +317,13 @@ export const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_turn_phrases_phrase ON turn_phrases(phrase_id);`,
   `CREATE INDEX IF NOT EXISTS idx_turn_phrases_action ON turn_phrases(action);`,
 
+  // Turn order indexes
+  `CREATE INDEX IF NOT EXISTS idx_turn_order_game ON turn_order(game_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_turn_order_player ON turn_order(player_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_turn_order_team ON turn_order(team_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_turn_order_next_player ON turn_order(next_player_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_turn_order_prev_player ON turn_order(prev_player_id);`,
+
   // Device sessions indexes
   `CREATE INDEX IF NOT EXISTS idx_device_sessions_device ON device_sessions(device_id);`,
   `CREATE INDEX IF NOT EXISTS idx_device_sessions_socket ON device_sessions(socket_id);`,
@@ -330,6 +367,12 @@ export const CREATE_TRIGGERS = [
      UPDATE turns SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
    END;`,
 
+  `CREATE TRIGGER IF NOT EXISTS update_turn_order_timestamp
+   AFTER UPDATE ON turn_order
+   BEGIN
+     UPDATE turn_order SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+   END;`,
+
   `CREATE TRIGGER IF NOT EXISTS update_device_sessions_timestamp
    AFTER UPDATE ON device_sessions
    BEGIN
@@ -346,6 +389,7 @@ export const ALL_TABLES = [
   CREATE_PHRASES_TABLE,
   CREATE_TURNS_TABLE,
   CREATE_TURN_PHRASES_TABLE,
+  CREATE_TURN_ORDER_TABLE,
   CREATE_DEVICE_SESSIONS_TABLE,
 ];
 

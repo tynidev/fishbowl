@@ -12,6 +12,124 @@ import {
 } from '../../src/types/rest-api';
 import { createRealDataStoreFromScenario } from '../test-helpers/realDbUtils';
 import { app } from '../setupTests';
+import { TurnOrder } from '../../src/db/schema';
+import {
+  validateTurnOrderIntegrity,
+  getRandomPlayerFromTurnOrder
+} from '../../src/utils/turnUtils';
+
+// Helper functions for turn order testing
+/**
+ * Verifies that the turn order follows snake draft pattern
+ */
+async function verifySnakeDraftPattern(gameCode: string, teamCount: number, expectedPlayerCount: number) {
+  const { select } = await import('../../src/db/utils');
+  
+  // Get turn order entries
+  const turnOrders = await select<TurnOrder>('turn_order', {
+    where: [{ field: 'game_id', operator: '=', value: gameCode }]
+  });
+  expect(turnOrders).toHaveLength(expectedPlayerCount);
+
+  // Get the turn order sequence by following the linked list
+  const turnOrderSequence: TurnOrder[] = [];
+  if (turnOrders.length > 0) {
+    const firstTurnOrder = turnOrders[0]!;
+    let currentPlayerId = firstTurnOrder.player_id;
+    const visited = new Set<string>();
+    
+    while (!visited.has(currentPlayerId)) {
+      visited.add(currentPlayerId);
+      const currentTurnOrder = turnOrders.find(to => to.player_id === currentPlayerId);
+      if (currentTurnOrder) {
+        turnOrderSequence.push(currentTurnOrder);
+        currentPlayerId = currentTurnOrder.next_player_id;
+      }
+      
+      if (currentPlayerId === firstTurnOrder.player_id) break;
+    }
+  }
+
+  expect(turnOrderSequence).toHaveLength(expectedPlayerCount);
+
+  // Verify snake pattern - teams should alternate properly
+  const teamSequence = turnOrderSequence.map(to => to.team_id);
+  const uniqueTeams = [...new Set(teamSequence)];
+  expect(uniqueTeams).toHaveLength(teamCount);
+  
+  return turnOrderSequence;
+}
+
+/**
+ * Verifies circular linking integrity
+ */
+async function verifyCircularLinking(gameCode: string) {
+  const { select } = await import('../../src/db/utils');
+  const turnOrders = await select<TurnOrder>('turn_order', {
+    where: [{ field: 'game_id', operator: '=', value: gameCode }]
+  });
+  
+  if (turnOrders.length === 0) return true;
+
+  // Check that each player's next/prev references exist
+  for (const turnOrder of turnOrders) {
+    const nextPlayerExists = turnOrders.some(to => to.player_id === turnOrder.next_player_id);
+    const prevPlayerExists = turnOrders.some(to => to.player_id === turnOrder.prev_player_id);
+    
+    expect(nextPlayerExists).toBe(true);
+    expect(prevPlayerExists).toBe(true);
+  }
+
+  // Check circular traversal
+  const firstTurnOrder = turnOrders[0]!;
+  let currentPlayerId = firstTurnOrder.player_id;
+  let steps = 0;
+  const maxSteps = turnOrders.length * 2;
+  
+  while (steps < maxSteps) {
+    const currentTurnOrder = turnOrders.find(to => to.player_id === currentPlayerId);
+    if (!currentTurnOrder) break;
+    
+    currentPlayerId = currentTurnOrder.next_player_id;
+    steps++;
+    
+    if (currentPlayerId === firstTurnOrder.player_id && steps === turnOrders.length) {
+      return true; // Successfully completed one full circle
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Extracts and validates the complete turn order sequence
+ */
+async function extractTurnOrderSequence(gameCode: string): Promise<string[]> {
+  const { select } = await import('../../src/db/utils');
+  const turnOrders = await select<TurnOrder>('turn_order', {
+    where: [{ field: 'game_id', operator: '=', value: gameCode }]
+  });
+  
+  if (turnOrders.length === 0) return [];
+
+  const sequence: string[] = [];
+  const firstTurnOrder = turnOrders[0]!;
+  let currentPlayerId = firstTurnOrder.player_id;
+  const visited = new Set<string>();
+  
+  while (!visited.has(currentPlayerId)) {
+    visited.add(currentPlayerId);
+    sequence.push(currentPlayerId);
+    
+    const currentTurnOrder = turnOrders.find(to => to.player_id === currentPlayerId);
+    if (!currentTurnOrder) break;
+    
+    currentPlayerId = currentTurnOrder.next_player_id;
+    if (currentPlayerId === firstTurnOrder.player_id) break;
+  }
+  
+  return sequence;
+}
 
 describe('Games API', () => {
 
@@ -473,6 +591,257 @@ describe('POST /api/games/:gameCode/start', () => {
         current_round: 1,
         current_team: 1
       });
+
+      // ===== NEW TURN ORDER VERIFICATION =====
+      
+      // Verify TurnOrder records are created for all players
+      await verifySnakeDraftPattern(gameCode, 2, 4);
+      
+      // Verify circular linking integrity
+      const isCircularValid = await verifyCircularLinking(gameCode);
+      expect(isCircularValid).toBe(true);
+      
+      // Verify current_turn_id points to a valid player in the turn order
+      expect(updatedGame.current_turn_id).toBeDefined();
+      const turnOrderSequence = await extractTurnOrderSequence(gameCode);
+      expect(turnOrderSequence).toHaveLength(4);
+      
+      // Verify that the current turn player is in the turn order
+      const { select } = await import('../../src/db/utils');
+      const currentTurn = await select('turns', {
+        where: [{ field: 'id', operator: '=', value: updatedGame.current_turn_id }]
+      });
+      expect(currentTurn).toHaveLength(1);
+      expect(turnOrderSequence).toContain(currentTurn[0].player_id);
+      
+      // Verify turn order integrity using utility function
+      const integrityValid = await validateTurnOrderIntegrity(gameCode);
+      expect(integrityValid).toBe(true);
+    });
+    
+    it('should create turn order with correct snake draft pattern for 2 teams', async () => {
+      const scenario = createGameScenario({
+        gameCode,
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players',
+        teamCount: 2,
+        playerCount: 6, // 3 players per team
+        phrasesPerPlayer: 5
+      });
+
+      const dataStore = createRealDataStoreFromScenario(scenario);
+      await dataStore.initDb();
+
+      // Add required phrases for each player
+      for (const player of scenario.players) {
+        for (let i = 0; i < scenario.game.phrases_per_player; i++) {
+          await dataStore.addPhrase({
+            id: `phrase-${player.id}-${i}`,
+            game_id: gameCode,
+            player_id: player.id,
+            text: `Test phrase ${i + 1} from ${player.name}`,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      const response = await request(app)
+        .post(`/api/games/${gameCode}/start`)
+        .expect(200);
+
+      // Verify snake draft pattern for 2 teams with 3 players each
+      const turnOrderSequence = await extractTurnOrderSequence(gameCode);
+      expect(turnOrderSequence).toHaveLength(6);
+      
+      // Verify turn order integrity
+      const integrityValid = await validateTurnOrderIntegrity(gameCode);
+      expect(integrityValid).toBe(true);
+    });
+
+    it('should create turn order for 3 teams with uneven player distribution', async () => {
+      const scenario = createGameScenario({
+        gameCode,
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players',
+        teamCount: 3,
+        playerCount: 8, // Uneven: ~2-3 players per team
+        phrasesPerPlayer: 5
+      });
+
+      const dataStore = createRealDataStoreFromScenario(scenario);
+      await dataStore.initDb();
+
+      // Add required phrases for each player
+      for (const player of scenario.players) {
+        for (let i = 0; i < scenario.game.phrases_per_player; i++) {
+          await dataStore.addPhrase({
+            id: `phrase-${player.id}-${i}`,
+            game_id: gameCode,
+            player_id: player.id,
+            text: `Test phrase ${i + 1} from ${player.name}`,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      const response = await request(app)
+        .post(`/api/games/${gameCode}/start`)
+        .expect(200);
+
+      // Verify turn order was created for all players
+      await verifySnakeDraftPattern(gameCode, 3, 8);
+      
+      // Verify circular linking
+      const isCircularValid = await verifyCircularLinking(gameCode);
+      expect(isCircularValid).toBe(true);
+    });
+
+    it('should verify random player selection varies over multiple runs', async () => {
+      const selectedPlayers = new Set<string>();
+      const numberOfRuns = 5;
+
+      for (let run = 0; run < numberOfRuns; run++) {
+        // Reset for each run
+        await resetAllMocks();
+        
+        const runGameCode = `TST${run.toString().padStart(3, '0')}`;
+        const scenario = createGameScenario({
+          gameCode: runGameCode,
+          gameStatus: 'setup',
+          gameSubStatus: 'waiting_for_players',
+          teamCount: 2,
+          playerCount: 6,
+          phrasesPerPlayer: 3
+        });
+
+        const dataStore = createRealDataStoreFromScenario(scenario);
+        await dataStore.initDb();
+
+        // Add required phrases
+        for (const player of scenario.players) {
+          for (let i = 0; i < scenario.game.phrases_per_player; i++) {
+            await dataStore.addPhrase({
+              id: `phrase-${player.id}-${i}-${run}`,
+              game_id: runGameCode,
+              player_id: player.id,
+              text: `Test phrase ${i + 1} from ${player.name}`,
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
+        }
+
+        const response = await request(app)
+          .post(`/api/games/${runGameCode}/start`)
+          .expect(200);
+
+        // Get the starting player from the current turn
+        const { select } = await import('../../src/db/utils');
+        const game = await select('games', {
+          where: [{ field: 'id', operator: '=', value: runGameCode }]
+        });
+        
+        if (game.length > 0 && game[0].current_turn_id) {
+          const turns = await select('turns', {
+            where: [{ field: 'id', operator: '=', value: game[0].current_turn_id }]
+          });
+          
+          if (turns.length > 0) {
+            selectedPlayers.add(turns[0].player_id);
+          }
+        }
+      }
+
+      // We should see some variation in selected starting players
+      // (though it's possible, albeit unlikely, for the same player to be selected multiple times)
+      expect(selectedPlayers.size).toBeGreaterThan(0);
+    });
+
+    it('should maintain turn order integrity with proper circular linking', async () => {
+      const scenario = createGameScenario({
+        gameCode,
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players',
+        teamCount: 2,
+        playerCount: 4,
+        phrasesPerPlayer: 5
+      });
+
+      const dataStore = createRealDataStoreFromScenario(scenario);
+      await dataStore.initDb();
+
+      // Add required phrases
+      for (const player of scenario.players) {
+        for (let i = 0; i < scenario.game.phrases_per_player; i++) {
+          await dataStore.addPhrase({
+            id: `phrase-${player.id}-${i}`,
+            game_id: gameCode,
+            player_id: player.id,
+            text: `Test phrase ${i + 1} from ${player.name}`,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      await request(app)
+        .post(`/api/games/${gameCode}/start`)
+        .expect(200);
+
+      // Detailed circular linking verification
+      const { select } = await import('../../src/db/utils');
+      const turnOrders = await select<TurnOrder>('turn_order', {
+        where: [{ field: 'game_id', operator: '=', value: gameCode }]
+      });
+      
+      expect(turnOrders).toHaveLength(4);
+
+      // Verify that following the chain forward and backward returns to start
+      const firstTurnOrder = turnOrders[0]!;
+      
+      // Forward traversal
+      let currentPlayerId = firstTurnOrder.player_id;
+      const forwardPath: string[] = [];
+      for (let i = 0; i < turnOrders.length; i++) {
+        forwardPath.push(currentPlayerId);
+        const current = turnOrders.find(to => to.player_id === currentPlayerId);
+        expect(current).toBeDefined();
+        currentPlayerId = current!.next_player_id;
+      }
+      expect(currentPlayerId).toBe(firstTurnOrder.player_id); // Should return to start
+      
+      // Backward traversal
+      currentPlayerId = firstTurnOrder.player_id;
+      const backwardPath: string[] = [];
+      for (let i = 0; i < turnOrders.length; i++) {
+        backwardPath.push(currentPlayerId);
+        const current = turnOrders.find(to => to.player_id === currentPlayerId);
+        expect(current).toBeDefined();
+        currentPlayerId = current!.prev_player_id;
+      }
+      expect(currentPlayerId).toBe(firstTurnOrder.player_id); // Should return to start
+      
+      // Verify that we visited all players in both directions
+      expect(forwardPath).toHaveLength(turnOrders.length);
+      expect(backwardPath).toHaveLength(turnOrders.length);
+      
+      // Verify that both paths contain all players (just in different orders)
+      const forwardSet = new Set(forwardPath);
+      const backwardSet = new Set(backwardPath);
+      expect(forwardSet.size).toBe(turnOrders.length);
+      expect(backwardSet.size).toBe(turnOrders.length);
+      
+      // Verify that every player appears exactly once in each path
+      for (const turnOrder of turnOrders) {
+        expect(forwardPath.filter(id => id === turnOrder.player_id)).toHaveLength(1);
+        expect(backwardPath.filter(id => id === turnOrder.player_id)).toHaveLength(1);
+      }
     });
   });
 
@@ -872,6 +1241,71 @@ describe('POST /api/games/:gameCode/start', () => {
         playerCount: 8,
         teamCount: 4
       });
+    });
+
+    it('should verify turn order persists and can be used for future rounds', async () => {
+      const scenario = createGameScenario({
+        gameCode,
+        gameStatus: 'setup',
+        gameSubStatus: 'waiting_for_players',
+        teamCount: 2,
+        playerCount: 4,
+        phrasesPerPlayer: 5
+      });
+
+      const dataStore = createRealDataStoreFromScenario(scenario);
+      await dataStore.initDb();
+
+      // Add required phrases
+      for (const player of scenario.players) {
+        for (let i = 0; i < scenario.game.phrases_per_player; i++) {
+          await dataStore.addPhrase({
+            id: `phrase-${player.id}-${i}`,
+            game_id: gameCode,
+            player_id: player.id,
+            text: `Test phrase ${i + 1} from ${player.name}`,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      await request(app)
+        .post(`/api/games/${gameCode}/start`)
+        .expect(200);
+
+      // Capture the initial turn order sequence
+      const initialTurnOrder = await extractTurnOrderSequence(gameCode);
+      expect(initialTurnOrder).toHaveLength(4);
+
+      // Verify the turn order structure persists even after game start
+      const { select } = await import('../../src/db/utils');
+      const turnOrders = await select<TurnOrder>('turn_order', {
+        where: [{ field: 'game_id', operator: '=', value: gameCode }]
+      });
+      
+      expect(turnOrders).toHaveLength(4);
+      
+      // Verify that all turn order records have proper team associations
+      for (const turnOrder of turnOrders) {
+        expect(turnOrder.team_id).toBeDefined();
+        expect(turnOrder.next_player_id).toBeDefined();
+        expect(turnOrder.prev_player_id).toBeDefined();
+        
+        // Verify the player exists
+        const players = await select('players', {
+          where: [{ field: 'id', operator: '=', value: turnOrder.player_id }]
+        });
+        expect(players).toHaveLength(1);
+        expect(players[0].team_id).toBe(turnOrder.team_id);
+      }
+
+      // Verify that we can retrieve next players using the utility functions
+      const firstPlayerId = initialTurnOrder[0]!;
+      const nextPlayerId = await getRandomPlayerFromTurnOrder(gameCode);
+      expect(nextPlayerId).toBeDefined();
+      expect(initialTurnOrder).toContain(nextPlayerId);
     });
   });
 

@@ -134,6 +134,15 @@
 - This cycle repeats until all phrases in the bowl have been guessed for the current round.
 - The same player order is preserved across Rounds 2 and 3.
 
+**✅ IMPLEMENTED: Turn Order Management System**
+- **Snake Draft Pattern**: Automatically implemented using circular linked list structure
+- **Fair Distribution**: Players shuffled within teams, teams shuffled, then snake draft applied
+- **Random Start**: Game begins with randomly selected player from established turn order
+- **Persistent Order**: Same sequence maintained across all 3 rounds
+- **Circular Navigation**: Seamless turn progression without special cases
+- **Connection Handling**: Automatically skips disconnected players
+- **Turn Progression API**: `POST /games/:gameId/turns/end` endpoint for advancing turns
+
 ### 2.1 List of rounds
 - Round 1: Taboo-style
 - Round 2: Charades (no words)

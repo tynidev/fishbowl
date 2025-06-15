@@ -1,12 +1,9 @@
 # Game State Management API Implementation Plan (with Socket.IO Integration)
 
 ## Overview
-Implement three core game state management endpoints to `backend/src/controllers/game.ts` with real-time Socket.IO updates to all connected device sessions.d
+Implement two core game state management endpoints to `backend/src/controllers/game.ts` with real-time Socket.IO updates to all connected device sessions.d
 
 ```typescript
-// Start the game
-POST /api/games/:gameCode/start
-
 // Start a new round
 POST /api/games/:gameCode/rounds/start
 
@@ -14,160 +11,36 @@ POST /api/games/:gameCode/rounds/start
 GET /api/games/:gameCode/state
 ```
 
-## 1. POST /api/games/:gameCode/start
-
-### Purpose
-Transition game from `waiting` or `phrase_submission` to `playing` state and initialize first round.
-
-### Implementation Steps
-
-#### 1.1 Input Validation
-```typescript
-// No request body required
-// Path parameter: gameCode (string)
-```
-
-#### 1.2 Authorization Check
-- Verify request comes from a player in the game (using playerId from request headers/body)
-- Return 403 if non-game player attempts to start
-
-#### 1.3 Pre-conditions Validation
-- Game exists and is in `waiting` or `phrase_submission` state
-- Minimum players joined (at least 2 teams with 2+ players each)
-- Minimum phrases submitted (configurable, default 3 per player)
-- Teams are balanced
-
-#### 1.4 Database Transaction
-```typescript
-// Within a single transaction:
-1. Update games table:
-   - status = 'playing'
-   - started_at = NOW()
-   - current_round = 1
-
-2. Create first round in rounds table:
-   - round_number = 1
-   - round_type = 'TABOO' (or from game config)
-   - started_at = NOW()
-   - status = 'PENDING'
-
-3. Initialize turn order:
-   - Calculate team rotation
-   - Set first acting team/player
-
-4. Mark all submitted phrases as 'in_bowl':
-   - Update phrases.status = 'in_bowl'
-   - Set phrases.guessed = false
-```
-
-#### 1.5 Socket Event Emission
-```typescript
-// In the REST endpoint, after successful database update:
-import { broadcastGameStateUpdate } from '../sockets/SOCKET-API';
-
-// Emit to all connected device sessions
-await broadcastGameStateUpdate(io, {
-  gameCode,
-  status: 'playing',
-  currentRound: 1,
-  currentTeam: firstActingTeam,
-  currentPlayer: firstActingPlayer
-});
-```
-
-#### 1.6 Socket Event Handler (Add to SOCKET-API.ts)
-```typescript
-// Add this interface to SOCKET-API.ts
-export interface GameStartedData {
-  gameCode: string;
-  status: 'playing';
-  currentRound: number;
-  roundType: string;
-  startedAt: Date;
-  turnOrder: string[];
-  firstActingTeam: string;
-  firstActingPlayer: string;
-}
-
-// Add this broadcast function to SOCKET-API.ts
-export async function broadcastGameStarted(
-  io: SocketIOServer,
-  data: GameStartedData
-): Promise<void> {
-  try {
-    io.to(data.gameCode).emit('game:started', data);
-    console.log(`Broadcasting game started for game ${data.gameCode}`);
-  } catch (error) {
-    console.error('Error broadcasting game started:', error);
-  }
-}
-```
-
-#### 1.7 Response
-```json
-{
-  "success": true,
-  "game": {
-    "code": "ABC123",
-    "status": "playing",
-    "currentRound": 1,
-    "startedAt": "2025-06-12T10:00:00Z"
-  }
-}
-```
-
-## 2. POST /api/games/:gameCode/rounds/start
+## 1. POST /api/games/:gameCode/rounds/start
 
 ### Purpose
 Start a new round after the previous one completes or initialize the first round.
 
 ### Implementation Steps
 
-#### 2.1 Input Validation
-```typescript
-// Optional request body:
-{
-  roundType?: 'TABOO' | 'CHARADES' | 'ONE_WORD' // If not provided, use next in sequence
-}
-```
-
-#### 2.2 Authorization Check
+#### 1.1 Authorization Check
 - Verify request comes from player in the game
 - Return 403 if unauthorized
 
-#### 2.3 Pre-conditions Validation
-- Game is in `playing` state
-- Previous round (if any) is completed
-- Phrases are available to play (reset bowl if needed)
+#### 1.2 Pre-conditions Validation
+- Game is in `round_intro` state
 
-#### 2.4 Database Transaction
+#### 1.3 Database Transaction
 ```typescript
 // Within a single transaction:
-1. If previous round exists:
-   - Ensure rounds.status = 'COMPLETED' for previous round
-   - Calculate and store round scores
+1. Create a new turn and pick the next playerin the sequence to start the turn
 
-2. Create new round:
-   - round_number = previous + 1
-   - round_type = next in sequence or from request
-   - started_at = NOW()
-   - status = 'ACTIVE'
+2. Update Game in database:
+   - current_round = previous + 1
+   - current_turn = turn just created
+   - current_team = team of the player turn just created
 
-3. Update games table:
-   - current_round = new round number
-   - current_round_type = round type
-
-4. Reset phrase states for new round:
-   - If all phrases were guessed, reset:
-     UPDATE phrases SET guessed = false, status = 'in_bowl'
-   - Track which phrases are available this round
-
-5. Initialize first turn of round:
-   - Determine starting team (rotate from last round)
-   - Set acting player
+3. Reset phrase states for new round:
+   - Reset all phrases:
+     UPDATE phrases SET status = `active`
 ```
 
-#### 2.5 Socket Event Emission
+#### 1.4 Socket Event Emission
 ```typescript
 // In the REST endpoint, after successful database update:
 import { broadcastRoundStarted } from '../sockets/SOCKET-API';
@@ -184,7 +57,7 @@ await broadcastRoundStarted(io, {
 });
 ```
 
-#### 2.6 Socket Event Handler (Add to SOCKET-API.ts)
+#### 1.5 Socket Event Handler (Add to SOCKET-API.ts)
 ```typescript
 // Add this interface to SOCKET-API.ts
 export interface RoundStartedData {
@@ -212,7 +85,7 @@ export async function broadcastRoundStarted(
 }
 ```
 
-#### 2.7 Response
+#### 1.6 Response
 ```json
 {
   "success": true,
@@ -227,14 +100,14 @@ export async function broadcastRoundStarted(
 }
 ```
 
-## 3. GET /api/games/:gameCode/state
+## 2. GET /api/games/:gameCode/state
 
 ### Purpose
 Retrieve comprehensive current game state for UI synchronization.
 
 ### Implementation Steps
 
-#### 3.1 Input Validation
+#### 2.1 Input Validation
 ```typescript
 // Path parameter: gameCode (string)
 // Optional query params:
@@ -242,11 +115,11 @@ Retrieve comprehensive current game state for UI synchronization.
 // ?includePlayerDetails=true
 ```
 
-#### 3.2 Authorization Check
+#### 2.2 Authorization Check
 - Any player in the game can request state
 - Optionally include deviceId for session validation
 
-#### 3.3 Data Aggregation
+#### 2.3 Data Aggregation
 ```typescript
 // Fetch from multiple tables:
 1. Game basic info from games table
@@ -258,7 +131,7 @@ Retrieve comprehensive current game state for UI synchronization.
 7. Timer state if turn is active
 ```
 
-#### 3.4 Socket Event Support (Add to SOCKET-API.ts)
+#### 2.4 Socket Event Support (Add to SOCKET-API.ts)
 ```typescript
 // Add handler for clients requesting game state
 export async function handleRequestGameState(
@@ -298,7 +171,7 @@ export async function broadcastGameStateSync(
 }
 ```
 
-#### 3.5 Response Structure
+#### 2.5 Response Structure
 ```json
 {
   "game": {

@@ -11,6 +11,7 @@
     "debug:break": "nodemon --exec 'node -r ts-node/register --inspect-brk' src/server.ts",
     "build": "tsc",
     "clean": "rimraf dist",
+    "migrate": "ts-node scripts/migrate.ts",
     "test": "jest",
     "test:verbose": "jest --verbose",
     "test:watch": "jest --watchAll=true",

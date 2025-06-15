@@ -117,6 +117,7 @@ export async function resetAllMocks() {
   // Clear all data from test database
   await withTransaction(async (transaction) => {
     await transaction.run('DELETE FROM phrases');
+    await transaction.run('DELETE FROM turn_order');
     await transaction.run('DELETE FROM players');
     await transaction.run('DELETE FROM teams');
     await transaction.run('DELETE FROM games');

@@ -120,15 +120,30 @@ Starts a game after validation.
 - Validates game is in 'setup' status
 - Requires at least 2 * teamCount players
 - All players must be assigned to teams
+- Creates circular linked list turn order using snake draft pattern
+- Selects random starting player from turn order
 - Creates first turn and updates game status to 'playing'
-- Shuffles players for random turn order
 - Broadcasts game started event to all connected clients
+
+**Turn Order Management:**
+- Implements **snake draft pattern** to ensure fair turn distribution
+- Creates **circular linked list** for seamless turn progression
+- Each player points to next and previous players in the turn sequence
+- Turn order preserved across all 3 rounds of the game
+- Random starting player selected from the established order
+
+**Snake Draft Pattern Example:**
+With 3 teams (A, B, C) having 2 players each:
+```
+Round starts: A1 → B1 → C1 → C2 → B2 → A2 → A1 → B1...
+```
+This ensures balanced turn distribution and maintains fairness across teams.
 
 **Validation Requirements:**
 - Game must exist and be in 'setup' status
 - Must have at least 2 players per team (2 * teamCount total)
 - All players must be assigned to teams
-- All required phrases should be submitted
+- All required phrases must be submitted (players × phrasesPerPlayer)
 
 **Response:**
 ```typescript

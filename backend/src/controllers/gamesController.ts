@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Game, Player, Team, Phrase, Turn } from '../db/schema';
+import { Game, Player, Team, Phrase, Turn, TurnOrder } from '../db/schema';
 import {
   insert,
   select,
@@ -17,6 +17,7 @@ import {
 import { validateGameConfig, validatePlayerName } from '../utils/validators';
 import { generateGameCode } from '../utils/codeGenerator';
 import { createDefaultTeams, assignPlayerToTeam } from '../utils/teamUtils';
+import { getRandomPlayerFromTurnOrder } from '../utils/turnUtils';
 import { broadcastGameStarted } from '../sockets/SOCKET-API';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -442,11 +443,77 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         transaction
       );
 
-      // Shuffle players for random turn order
-      const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+      // Group players by team for snake draft
+      const playersByTeam = new Map<string, Player[]>();
+      for (const player of players) {
+        if (!player.team_id) continue;
+        if (!playersByTeam.has(player.team_id)) {
+          playersByTeam.set(player.team_id, []);
+        }
+        playersByTeam.get(player.team_id)!.push(player);
+      }
 
-      // Pick first player and create a turn for them
-      const firstPlayer = shuffledPlayers[0];
+      // Shuffle players within each team
+      for (const [teamId, teamPlayers] of playersByTeam.entries()) {
+        teamPlayers.sort(() => Math.random() - 0.5);
+        playersByTeam.set(teamId, teamPlayers);
+      }
+
+      // Shuffle team order
+      const teamIds = Array.from(playersByTeam.keys()).sort(() => Math.random() - 0.5);
+
+      // Build snake draft order
+      const snakeDraftOrder: Player[] = [];
+      const maxPlayersPerTeam = Math.max(...Array.from(playersByTeam.values()).map(team => team.length));
+
+      for (let playerIndex = 0; playerIndex < maxPlayersPerTeam; playerIndex++) {
+        // Determine if this is a forward or reverse pass
+        const isForwardPass = playerIndex % 2 === 0;
+        const orderedTeamIds = isForwardPass ? teamIds : [...teamIds].reverse();
+
+        // Add one player from each team in the determined order
+        for (const teamId of orderedTeamIds) {
+          const teamPlayers = playersByTeam.get(teamId);
+          if (teamPlayers && teamPlayers[playerIndex]) {
+            snakeDraftOrder.push(teamPlayers[playerIndex]!);
+          }
+        }
+      }
+
+      // Create TurnOrder records in a circular linked list
+      for (let i = 0; i < snakeDraftOrder.length; i++) {
+        const currentPlayer = snakeDraftOrder[i];
+        const nextPlayer = snakeDraftOrder[(i + 1) % snakeDraftOrder.length];
+        const prevPlayer = snakeDraftOrder[(i - 1 + snakeDraftOrder.length) % snakeDraftOrder.length];
+
+        const turnOrder: Omit<TurnOrder, 'created_at' | 'updated_at'> = {
+          id: uuidv4(),
+          game_id: gameCode,
+          player_id: currentPlayer!.id,
+          team_id: currentPlayer!.team_id!,
+          next_player_id: nextPlayer!.id,
+          prev_player_id: prevPlayer!.id,
+        };
+
+        await insert('turn_order', turnOrder, transaction);
+      }
+
+      // Select random starting player from turn order
+      const randomStartingPlayerId = await getRandomPlayerFromTurnOrder(gameCode);
+      if (!randomStartingPlayerId) {
+        res.status(500).json({
+          error: 'Failed to select starting player from turn order',
+        });
+        return;
+      }
+
+      const firstPlayer = players.find(p => p.id === randomStartingPlayerId);
+      if (!firstPlayer) {
+        res.status(500).json({
+          error: 'Selected starting player not found',
+        });
+        return;
+      }
       const firstTurn: Omit<Turn, 'created_at' | 'updated_at'> = {
         id: uuidv4(),
         game_id: gameCode,
