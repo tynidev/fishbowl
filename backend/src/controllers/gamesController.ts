@@ -463,28 +463,23 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       const teamIds = Array.from(playersByTeam.keys()).sort(() => Math.random() - 0.5);
 
       // Build snake draft order
-      const snakeDraftOrder: Player[] = [];
+      const playerOrder: Player[] = [];
       const maxPlayersPerTeam = Math.max(...Array.from(playersByTeam.values()).map(team => team.length));
 
       for (let playerIndex = 0; playerIndex < maxPlayersPerTeam; playerIndex++) {
-        // Determine if this is a forward or reverse pass
-        const isForwardPass = playerIndex % 2 === 0;
-        const orderedTeamIds = isForwardPass ? teamIds : [...teamIds].reverse();
-
-        // Add one player from each team in the determined order
-        for (const teamId of orderedTeamIds) {
+        for (const teamId of teamIds) {
           const teamPlayers = playersByTeam.get(teamId);
           if (teamPlayers && teamPlayers[playerIndex]) {
-            snakeDraftOrder.push(teamPlayers[playerIndex]!);
+            playerOrder.push(teamPlayers[playerIndex]!);
           }
         }
       }
 
       // Create TurnOrder records in a circular linked list
-      for (let i = 0; i < snakeDraftOrder.length; i++) {
-        const currentPlayer = snakeDraftOrder[i];
-        const nextPlayer = snakeDraftOrder[(i + 1) % snakeDraftOrder.length];
-        const prevPlayer = snakeDraftOrder[(i - 1 + snakeDraftOrder.length) % snakeDraftOrder.length];
+      for (let i = 0; i < playerOrder.length; i++) {
+        const currentPlayer = playerOrder[i];
+        const nextPlayer = playerOrder[(i + 1) % playerOrder.length];
+        const prevPlayer = playerOrder[(i - 1 + playerOrder.length) % playerOrder.length];
 
         const turnOrder: Omit<TurnOrder, 'created_at' | 'updated_at'> = {
           id: uuidv4(),

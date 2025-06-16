@@ -126,16 +126,16 @@ Starts a game after validation.
 - Broadcasts game started event to all connected clients
 
 **Turn Order Management:**
-- Implements **snake draft pattern** to ensure fair turn distribution
+- Implements circular draft to ensure fair turn distribution
 - Creates **circular linked list** for seamless turn progression
 - Each player points to next and previous players in the turn sequence
 - Turn order preserved across all 3 rounds of the game
 - Random starting player selected from the established order
 
-**Snake Draft Pattern Example:**
+**Draft Pattern Example:**
 With 3 teams (A, B, C) having 2 players each:
 ```
-Round starts: A1 → B1 → C1 → C2 → B2 → A2 → A1 → B1...
+Round starts: A1 → B1 → C1 → A2 → B2 → C2 → A1 → B1...
 ```
 This ensures balanced turn distribution and maintains fairness across teams.
 

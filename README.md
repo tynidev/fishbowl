@@ -219,33 +219,18 @@ npm run clean:all
 
 The Fishbowl game implements a sophisticated turn order system that ensures fair and balanced gameplay across all teams and rounds.
 
-### Snake Draft Pattern
-The game uses a **snake draft pattern** to distribute turns fairly among teams:
+### Draft Pattern
+The game uses a circular pattern to distribute turns fairly among teams:
 
 **Example with 3 teams (A, B, C) having 2 players each:**
 ```
-Turn Order: A1 → B1 → C1 → C2 → B2 → A2 → A1 → B1...
+Turn Order: A1 → B1 → C1 → A2 → B2 → C2 → A1 → B1...
 ```
-
-This pattern ensures:
-- **Fair distribution**: Each team gets equal opportunities
-- **Balanced gameplay**: No team has consecutive turn advantages
-- **Strategic depth**: Teams must adapt to varying turn positions
-
 ### Circular Linked List Implementation
 The backend uses a **circular linked list** data structure for turn management:
 
 - **Seamless navigation**: No special cases for first/last players
 - **Persistent order**: Same sequence maintained across all 3 rounds
-- **Dynamic handling**: Automatically skips disconnected players
-- **Efficient traversal**: O(1) navigation to next/previous players
-
-### Key Features
-- **Random start**: Game begins with a randomly selected player from the established order
-- **Connection awareness**: Only connected players participate in turn progression
-- **Round consistency**: Turn order preserved across Rounds 1, 2, and 3
-- **Fault tolerance**: System handles player disconnections gracefully
-- **Fair rotation**: Snake draft ensures no team dominates turn positioning
 
 ## � Available Scripts
 

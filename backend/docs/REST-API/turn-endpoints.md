@@ -15,7 +15,7 @@ Ends the current turn and progresses to the next player in the circular turn ord
 - Uses circular linked list to determine next player
 - Creates new turn for the next player
 - Updates game state with turn progression
-- Maintains snake draft order across rounds
+- Maintains draft order across rounds
 
 **Path Parameters:**
 - `gameId` (string): The game code/ID
@@ -67,7 +67,7 @@ Ends the current turn and progresses to the next player in the circular turn ord
 **Turn Order Management:**
 - Uses **circular linked list** for seamless navigation
 - Automatically skips disconnected players
-- Maintains **snake draft pattern** established at game start
+- Maintains **draft pattern** established at game start
 - Preserves turn order across all 3 rounds
 
 **Error Responses:**
@@ -148,24 +148,13 @@ The turn order system uses a circular linked list where:
 - The last player points back to the first player (circular)
 - Navigation is seamless without special cases
 
-### Snake Draft Pattern
+### Draft Pattern
 The turn order follows a snake draft pattern established at game start:
 
 **Example with 3 teams (A, B, C) with 2 players each:**
 ```
-Player Order: A1 → B1 → C1 → C2 → B2 → A2 → A1 → ...
+Player Order: A1 → B1 → C1 → A2 → B2 → C2 → A1 → ...
 ```
-
-**Benefits:**
-- **Fair distribution**: Each team gets equal turn opportunities
-- **Balanced gameplay**: No team has consecutive advantages
-- **Consistent ordering**: Same pattern maintained across all rounds
-
-### Active Player Management
-- Only **connected players** participate in turn progression
-- Disconnected players are automatically skipped
-- Turn order structure remains intact when players disconnect/reconnect
-- System validates player connectivity before creating new turns
 
 ## Usage Examples
 

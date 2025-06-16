@@ -8,8 +8,6 @@ import {
   getNextPlayer, 
   getCurrentPlayer, 
   getRandomPlayerFromTurnOrder,
-  isPlayerActive,
-  getActivePlayersInTurnOrder,
   validateTurnOrderIntegrity
 } from '../../src/utils/turnUtils';
 import { resetAllMocks, ensureTestDatabase } from '../test-helpers/test-helpers';
@@ -211,75 +209,12 @@ describe('Turn Order Utility Functions', () => {
       expect(players.some(p => p.id === nextPlayerId)).toBe(true);
     });
 
-    it('should skip inactive players and return next active player', async () => {
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 3 });
-      const players = gameSetup.players;
-      
-      // Disconnect middle players
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 0 WHERE id IN (?, ?)',
-          [players[1]!.id, players[2]!.id]
-        );
-      });
-
-      const firstPlayer = players[0]!;
-      const nextPlayerId = await getNextPlayer(gameSetup.game.id, firstPlayer.id);
-      
-      // Should skip the disconnected players and find the next connected one
-      expect(nextPlayerId).toBeDefined();
-      expect(nextPlayerId).not.toBe(firstPlayer.id);
-      expect([players[1]!.id, players[2]!.id]).not.toContain(nextPlayerId);
-    });
-
-    it('should return null when all players are inactive', async () => {
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 2 });
-      const players = gameSetup.players;
-      
-      // Disconnect all players
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 0 WHERE game_id = ?',
-          [gameSetup.game.id]
-        );
-      });
-
-      const firstPlayer = players[0]!;
-      const nextPlayerId = await getNextPlayer(gameSetup.game.id, firstPlayer.id);
-      
-      expect(nextPlayerId).toBeNull();
-    });
-
     it('should return null for invalid player ID', async () => {
       const gameSetup = await createGameWithTurnOrder();
       
       const nextPlayerId = await getNextPlayer(gameSetup.game.id, 'invalid-player-id');
       
       expect(nextPlayerId).toBeNull();
-    });
-
-    it('should handle single player scenario (player points to themselves)', async () => {
-      // Create a 2-team game with 2 players, but disconnect all except one
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 2 });
-      const players = gameSetup.players;
-      
-      // Disconnect all players except the first one
-      const activePlayer = players[0]!;
-      const playersToDisconnect = players.slice(1);
-      
-      await withTransaction(async (transaction) => {
-        for (const player of playersToDisconnect) {
-          await transaction.run(
-            'UPDATE players SET is_connected = 0 WHERE id = ?',
-            [player.id]
-          );
-        }
-      });
-
-      // Should return the same player since it's the only active one
-      const nextPlayerId = await getNextPlayer(gameSetup.game.id, activePlayer.id);
-      
-      expect(nextPlayerId).toBe(activePlayer.id);
     });
   });
 
@@ -351,118 +286,6 @@ describe('Turn Order Utility Functions', () => {
       const randomPlayerId = await getRandomPlayerFromTurnOrder(gameSetup.game.id);
       
       expect(randomPlayerId).toBeNull();
-    });
-
-    it('should only return active players', async () => {
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 3 });
-      
-      // Disconnect all but one player
-      const activePlayer = gameSetup.players[0]!;
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 0 WHERE id != ? AND game_id = ?',
-          [activePlayer.id, gameSetup.game.id]
-        );
-      });
-
-      const randomPlayerId = await getRandomPlayerFromTurnOrder(gameSetup.game.id);
-      
-      expect(randomPlayerId).toBe(activePlayer.id);
-    });
-
-    it('should return null when no active players exist', async () => {
-      const gameSetup = await createGameWithTurnOrder();
-      
-      // Disconnect all players
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 0 WHERE game_id = ?',
-          [gameSetup.game.id]
-        );
-      });
-
-      const randomPlayerId = await getRandomPlayerFromTurnOrder(gameSetup.game.id);
-      
-      expect(randomPlayerId).toBeNull();
-    });
-  });
-
-  describe('isPlayerActive', () => {
-    it('should return true for connected player', async () => {
-      const gameSetup = await createGameWithTurnOrder();
-      const player = gameSetup.players[0]!;
-      
-      const isActive = await isPlayerActive(gameSetup.game.id, player.id);
-      
-      expect(isActive).toBe(true);
-    });
-
-    it('should return false for disconnected player', async () => {
-      const gameSetup = await createGameWithTurnOrder();
-      const player = gameSetup.players[0]!;
-      
-      // Disconnect the player
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 0 WHERE id = ?',
-          [player.id]
-        );
-      });
-
-      const isActive = await isPlayerActive(gameSetup.game.id, player.id);
-      
-      expect(isActive).toBe(false);
-    });
-
-    it('should return false for non-existent player', async () => {
-      const gameSetup = await createGameWithTurnOrder();
-      
-      const isActive = await isPlayerActive(gameSetup.game.id, 'invalid-player-id');
-      
-      expect(isActive).toBe(false);
-    });
-  });
-
-  describe('getActivePlayersInTurnOrder', () => {
-    it('should return all active players in turn order', async () => {
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 2 });
-      
-      const activePlayers = await getActivePlayersInTurnOrder(gameSetup.game.id);
-      
-      expect(activePlayers).toHaveLength(gameSetup.players.length);
-      expect(activePlayers.every(id => gameSetup.players.some(p => p.id === id))).toBe(true);
-    });
-
-    it('should exclude disconnected players', async () => {
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 3 });
-      const playersToDisconnect = [gameSetup.players[1]!, gameSetup.players[3]!];
-      
-      // Disconnect some players
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 0 WHERE id IN (?, ?)',
-          [playersToDisconnect[0]!.id, playersToDisconnect[1]!.id]
-        );
-      });
-
-      const activePlayers = await getActivePlayersInTurnOrder(gameSetup.game.id);
-      
-      expect(activePlayers).toHaveLength(gameSetup.players.length - 2);
-      expect(activePlayers).not.toContain(playersToDisconnect[0]!.id);
-      expect(activePlayers).not.toContain(playersToDisconnect[1]!.id);
-    });
-
-    it('should return empty array when no players exist', async () => {
-      const gameSetup = createGameSetup({});
-      
-      // Insert game without players
-      await withTransaction(async (transaction) => {
-        await insert('games', gameSetup.game, transaction);
-      });
-
-      const activePlayers = await getActivePlayersInTurnOrder(gameSetup.game.id);
-      
-      expect(activePlayers).toHaveLength(0);
     });
   });
 
@@ -631,79 +454,6 @@ describe('Turn Order Utility Functions', () => {
       });
 
       expect(isCircular).toBe(true);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle player disconnection scenarios gracefully', async () => {
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 3 });
-      const firstPlayer = gameSetup.players[0]!;
-      
-      // Disconnect the next player in line
-      const nextPlayerId = await getNextPlayer(gameSetup.game.id, firstPlayer.id);
-      if (nextPlayerId) {
-        await withTransaction(async (transaction) => {
-          await transaction.run(
-            'UPDATE players SET is_connected = 0 WHERE id = ?',
-            [nextPlayerId]
-          );
-        });
-      }
-
-      // Should still be able to get the next active player
-      const nextActivePlayerId = await getNextPlayer(gameSetup.game.id, firstPlayer.id);
-      
-      expect(nextActivePlayerId).toBeDefined();
-      expect(nextActivePlayerId).not.toBe(nextPlayerId); // Should skip disconnected player
-    });
-
-    it('should maintain turn order integrity after player reconnection', async () => {
-      const gameSetup = await createGameWithTurnOrder({ teamCount: 2, playersPerTeam: 2 });
-      const player = gameSetup.players[1]!;
-      
-      // Disconnect then reconnect a player
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 0 WHERE id = ?',
-          [player.id]
-        );
-      });
-      
-      await withTransaction(async (transaction) => {
-        await transaction.run(
-          'UPDATE players SET is_connected = 1 WHERE id = ?',
-          [player.id]
-        );
-      });
-
-      // Turn order integrity should still be valid
-      const isValid = await validateTurnOrderIntegrity(gameSetup.game.id);
-      expect(isValid).toBe(true);
-      
-      // Player should be active again
-      const isActive = await isPlayerActive(gameSetup.game.id, player.id);
-      expect(isActive).toBe(true);
-    });
-
-    it('should handle empty game scenarios', async () => {
-      const gameSetup = createGameSetup({ teamCount: 2, playersPerTeam: 0 });
-      
-      // Insert game without players
-      await withTransaction(async (transaction) => {
-        await insert('games', gameSetup.game, transaction);
-      });
-
-      const nextPlayerId = await getNextPlayer(gameSetup.game.id, 'any-player-id');
-      const currentPlayerId = await getCurrentPlayer(gameSetup.game.id);
-      const randomPlayerId = await getRandomPlayerFromTurnOrder(gameSetup.game.id);
-      const activePlayers = await getActivePlayersInTurnOrder(gameSetup.game.id);
-      const isValid = await validateTurnOrderIntegrity(gameSetup.game.id);
-
-      expect(nextPlayerId).toBeNull();
-      expect(currentPlayerId).toBeNull();
-      expect(randomPlayerId).toBeNull();
-      expect(activePlayers).toHaveLength(0);
-      expect(isValid).toBe(true); // Empty turn order is considered valid
     });
   });
 });

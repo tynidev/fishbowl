@@ -5,10 +5,10 @@ import { withConnection } from '../db/connection';
 import { TurnOrder, Game, Turn, Player } from '../db/schema';
 
 /**
- * Get the next active player in the circular turn order
+ * Get the next player in the circular turn order
  * @param gameId - The game ID
  * @param currentPlayerId - The current player ID
- * @returns Promise<string | null> - Next player ID or null if no active players found
+ * @returns Promise<string | null> - Next player ID or null if no player found
  */
 export async function getNextPlayer(gameId: string, currentPlayerId: string): Promise<string | null> {
   return withConnection(async (db) => {
@@ -24,38 +24,17 @@ export async function getNextPlayer(gameId: string, currentPlayerId: string): Pr
         return null;
       }
 
-      // Start from the next player and traverse the circular list
-      let nextPlayerId = currentTurnOrder.next_player_id;
-      const visited = new Set<string>();
+      // Check if this player is in the game
+      const nextPlayer = await db.get<Player>(
+        'SELECT * FROM players WHERE id = ? AND game_id = ?',
+        [currentTurnOrder.next_player_id, gameId]
+      );
 
-      while (!visited.has(nextPlayerId)) {
-        visited.add(nextPlayerId);
-
-        // Check if this player is active (connected)
-        const player = await db.get<Player>(
-          'SELECT is_connected FROM players WHERE id = ? AND game_id = ?',
-          [nextPlayerId, gameId]
-        );
-
-        if (player && player.is_connected) {
-          return nextPlayerId;
-        }
-
-        // Get the next player in the circular list
-        const nextTurnOrder = await db.get<TurnOrder>(
-          'SELECT next_player_id FROM turn_order WHERE game_id = ? AND player_id = ?',
-          [gameId, nextPlayerId]
-        );
-
-        if (!nextTurnOrder) {
-          console.warn(`Turn order entry not found for player ${nextPlayerId} in game ${gameId}`);
-          break;
-        }
-
-        nextPlayerId = nextTurnOrder.next_player_id;
+      if (nextPlayer) {
+        return nextPlayer.id;
       }
 
-      // If we've visited all players and none are active, return null
+      console.warn(`Turn order entry not found for player ${currentTurnOrder.next_player_id} in game ${gameId}`);
       return null;
     } catch (error) {
       console.error('Error getting next player:', error);
@@ -97,79 +76,32 @@ export async function getCurrentPlayer(gameId: string): Promise<string | null> {
 }
 
 /**
- * Select a random active player from the turn order to start the game
+ * Select a random player from the turn order to start the game
  * @param gameId - The game ID
  * @returns Promise<string | null> - Random player ID or null if no players in turn order
  */
 export async function getRandomPlayerFromTurnOrder(gameId: string): Promise<string | null> {
   return withConnection(async (db) => {
     try {
-      // Get all active players in the turn order
-      const activePlayers = await db.all<{ player_id: string }>(
+      // Get all players in the turn order
+      const players = await db.all<{ player_id: string }>(
         `SELECT DISTINCT turn_order.player_id
          FROM turn_order
          INNER JOIN players p ON turn_order.player_id = p.id
-         WHERE turn_order.game_id = ? AND p.is_connected = 1`,
+         WHERE turn_order.game_id = ?`,
         [gameId]
       );
 
-      if (activePlayers.length === 0) {
+      if (players.length === 0) {
         return null;
       }
 
       // Select a random player
-      const randomIndex = Math.floor(Math.random() * activePlayers.length);
-      const randomPlayer = activePlayers[randomIndex];
+      const randomIndex = Math.floor(Math.random() * players.length);
+      const randomPlayer = players[randomIndex];
       return randomPlayer ? randomPlayer.player_id : null;
     } catch (error) {
       console.error('Error getting random player from turn order:', error);
-      throw error;
-    }
-  });
-}
-
-/**
- * Helper function to check if a player is active (connected)
- * @param gameId - The game ID
- * @param playerId - The player ID to check
- * @returns Promise<boolean> - True if player is active, false otherwise
- */
-export async function isPlayerActive(gameId: string, playerId: string): Promise<boolean> {
-  return withConnection(async (db) => {
-    try {
-      const player = await db.get<Player>(
-        'SELECT is_connected FROM players WHERE id = ? AND game_id = ?',
-        [playerId, gameId]
-      );
-
-      return Boolean(player?.is_connected) || false;
-    } catch (error) {
-      console.error('Error checking if player is active:', error);
-      return false;
-    }
-  });
-}
-
-/**
- * Get all active players in the turn order for a game
- * @param gameId - The game ID
- * @returns Promise<string[]> - Array of active player IDs in turn order
- */
-export async function getActivePlayersInTurnOrder(gameId: string): Promise<string[]> {
-  return withConnection(async (db) => {
-    try {
-      const activePlayers = await db.all<{ player_id: string }>(
-        `SELECT DISTINCT turn_order.player_id
-         FROM turn_order
-         INNER JOIN players p ON turn_order.player_id = p.id
-         WHERE turn_order.game_id = ? AND p.is_connected = 1
-         ORDER BY turn_order.created_at`,
-        [gameId]
-      );
-
-      return activePlayers.map(p => p.player_id);
-    } catch (error) {
-      console.error('Error getting active players in turn order:', error);
       throw error;
     }
   });
@@ -209,7 +141,7 @@ export async function validateTurnOrderIntegrity(gameId: string): Promise<boolea
       if (!startPlayer) {
         return true; // Empty turn order is valid
       }
-      
+
       let currentPlayerId = startPlayer.next_player_id;
       const visited = new Set<string>([startPlayer.player_id]);
 
@@ -221,7 +153,7 @@ export async function validateTurnOrderIntegrity(gameId: string): Promise<boolea
 
         visited.add(currentPlayerId);
         const currentTurnOrder = turnOrders.find(to => to.player_id === currentPlayerId);
-        
+
         if (!currentTurnOrder) {
           console.warn(`Turn order integrity check failed for game ${gameId}: Missing turn order for player ${currentPlayerId}`);
           return false;

@@ -54,6 +54,7 @@ async function verifySnakeDraftPattern(gameCode: string, teamCount: number, expe
 
   // Verify snake pattern - teams should alternate properly
   const teamSequence = turnOrderSequence.map(to => to.team_id);
+  // TODO: verify alternating teams are picked in correct order
   const uniqueTeams = [...new Set(teamSequence)];
   expect(uniqueTeams).toHaveLength(teamCount);
   
@@ -592,8 +593,6 @@ describe('POST /api/games/:gameCode/start', () => {
         current_team: 1
       });
 
-      // ===== NEW TURN ORDER VERIFICATION =====
-      
       // Verify TurnOrder records are created for all players
       await verifySnakeDraftPattern(gameCode, 2, 4);
       

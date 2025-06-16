@@ -123,9 +123,9 @@
 ### 2. Game Rounds (reference Fishbowl Game Rules section for rules of the game)
 - The game consists of 3 rounds, each with slightly different rules.
 - Round 1 begins with a randomly selected player from a randomly selected team.
-- Turns then rotate in a "snake draft" fashion:
+- Turns then rotate in a "circular draft" fashion:
     Example with 3 teams (A, B, C) with 2 players each:
-    - Round starts: A1 → B1 → C1 → C2 → B2 → A2 → A1 → B1...
+    - Round starts: A1 → B1 → C1 → A2 → B2 → C2 → A1 → B1...
     - This order continues until all phrases are guessed
     - Same order preserved across all 3 rounds
 - After the current player's turn ends, the next player from the next team takes their turn.
@@ -133,15 +133,6 @@
 - Once all players from all teams have taken a turn, the rotation continues from the next player in the original starting order.
 - This cycle repeats until all phrases in the bowl have been guessed for the current round.
 - The same player order is preserved across Rounds 2 and 3.
-
-**✅ IMPLEMENTED: Turn Order Management System**
-- **Snake Draft Pattern**: Automatically implemented using circular linked list structure
-- **Fair Distribution**: Players shuffled within teams, teams shuffled, then snake draft applied
-- **Random Start**: Game begins with randomly selected player from established turn order
-- **Persistent Order**: Same sequence maintained across all 3 rounds
-- **Circular Navigation**: Seamless turn progression without special cases
-- **Connection Handling**: Automatically skips disconnected players
-- **Turn Progression API**: `POST /games/:gameId/turns/end` endpoint for advancing turns
 
 ### 2.1 List of rounds
 - Round 1: Taboo-style

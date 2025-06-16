@@ -30,7 +30,7 @@ The Fishbowl API is a RESTful service that enables real-time multiplayer game ma
 
 ### 🔄 [Turn Management](./REST-API/turn-endpoints.md)
 - Turn progression and navigation
-- Snake draft order implementation
+- Circular draft order implementation
 - Circular linked list turn sequence
 - Player connection handling
 
@@ -78,7 +78,6 @@ The implementation uses the following core tables:
 - `phrases` - Player-submitted phrases for the game
 - `turns` - Individual turn records and scoring
 - `turn_order` - Circular linked list for turn progression
-- `turn_phrases` - Phrase actions during specific turns
 - `device_sessions` - Session management and device tracking
 
 ### Database Features
@@ -104,19 +103,3 @@ The implementation uses the following core tables:
 ```
 http://localhost:3001/api
 ```
-
-## Technical Documentation
-
-### 🔄 [Turn Order System](./technical/turn-order-system.md)
-- Circular linked list implementation details
-- Snake draft algorithm explanation
-- Database schema and performance considerations
-- Testing strategies and implementation files
-
-## Related Resources
-
-- [Game Endpoints](./REST-API/game-endpoints.md) - Start here for game creation
-- [Turn Endpoints](./REST-API/turn-endpoints.md) - Turn progression and management
-- [Technical Documentation](./technical/turn-order-system.md) - Implementation details
-
-For detailed endpoint documentation, navigate to the specific section links above.
