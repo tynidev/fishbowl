@@ -15,17 +15,22 @@ Fishbowl is a team-based word-guessing game that combines elements of Charades, 
 
 ```
 fishbowl-app/
-├── frontend/           # React PWA application
-│   ├── public/         # Static assets and PWA manifest
-│   ├── src/           # React components and logic
-│   ├── build/         # Production build output
-│   └── package.json   # Frontend dependencies
-├── backend/           # Express.js server
-│   ├── src/           # TypeScript server code
-│   ├── dist/          # Compiled JavaScript output
-│   └── package.json   # Backend dependencies
-├── database/          # SQLite database files
-└── package.json       # Root workspace configuration
+├── .github/          # GitHub workflow configurations
+├── frontend/         # React PWA application
+│   ├── public/       # Static assets and PWA manifest
+│   ├── src/          # React components and logic
+│   ├── build/        # Production build output
+│   └── package.json  # Frontend dependencies
+├── backend/          # Express.js server
+│   ├── docs/         # Backend server Documentation
+│   ├── src/          # TypeScript server code
+│   ├── unittests/    # Unit Tests for backend
+│   ├── dist/         # Compiled JavaScript output
+│   └── package.json  # Backend dependencies
+├── database/         # SQLite database files
+├── tasks/            # Development task documentation
+├── package.json      # Root workspace configuration
+└── fishbowl_app_requirements.md  # Project requirements
 ```
 
 ## 🛠️ Technical Stack
