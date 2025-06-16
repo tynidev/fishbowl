@@ -8,6 +8,10 @@ This is a TypeScript/React application. When generating code, follow these guide
 
 ## Code Style & Conventions
 
+## Patterns to Follow
+- Use early returns to reduce nesting
+- Reduce nesting where possible
+
 ### TypeScript
 - Use TypeScript strict mode
 - Prefer explicit type annotations over type inference for function parameters and return types
@@ -15,10 +19,6 @@ This is a TypeScript/React application. When generating code, follow these guide
 - Avoid using `any` type - use `unknown` or proper types instead
 - Use const assertions where appropriate
 - Prefer named exports over default exports
-
-## Patterns to Follow
-- Use early returns to reduce nesting
-- Reduce nesting where possible
 
 ### Component Structure
 ```typescript
