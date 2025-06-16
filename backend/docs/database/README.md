@@ -219,17 +219,8 @@ export const migration_002: Migration = {
 
 ### Migration Commands
 
-```typescript
-import { runMigrations, migrateTo, resetDatabase } from './db';
-
-// Run all pending migrations
-await runMigrations();
-
-// Migrate to specific version
-await migrateTo(3);
-
-// Reset database (development only)
-await resetDatabase();
+```bash
+npm run migrate
 ```
 
 ## Environment Configuration
@@ -382,13 +373,3 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 ```
-
-## Next Steps
-
-This database module provides the foundation for:
-1. **Game Management API** - CRUD operations for games, players, teams
-2. **Real-time Game State** - Socket.IO integration with database persistence
-3. **Statistics and Analytics** - Query aggregated game data
-4. **User Management** - Player profiles and game history
-
-The database is now ready to support the full Fishbowl game application!

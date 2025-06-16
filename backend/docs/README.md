@@ -6,6 +6,12 @@ Welcome to the Fishbowl REST API documentation. This API provides comprehensive 
 
 The Fishbowl API is a RESTful service that enables real-time multiplayer game management with WebSocket support for live updates.
 
+## API Base URL
+
+```
+http://localhost:3001/api
+```
+
 ## API Sections
 
 ### 🎮 [Game Management](./REST-API/game-endpoints.md)
@@ -54,12 +60,21 @@ Error response format:
 
 ### Game Status Flow
 
-The game progresses through these states:
+The game progresses through these states with detailed sub-statuses:
 
-1. **waiting** - Initial state, players can join, config can be updated
-2. **phrase_submission** - Players are submitting phrases (transitions automatically on first phrase submission)
-3. **playing** - Game has started, no more phrase changes allowed
-4. **finished** - Game completed
+#### Setup Phase (`status: 'setup'`)
+1. **waiting_for_players** - Players joining, getting assigned to teams, submitting phrases
+2. **ready_to_start** - All players joined, all phrases submitted, host can start
+
+#### Playing Phase (`status: 'playing'`)
+3. **round_intro** - Showing round rules before starting
+4. **turn_starting** - Brief moment between turns (showing whose turn)
+5. **turn_active** - Active turn with timer running
+6. **turn_paused** - Turn paused (disconnection, dispute, etc.)
+7. **round_complete** - Round finished, showing scores before next round
+
+#### Finished Phase (`status: 'finished'`)
+8. **game_complete** - Final scores, game over
 
 ### Authentication
 
@@ -67,39 +82,3 @@ Most endpoints require either:
 - **Player ID** - For player-specific actions
 - **Host Authorization** - For administrative game actions
 - **Device ID** - For session management
-
-## Implementation Notes
-
-### Database Schema
-The implementation uses the following core tables:
-- `games` - Game information and configuration
-- `players` - Player information and team assignments
-- `teams` - Team information and player groupings
-- `phrases` - Player-submitted phrases for the game
-- `turns` - Individual turn records and scoring
-- `turn_order` - Circular linked list for turn progression
-- `device_sessions` - Session management and device tracking
-
-### Database Features
-- Database transactions for data consistency
-- Comprehensive validation and error handling
-- Support for schema migrations and versioning
-- Optimized queries for real-time performance
-
-### Validation
-- Input validation on all endpoints
-- Business rule enforcement
-- Proper HTTP status codes and error messages
-
-## Getting Started
-
-1. **Create a Game**: Use the [game creation endpoint](./docs/game-endpoints.md#post-apigames) to start a new game
-2. **Join Players**: Players join using the [player join endpoint](./docs/player-endpoints.md#post-apigamesgamecodejoin)
-3. **Submit Phrases**: Players submit phrases using [phrase endpoints](./docs/phrase-endpoints.md#post-apigamesgamecodephrases)
-4. **Manage Sessions**: Track player connections with [device session endpoints](./docs/device-session-endpoints.md)
-
-## API Base URL
-
-```
-http://localhost:3001/api
-```
