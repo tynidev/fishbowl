@@ -11,6 +11,26 @@ Fishbowl is a team-based word-guessing game that combines elements of Charades, 
 - Track scores and game progress
 - Experience a modern, responsive UI
 
+## 🎮 Game Features
+
+### Core Gameplay
+- **3 Rounds**: Taboo-style, One Word, Charades
+- **Team-based scoring** with round progression
+- **Timer management** for turns and rounds
+- **Word submission** and randomization
+
+### Multi-device Support
+- **QR code generation** for easy game joining
+- **Real-time synchronization** across all devices
+- **Host controls** for game management
+- **Player status tracking**
+
+### PWA Features
+- **Offline functionality** with service worker
+- **Install prompts** for mobile devices
+- **Responsive design** for all screen sizes
+- **Push notifications** for game events
+
 ## 🏗️ Project Structure
 
 ```
@@ -32,6 +52,11 @@ fishbowl-app/
 ├── package.json      # Root workspace configuration
 └── fishbowl_app_requirements.md  # Project requirements
 ```
+
+## 📋 Documentation
+
+### Backend Documentation
+- [Backend Docs Overview](./backend/docs/README.md) — API, database, testing, and more
 
 ## 🛠️ Technical Stack
 
@@ -186,26 +211,6 @@ npm run clean:all
 - Schema definitions
 - Migration scripts
 
-## 🎮 Game Features
-
-### Core Gameplay
-- **3 Rounds**: Taboo-style, One Word, Charades
-- **Team-based scoring** with round progression
-- **Timer management** for turns and rounds
-- **Word submission** and randomization
-
-### Multi-device Support
-- **QR code generation** for easy game joining
-- **Real-time synchronization** across all devices
-- **Host controls** for game management
-- **Player status tracking**
-
-### PWA Features
-- **Offline functionality** with service worker
-- **Install prompts** for mobile devices
-- **Responsive design** for all screen sizes
-- **Push notifications** for game events
-
 ## � Available Scripts
 
 | Script | Description |
@@ -217,52 +222,6 @@ npm run clean:all
 | `npm run validate` | Complete validation pipeline |
 | `npm start` | Start production server |
 | `npm run clean` | Clean build artifacts |
-
-## 🤝 Contributing
-
-1. **Follow the code style** - dprint configurations recommended
-2. **Write tests** - Maintain test coverage for new features
-3. **Use TypeScript** - All code should be properly typed
-4. **Validate changes** - Run `npm run validate` before committing
-
-## 📋 Development Workflow
-
-1. **Create feature branch** from main
-2. **Install dependencies** if needed: `npm run install:all`
-3. **Start development** with: `npm run dev`
-4. **Write code** following established patterns
-5. **Add tests** for new functionality
-6. **Validate code** with: `npm run validate`
-7. **Build project** with: `npm run build`
-8. **Submit pull request**
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Port conflicts**: Default ports are 3000 (frontend) and 5000 (backend)
-```bash
-# Change ports in package.json scripts or set environment variables
-PORT=3001 npm run dev:frontend
-```
-
-**TypeScript errors**: Ensure all dependencies are installed
-```bash
-npm run install:all
-```
-
-**Build failures**: Clean and rebuild
-```bash
-npm run clean
-npm run install:all
-npm run build
-```
-
-**Test failures**: Check test environment setup
-```bash
-npm run test:backend
-npm run test:frontend
-```
 
 ## 📄 License
 
