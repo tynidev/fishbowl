@@ -54,7 +54,6 @@
 - `leave-gameroom` - Player leaves game room
 - `assigned-team` - Broadcast team assignment changes
 - `reconnect-session` - Reconnect with existing device session
-- `generate-device-id` - Request new device ID generation
 - `ping` - Heartbeat/connection monitoring with device session update
 - `disconnect` - Auto-triggered on connection loss
 

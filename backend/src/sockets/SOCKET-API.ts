@@ -751,12 +751,6 @@ export function registerSocketHandlers(
       }
     );
 
-    // Generate new device ID
-    socket.on('generate-device-id', () => {
-      const newDeviceId = generateDeviceId();
-      socket.emit('device-id-generated', { deviceId: newDeviceId });
-    });
-
     // Heartbeat/ping for connection monitoring with device session update
     socket.on(
       'ping',

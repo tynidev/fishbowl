@@ -1,6 +1,10 @@
-# Task List Management
 
-Guidelines for managing task lists in markdown files to track progress on completing a PRD
+# Task List Management
+1. Ask the user to provide a task list file.
+2. Use the provided task list file to manage tasks and subtasks.
+3. Follow the completion protocol for marking tasks and subtasks as completed.
+
+# Process Task List Prompt
 
 ## Task Implementation
 - **One sub-task at a time:** Do **NOT** start the next sub‑task until you ask the user for permission and they say “yes” or "y"

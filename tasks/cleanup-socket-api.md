@@ -9,7 +9,6 @@ The Socket API (`backend\src\sockets\SOCKET-API.ts`) requires cleanup and consol
 - `leave-gameroom` - Player leaves game room
 - `assigned-team` - Broadcast team assignment changes
 - `reconnect-session` - Reconnect with existing device session
-- `generate-device-id` - Request new device ID generation
 - `ping` - Heartbeat/connection monitoring with device session update
 - `disconnect` - Auto-triggered on connection loss
 
