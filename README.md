@@ -47,7 +47,6 @@ fishbowl-app/
 
 ### Development Tools
 - **TypeScript** for type safety
-- **ESLint** v9 with flat config for code linting
 - **Prettier** for code formatting
 - **Jest** for testing (backend) & **React Testing Library** (frontend)
 - **Concurrently** for parallel development
@@ -126,15 +125,6 @@ npm run test:backend
 
 ## 🔧 Code Quality
 
-### Linting
-```bash
-# Check all code
-npm run lint
-
-# Fix linting issues
-npm run lint:fix
-```
-
 ### Formatting
 ```bash
 # Format all code
@@ -143,13 +133,6 @@ npm run format
 # Check formatting
 npm run format:check
 ```
-
-### Validation Pipeline
-Run complete validation (lint + format + tests):
-```bash
-npm run validate
-```
-
 ## 🏗️ Building & Deployment
 
 ### Build Production Assets
@@ -183,12 +166,15 @@ npm run clean:all
 - `public/sw.js` - Service worker
 
 ### Backend (`/backend`)
-- `src/controllers/` - Express route handlers
-- `src/models/` - Data models and database schemas
-- `src/services/` - Business logic services
-- `src/middleware/` - Express middleware
-- `src/socket/` - Socket.IO event handlers
-- `src/types/` - TypeScript type definitions
+- `src/controllers/` - Express route handlers (games, players, phrases, device sessions, turns)
+- `src/db/` - Database connection, schema, migrations, and utilities
+- `src/routes/` - REST API route definitions
+- `src/sockets/` - Socket.IO event handlers and device session management
+- `src/types/` - TypeScript type definitions for REST API interfaces
+- `src/utils/` - Utility functions (validators, team assignment, turn management)
+- `docs/` - Comprehensive API documentation and database schema
+- `unittests/` - Jest test suites with 95%+ code coverage
+- `database/` - SQLite database files and migrations
 
 ### Database (`/database`)
 - SQLite database files
@@ -215,23 +201,6 @@ npm run clean:all
 - **Responsive design** for all screen sizes
 - **Push notifications** for game events
 
-## 🔄 Turn Order Management
-
-The Fishbowl game implements a sophisticated turn order system that ensures fair and balanced gameplay across all teams and rounds.
-
-### Draft Pattern
-The game uses a circular pattern to distribute turns fairly among teams:
-
-**Example with 3 teams (A, B, C) having 2 players each:**
-```
-Turn Order: A1 → B1 → C1 → A2 → B2 → C2 → A1 → B1...
-```
-### Circular Linked List Implementation
-The backend uses a **circular linked list** data structure for turn management:
-
-- **Seamless navigation**: No special cases for first/last players
-- **Persistent order**: Same sequence maintained across all 3 rounds
-
 ## � Available Scripts
 
 | Script | Description |
@@ -239,7 +208,6 @@ The backend uses a **circular linked list** data structure for turn management:
 | `npm run dev` | Start both frontend and backend in development |
 | `npm run build` | Build both projects for production |
 | `npm test` | Run all tests |
-| `npm run lint` | Lint all code |
 | `npm run format` | Format all code |
 | `npm run validate` | Complete validation pipeline |
 | `npm start` | Start production server |
@@ -247,7 +215,7 @@ The backend uses a **circular linked list** data structure for turn management:
 
 ## 🤝 Contributing
 
-1. **Follow the code style** - ESLint and Prettier configurations are enforced
+1. **Follow the code style** - Prettier configurations recommended
 2. **Write tests** - Maintain test coverage for new features
 3. **Use TypeScript** - All code should be properly typed
 4. **Validate changes** - Run `npm run validate` before committing

@@ -61,7 +61,7 @@
   - [x] 1.4 Install necessary dependencies for backend (Express, Socket.IO, SQLite3, cors, body-parser)
   - [x] 1.5 Install necessary dependencies for frontend (Redux Toolkit, Socket.IO client, React Router, chosen UI framework)
   - [x] 1.6 Configure Jest for both frontend and backend testing  
-  - [x] 1.7 Set up ESLint and Prettier for code consistency
+  - [x] 1.7 Set up Prettier for code consistency
   - [x] 1.8 Create initial package.json scripts for development, testing, and building
   - [x] 1.9 Create Readme.md to describe the project structure and development environment and how to use
 

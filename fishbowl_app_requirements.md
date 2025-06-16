@@ -18,20 +18,61 @@
 - UI Framework: Material-UI, Chakra UI, or Tailwind CSS
 
 ## API Endpoints
+
+### Game Management
 - POST /api/games - Create new game
-- GET /api/games/:code - Join game by code
-- POST /api/games/:gameid/players - Add player
-- POST /api/games/:gameid/:playerid:phrases - Submit phrases
-- GET /api/games/:gameid/state - Get current game state
-- etc.
+- GET /api/games/:gameCode - Get game information by code
+- PUT /api/games/:gameCode/config - Update game configuration
+- POST /api/games/:gameCode/start - Start the game
+
+### Player Management  
+- POST /api/games/:gameCode/join - Add player to game
+- GET /api/games/:gameCode/players - Get all players in game
+
+### Phrase Management
+- POST /api/games/:gameCode/phrases - Submit phrases for a player
+- GET /api/games/:gameCode/phrases - Get all phrases in game
+- GET /api/games/:gameCode/phrases/status - Get phrase submission status
+- PUT /api/games/:gameCode/phrases/:phraseId - Update specific phrase
+- DELETE /api/games/:gameCode/phrases/:phraseId - Delete specific phrase
+
+### Turn Management
+- POST /api/games/:gameId/turns/end - End current turn
+
+### Device Session Management
+- GET /api/device-sessions/generate-id - Generate new device ID
+- GET /api/device-sessions/:deviceId - Get device session info
+- GET /api/device-sessions/:deviceId/active/:gameId - Check active session
+- GET /api/device-sessions/game/:gameId/active - Get all active sessions for game
+- POST /api/device-sessions/:deviceId/deactivate - Deactivate device session
+- POST /api/device-sessions/admin/cleanup - Cleanup stale sessions
 
 ## Real-time Events
-- `game:created` - New game created
-- `player:joined` - Player joined game
-- `turn:started` - Turn started by controlling device
-- `phrase:guessed` - Phrase marked as guessed
-- `round:ended` - Round completed
-- etc.
+
+### Client-to-Server Events (Socket.IO)
+- `join-gameroom` - Player joins game room for real-time updates
+- `leave-gameroom` - Player leaves game room
+- `assigned-team` - Broadcast team assignment changes
+- `reconnect-session` - Reconnect with existing device session
+- `generate-device-id` - Request new device ID generation
+- `ping` - Heartbeat/connection monitoring with device session update
+- `disconnect` - Auto-triggered on connection loss
+
+### Server-to-Client Events (Socket.IO)
+- `gameroom-joined` - Confirms player joined game room
+- `player-connected` - Notifies when player connects to game
+- `player-disconnected` - Notifies when player disconnects from game
+- `current-game-state` - Sends full game state to newly connected player
+- `game-state-updated` - Broadcasts game state changes (status, round, team, timer)
+- `phrase-submission-updated` - Broadcasts phrase submission progress
+- `player-updated` - Broadcasts player-specific updates
+- `team-assignment-updated` - Broadcasts team assignment changes
+- `game:started` - Notifies when game starts
+- `connection-replaced` - Notifies when connection is replaced by new device
+- `session-reconnected` - Response to device session reconnection attempt
+- `device-id-generated` - Returns newly generated device ID
+- `pong` - Response to ping heartbeat
+- `error` - Error messages for failed operations
 
 ## Backend Responsibilities
 
