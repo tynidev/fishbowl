@@ -149,7 +149,7 @@ The turn order system uses a circular linked list where:
 - Navigation is seamless without special cases
 
 ### Draft Pattern
-The turn order follows a snake draft pattern established at game start:
+The turn order follows a circular draft pattern established at game start:
 
 **Example with 3 teams (A, B, C) with 2 players each:**
 ```

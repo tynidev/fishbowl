@@ -2,7 +2,7 @@
 
 Game endpoints provide functionality for creating, configuring, and managing Fishbowl games.
 
-[← Back to API Documentation](../README.md)
+[← Back to API Documentation](./README.md)
 
 ## Endpoints
 
@@ -120,7 +120,7 @@ Starts a game after validation.
 - Validates game is in 'setup' status
 - Requires at least 2 * teamCount players
 - All players must be assigned to teams
-- Creates circular linked list turn order using snake draft pattern
+- Creates circular linked list turn order using draft pattern
 - Selects random starting player from turn order
 - Creates first turn and updates game status to 'playing'
 - Broadcasts game started event to all connected clients
@@ -183,4 +183,4 @@ This ensures balanced turn distribution and maintains fairness across teams.
 - [Phrase Endpoints](./phrase-endpoints.md) - Managing phrases for games
 - [Device Sessions](./device-session-endpoints.md) - Session tracking for games
 
-[← Back to API Documentation](../README.md)
+[← Back to API Documentation](./README.md)

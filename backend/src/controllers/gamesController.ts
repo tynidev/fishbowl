@@ -445,7 +445,7 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         transaction
       );
 
-      // Group players by team for snake draft
+      // Group players by team for draft
       const playersByTeam = new Map<string, Player[]>();
       for (const player of players) {
         if (!player.team_id) continue;
@@ -466,7 +466,7 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         () => Math.random() - 0.5
       );
 
-      // Build snake draft order
+      // Build draft order
       const playerOrder: Player[] = [];
       const maxPlayersPerTeam = Math.max(
         ...Array.from(playersByTeam.values()).map(team => team.length)

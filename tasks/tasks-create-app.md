@@ -100,7 +100,7 @@
   - [ ] 4.2 Implement timer functionality with start/pause/stop controls
   - [ ] 4.3 Build phrase display system for controlling device only
   - [ ] 4.4 Create "Guessed" and "Skip" button functionality with score updates
-  - [ ] 4.5 Implement turn rotation logic following snake draft pattern
+  - [ ] 4.5 Implement turn rotation logic following circular draft pattern
   - [ ] 4.6 Develop round transition screens with score summaries
   - [ ] 4.7 Build different UI states for controlling vs non-controlling devices
   - [ ] 4.8 Create end-game screen with final scores and replay options

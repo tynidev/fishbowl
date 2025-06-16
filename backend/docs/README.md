@@ -1,84 +1,98 @@
-# Fishbowl REST API Documentation
+# Fishbowl Backend Documentation
 
-Welcome to the Fishbowl REST API documentation. This API provides comprehensive endpoints for managing games, players, phrases, and device sessions in the Fishbowl application.
+Welcome to the Fishbowl backend documentation. This guide provides comprehensive information about the backend architecture, APIs, database design, and development practices for the Fishbowl PWA game.
 
-## Quick Start
+## 📚 Documentation Overview
 
-The Fishbowl API is a RESTful service that enables real-time multiplayer game management with WebSocket support for live updates.
+### 🎮 [REST API Documentation](./REST-API/README.md)
+Complete REST API reference for the Fishbowl backend, including:
+- [Game Management Endpoints](./REST-API/game-endpoints.md) - Create, configure, and manage games
+- [Player Management Endpoints](./REST-API/player-endpoints.md) - Player registration and team assignments
+- [Phrase Management Endpoints](./REST-API/phrase-endpoints.md) - Phrase submission and tracking
+- [Turn Management Endpoints](./REST-API/turn-endpoints.md) - Turn progression and circular draft order
+- [Device Session Endpoints](./REST-API/device-session-endpoints.md) - Device tracking and session management
 
-## API Base URL
+### 🗄️ [Database Documentation](./database/README.md)
+Comprehensive database module documentation, including:
+- [Database Schema](./database/schema.md) - Complete entity relationships and table definitions
+- Connection management and pooling
+- Migration system
+- Transaction support
+- Environment-specific configurations
+
+### 🧪 [Unit Testing Guide](./Unittests/README.md)
+Complete guide to writing and running tests for the backend:
+- Test structure and organization
+- Test helpers and factories
+- Writing effective tests
+- Common test patterns
+- Best practices
+
+### 📦 [NPM Scripts Reference](./npm-scripts.md)
+Detailed explanation of all available npm scripts:
+- Development and production commands
+- Testing and code quality scripts
+- Database management utilities
+- Common workflows
+
+## 🏗️ Architecture Overview
+
+The Fishbowl backend is built with:
+- **Express.js** with TypeScript for the REST API
+- **Socket.IO** for real-time communication
+- **SQLite** for data persistence
+- **Jest** for comprehensive testing
+
+### Key Features
+- ✅ RESTful API with comprehensive endpoints
+- ✅ Real-time WebSocket communication
+- ✅ Robust database schema with migrations
+- ✅ Device session management
+
+## 📁 Project Structure
 
 ```
-http://localhost:3001/api
+backend/
+├── src/
+│   ├── controllers/   # REST API route handlers
+│   ├── db/            # Database connection and utilities
+│   ├── routes/        # Express route definitions
+│   ├── sockets/       # Socket.IO event handlers
+│   ├── types/         # TypeScript type definitions
+│   └── utils/         # Utility functions
+├── unittests/         # Comprehensive test suite
+├── docs/              # This documentation
+└── dist/              # Compiled JavaScript (build output)
 ```
 
-## API Sections
+## 🔗 Key Concepts
 
-### 🎮 [Game Management](./REST-API/game-endpoints.md)
-- Create and configure games
-- Manage game settings and status
-- Game lifecycle management
+### Game Flow
+Games progress through three main phases with detailed sub-statuses:
+- **Setup Phase** - Player joining and phrase submission
+- **Playing Phase** - Active gameplay with turns and rounds
+- **Finished Phase** - Game completion and final scores
 
-### 👥 [Player Management](./REST-API/player-endpoints.md) 
-- Player registration and authentication
-- Team assignments and balancing
-- Player status tracking
+See the [Database Schema](./database/schema.md#game-status-flow) for detailed status transitions.
 
-### 📝 [Phrase Management](./REST-API/phrase-endpoints.md)
-- Phrase submission and validation
-- Phrase editing and deletion
-- Submission status tracking
+### Session Management
+Device sessions enable:
+- Player reconnection after disconnection
+- Multi-device tracking
+- Real-time connection status
+- Cross-game session support
 
-### 📱 [Device Sessions](./REST-API/device-session-endpoints.md)
-- Device ID generation and tracking
-- Session management across games
-- Connection status monitoring
+Details in the [Device Session Endpoints](./REST-API/device-session-endpoints.md).
 
-### 🔄 [Turn Management](./REST-API/turn-endpoints.md)
-- Turn progression and navigation
-- Circular draft order implementation
-- Circular linked list turn sequence
-- Player connection handling
+## 🛠️ Development
 
-## Common Information
+### Environment Variables
+- `PORT` - Server port (default: 5000)
+- `NODE_ENV` - Environment mode (development/production/test)
+- `DB_PATH` - Database file path
+- `DB_TIMEOUT` - Database connection timeout
+- `CREATE_SAMPLE_DATA` - Create sample data in development
 
-### Error Responses
+---
 
-All endpoints return appropriate HTTP status codes:
-- `400` - Bad Request (invalid input)
-- `404` - Not Found (game/resource not found)
-- `500` - Internal Server Error
-
-Error response format:
-```typescript
-{
-  error: string;                   // Error message
-  message?: string;                // Additional details
-  details?: string[];              // Validation errors (if applicable)
-}
-```
-
-### Game Status Flow
-
-The game progresses through these states with detailed sub-statuses:
-
-#### Setup Phase (`status: 'setup'`)
-1. **waiting_for_players** - Players joining, getting assigned to teams, submitting phrases
-2. **ready_to_start** - All players joined, all phrases submitted, host can start
-
-#### Playing Phase (`status: 'playing'`)
-3. **round_intro** - Showing round rules before starting
-4. **turn_starting** - Brief moment between turns (showing whose turn)
-5. **turn_active** - Active turn with timer running
-6. **turn_paused** - Turn paused (disconnection, dispute, etc.)
-7. **round_complete** - Round finished, showing scores before next round
-
-#### Finished Phase (`status: 'finished'`)
-8. **game_complete** - Final scores, game over
-
-### Authentication
-
-Most endpoints require either:
-- **Player ID** - For player-specific actions
-- **Host Authorization** - For administrative game actions
-- **Device ID** - For session management
+**Happy coding!** 🎮🎣

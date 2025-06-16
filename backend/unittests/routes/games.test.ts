@@ -20,9 +20,9 @@ import {
 
 // Helper functions for turn order testing
 /**
- * Verifies that the turn order follows snake draft pattern
+ * Verifies that the turn order follows draft pattern
  */
-async function verifySnakeDraftPattern(gameCode: string, teamCount: number, expectedPlayerCount: number) {
+async function verifyDraft(gameCode: string, teamCount: number, expectedPlayerCount: number) {
   const { select } = await import('../../src/db/utils');
   
   // Get turn order entries
@@ -52,7 +52,7 @@ async function verifySnakeDraftPattern(gameCode: string, teamCount: number, expe
 
   expect(turnOrderSequence).toHaveLength(expectedPlayerCount);
 
-  // Verify snake pattern - teams should alternate properly
+  // Verify pattern - teams should alternate properly
   const teamSequence = turnOrderSequence.map(to => to.team_id);
   // TODO: verify alternating teams are picked in correct order
   const uniqueTeams = [...new Set(teamSequence)];
@@ -594,7 +594,7 @@ describe('POST /api/games/:gameCode/start', () => {
       });
 
       // Verify TurnOrder records are created for all players
-      await verifySnakeDraftPattern(gameCode, 2, 4);
+      await verifyDraft(gameCode, 2, 4);
       
       // Verify circular linking integrity
       const isCircularValid = await verifyCircularLinking(gameCode);
@@ -618,7 +618,7 @@ describe('POST /api/games/:gameCode/start', () => {
       expect(integrityValid).toBe(true);
     });
     
-    it('should create turn order with correct snake draft pattern for 2 teams', async () => {
+    it('should create turn order with correct draft pattern for 2 teams', async () => {
       const scenario = createGameScenario({
         gameCode,
         gameStatus: 'setup',
@@ -650,7 +650,7 @@ describe('POST /api/games/:gameCode/start', () => {
         .post(`/api/games/${gameCode}/start`)
         .expect(200);
 
-      // Verify snake draft pattern for 2 teams with 3 players each
+      // Verify draft pattern for 2 teams with 3 players each
       const turnOrderSequence = await extractTurnOrderSequence(gameCode);
       expect(turnOrderSequence).toHaveLength(6);
       
@@ -692,7 +692,7 @@ describe('POST /api/games/:gameCode/start', () => {
         .expect(200);
 
       // Verify turn order was created for all players
-      await verifySnakeDraftPattern(gameCode, 3, 8);
+      await verifyDraft(gameCode, 3, 8);
       
       // Verify circular linking
       const isCircularValid = await verifyCircularLinking(gameCode);

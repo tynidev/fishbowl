@@ -2,7 +2,7 @@
 
 Player endpoints handle player registration, team management, and player status tracking within games.
 
-[← Back to API Documentation](../README.md)
+[← Back to API Documentation](./README.md)
 
 ## Endpoints
 
@@ -93,4 +93,4 @@ Retrieves the list of players in a game.
 - [Phrase Endpoints](./phrase-endpoints.md) - Player phrase submissions
 - [Device Sessions](./device-session-endpoints.md) - Player session management
 
-[← Back to API Documentation](../README.md)
+[← Back to API Documentation](./README.md)
