@@ -11,7 +11,13 @@ import type { Migration } from './001_initial';
 export { Migration };
 
 // All migrations in order
-export const MIGRATIONS: Migration[] = [migration_001, migration_002, migration_003, migration_004, migration_005];
+export const MIGRATIONS: Migration[] = [
+  migration_001,
+  migration_002,
+  migration_003,
+  migration_004,
+  migration_005,
+];
 
 // Get migration by version
 export function getMigrationByVersion(version: number): Migration | undefined {
@@ -24,4 +30,10 @@ export function getLatestMigrationVersion(): number {
 }
 
 // Export individual migrations
-export { migration_001, migration_002, migration_003, migration_004, migration_005 };
+export {
+  migration_001,
+  migration_002,
+  migration_003,
+  migration_004,
+  migration_005,
+};

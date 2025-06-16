@@ -1,12 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { Game, Player, Team } from '../db/schema';
-import {
-  insert,
-  select,
-  findById,
-  update,
-} from '../db/utils';
+import { insert, select, findById, update } from '../db/utils';
 import { withTransaction, TransactionConnection } from '../db/connection';
 import {
   JoinGameRequest,
@@ -29,13 +24,16 @@ export async function joinGame(req: Request, res: Response): Promise<void> {
     if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
       res.status(400).json({ error: 'Invalid game code' });
       return;
-    }    // Validate player name
+    } // Validate player name
     const playerNameValidation = validatePlayerName(playerName);
     if (!playerNameValidation.isValid) {
       res.status(400).json({ error: playerNameValidation.error });
       return;
-    }    // Validate teamId if provided
-    if (teamId !== undefined && (typeof teamId !== 'string' || teamId.trim().length === 0)) {
+    } // Validate teamId if provided
+    if (
+      teamId !== undefined &&
+      (typeof teamId !== 'string' || teamId.trim().length === 0)
+    ) {
       res.status(400).json({ error: 'Invalid team ID' });
       return;
     }
@@ -96,9 +94,8 @@ export async function joinGame(req: Request, res: Response): Promise<void> {
             teamInfo = { teamId: team.id, teamName: team.name };
           }
         }
-      }
-      else // No existing player found
-      {
+      } // No existing player found
+      else {
         // New player joining
         const playerId = uuidv4();
 
@@ -118,7 +115,12 @@ export async function joinGame(req: Request, res: Response): Promise<void> {
 
         try {
           // Assign to team (with optional preferred team)
-          const assignedTeamId = await assignPlayerToTeam(gameCode, playerId, teamId, transaction);
+          const assignedTeamId = await assignPlayerToTeam(
+            gameCode,
+            playerId,
+            teamId,
+            transaction
+          );
 
           if (assignedTeamId) {
             const team = await findById<Team>(
@@ -138,7 +140,10 @@ export async function joinGame(req: Request, res: Response): Promise<void> {
           }
         } catch (teamError) {
           // Handle specific team assignment errors
-          if (teamError instanceof Error && teamError.message.includes('does not exist in game')) {
+          if (
+            teamError instanceof Error &&
+            teamError.message.includes('does not exist in game')
+          ) {
             res.status(400).json({ error: 'Specified team does not exist' });
             return;
           }
@@ -159,7 +164,8 @@ export async function joinGame(req: Request, res: Response): Promise<void> {
         playerId: player.id,
         playerName: player.name,
         teamId: teamInfo.teamId,
-        teamName: teamInfo.teamName, gameInfo: {
+        teamName: teamInfo.teamName,
+        gameInfo: {
           id: game.id,
           name: game.name,
           status: game.status,
@@ -185,7 +191,10 @@ export async function joinGame(req: Request, res: Response): Promise<void> {
 /**
  * GET /api/games/:gameCode/players - Get list of players in game
  */
-export async function getGamePlayers(req: Request, res: Response): Promise<void> {
+export async function getGamePlayers(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const { gameCode } = req.params;
 

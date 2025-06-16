@@ -1,11 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { Game, Turn, Player } from '../db/schema';
-import {
-  findById,
-  update,
-  insert,
-} from '../db/utils';
+import { findById, update, insert } from '../db/utils';
 import { withTransaction, TransactionConnection } from '../db/connection';
 import { getCurrentPlayer, getNextPlayer } from '../utils/turnUtils';
 
@@ -37,9 +33,9 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
       }
 
       if (game.status !== 'playing') {
-        res.status(400).json({ 
+        res.status(400).json({
           error: 'Game is not in progress',
-          currentStatus: game.status 
+          currentStatus: game.status,
         });
         return;
       }
@@ -53,15 +49,19 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
 
       // 3. Verify the requesting player is the current player (security check)
       if (currentPlayerId !== playerId) {
-        res.status(403).json({ 
+        res.status(403).json({
           error: 'Not your turn',
-          currentPlayer: currentPlayerId 
+          currentPlayer: currentPlayerId,
         });
         return;
       }
 
       // 4. Verify the current player is connected
-      const currentPlayer = await findById<Player>('players', currentPlayerId, transaction);
+      const currentPlayer = await findById<Player>(
+        'players',
+        currentPlayerId,
+        transaction
+      );
       if (!currentPlayer || !currentPlayer.is_connected) {
         res.status(400).json({ error: 'Current player is not connected' });
         return;
@@ -73,7 +73,11 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      const currentTurn = await findById<Turn>('turns', game.current_turn_id, transaction);
+      const currentTurn = await findById<Turn>(
+        'turns',
+        game.current_turn_id,
+        transaction
+      );
       if (!currentTurn) {
         res.status(400).json({ error: 'Current turn not found' });
         return;
@@ -83,9 +87,9 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
       const endTime = new Date().toISOString();
       await update(
         'turns',
-        { 
+        {
           end_time: endTime,
-          is_complete: true 
+          is_complete: true,
         },
         [{ field: 'id', operator: '=', value: currentTurn.id }],
         transaction
@@ -94,17 +98,23 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
       // 7. Get the next player using turn order
       const nextPlayerId = await getNextPlayer(gameId, currentPlayerId);
       if (!nextPlayerId) {
-        res.status(400).json({ 
+        res.status(400).json({
           error: 'No next player available',
-          message: 'All other players may be disconnected' 
+          message: 'All other players may be disconnected',
         });
         return;
       }
 
       // 8. Get the next player's details for creating the new turn
-      const nextPlayer = await findById<Player>('players', nextPlayerId, transaction);
+      const nextPlayer = await findById<Player>(
+        'players',
+        nextPlayerId,
+        transaction
+      );
       if (!nextPlayer || !nextPlayer.team_id) {
-        res.status(400).json({ error: 'Next player not found or not assigned to a team' });
+        res
+          .status(400)
+          .json({ error: 'Next player not found or not assigned to a team' });
         return;
       }
 
@@ -127,9 +137,9 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
       // 10. Update the game's current_turn_id to point to the new turn
       await update(
         'games',
-        { 
+        {
           current_turn_id: newTurn.id,
-          sub_status: 'turn_starting' // Brief moment between turns
+          sub_status: 'turn_starting', // Brief moment between turns
         },
         [{ field: 'id', operator: '=', value: gameId }],
         transaction
@@ -168,15 +178,14 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
           id: nextPlayer.id,
           name: nextPlayer.name,
           team_id: nextPlayer.team_id,
-        }
+        },
       };
 
       // TODO: Emit socket events for turn changes (to be implemented in next step)
       // This will notify all clients about the turn change
-      
+
       res.status(200).json(response);
     });
-
   } catch (error) {
     console.error('Error ending turn:', error);
     res.status(500).json({

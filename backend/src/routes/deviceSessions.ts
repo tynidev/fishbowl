@@ -1,6 +1,6 @@
 /**
  * Device Sessions Routes
- * 
+ *
  * Defines HTTP routes for device session management.
  * All business logic is handled by the deviceSessionsController.
  */

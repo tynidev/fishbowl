@@ -1,13 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { Game, Player, Team, Phrase, Turn, TurnOrder } from '../db/schema';
-import {
-  insert,
-  select,
-  findById,
-  exists,
-  update,
-} from '../db/utils';
+import { insert, select, findById, exists, update } from '../db/utils';
 import { withTransaction, TransactionConnection } from '../db/connection';
 import {
   CreateGameRequest,
@@ -129,12 +123,15 @@ export async function createGame(req: Request, res: Response): Promise<void> {
         await insert('players', updatedHostPlayer, transaction);
       } else {
         await insert('players', hostPlayer, transaction);
-      }      
-      
-      
+      }
+
       // Get updated game info for response
-      const updatedGameInfo = await findById<Game>('games', gameCode, transaction);
-      
+      const updatedGameInfo = await findById<Game>(
+        'games',
+        gameCode,
+        transaction
+      );
+
       // Prepare and send response
       const response: GameInfoResponse = {
         id: gameCode,
@@ -215,7 +212,10 @@ export async function getGameInfo(req: Request, res: Response): Promise<void> {
 /**
  * PUT /api/games/:gameCode/config - Update game configuration
  */
-export async function updateGameConfig(req: Request, res: Response): Promise<void> {
+export async function updateGameConfig(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const { gameCode } = req.params;
     const { teamCount, phrasesPerPlayer, timerDuration }: UpdateConfigRequest =
@@ -396,9 +396,12 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         });
         return;
       }
-      
+
       // Validate phrases submitted
-      if (!phrases || phrases.length < players.length * game.phrases_per_player) {  
+      if (
+        !phrases ||
+        phrases.length < players.length * game.phrases_per_player
+      ) {
         res.status(400).json({
           error: `Not enough phrases submitted. Required: ${players.length * game.phrases_per_player}, Found: ${phrases.length}`,
         });
@@ -407,7 +410,6 @@ export async function startGame(req: Request, res: Response): Promise<void> {
 
       // For all players, check if they have a team assigned and have submitted the required number of phrases
       for (const player of players) {
-        
         // Check if player has a team assigned
         if (!player.team_id) {
           res.status(400).json({
@@ -418,7 +420,7 @@ export async function startGame(req: Request, res: Response): Promise<void> {
 
         // Check if player has submitted the required number of phrases
         const playerPhrases = phrases.filter(
-          (phrase) => phrase.player_id === player.id
+          phrase => phrase.player_id === player.id
         );
         if (playerPhrases.length < game.phrases_per_player) {
           res.status(400).json({
@@ -460,13 +462,21 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       }
 
       // Shuffle team order
-      const teamIds = Array.from(playersByTeam.keys()).sort(() => Math.random() - 0.5);
+      const teamIds = Array.from(playersByTeam.keys()).sort(
+        () => Math.random() - 0.5
+      );
 
       // Build snake draft order
       const playerOrder: Player[] = [];
-      const maxPlayersPerTeam = Math.max(...Array.from(playersByTeam.values()).map(team => team.length));
+      const maxPlayersPerTeam = Math.max(
+        ...Array.from(playersByTeam.values()).map(team => team.length)
+      );
 
-      for (let playerIndex = 0; playerIndex < maxPlayersPerTeam; playerIndex++) {
+      for (
+        let playerIndex = 0;
+        playerIndex < maxPlayersPerTeam;
+        playerIndex++
+      ) {
         for (const teamId of teamIds) {
           const teamPlayers = playersByTeam.get(teamId);
           if (teamPlayers && teamPlayers[playerIndex]) {
@@ -479,7 +489,8 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       for (let i = 0; i < playerOrder.length; i++) {
         const currentPlayer = playerOrder[i];
         const nextPlayer = playerOrder[(i + 1) % playerOrder.length];
-        const prevPlayer = playerOrder[(i - 1 + playerOrder.length) % playerOrder.length];
+        const prevPlayer =
+          playerOrder[(i - 1 + playerOrder.length) % playerOrder.length];
 
         const turnOrder: Omit<TurnOrder, 'created_at' | 'updated_at'> = {
           id: uuidv4(),
@@ -494,7 +505,8 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       }
 
       // Select random starting player from turn order
-      const randomStartingPlayerId = await getRandomPlayerFromTurnOrder(gameCode);
+      const randomStartingPlayerId =
+        await getRandomPlayerFromTurnOrder(gameCode);
       if (!randomStartingPlayerId) {
         res.status(500).json({
           error: 'Failed to select starting player from turn order',
@@ -515,11 +527,11 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         player_id: firstPlayer!.id,
         team_id: firstPlayer!.team_id!,
         round: 1,
-        is_complete: false,              // Turn is not complete
-        duration: 0,                     // No time elapsed yet
-        phrases_guessed: 0,              // No phrases guessed yet 
-        phrases_skipped: 0,              // No phrases skipped yet
-        points_scored: 0                 // No points scored yet
+        is_complete: false, // Turn is not complete
+        duration: 0, // No time elapsed yet
+        phrases_guessed: 0, // No phrases guessed yet
+        phrases_skipped: 0, // No phrases skipped yet
+        points_scored: 0, // No points scored yet
       };
 
       await insert('turns', firstTurn, transaction);
@@ -530,11 +542,15 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         { current_turn_id: firstTurn.id },
         [{ field: 'id', operator: '=', value: gameCode }],
         transaction
-      );      
-      
+      );
+
       // Get updated game info for response
-      const updatedGameInfo = await findById<Game>('games', gameCode, transaction);
-      
+      const updatedGameInfo = await findById<Game>(
+        'games',
+        gameCode,
+        transaction
+      );
+
       // Prepare and send response
       const response: GameInfoResponse = {
         id: gameCode,
@@ -556,7 +572,7 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       if (socketServer) {
         const gameStartedData = {
           gameCode: game.id,
-          startedAt: startTime
+          startedAt: startTime,
         };
         broadcastGameStarted(socketServer, gameStartedData);
       }

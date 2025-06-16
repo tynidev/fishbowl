@@ -1,6 +1,6 @@
 /**
  * Device Session Utility Functions
- * 
+ *
  * Transformation utilities for converting database objects to REST API response formats
  * specific to device session endpoints. These functions handle the mapping between
  * internal database representations and external API contracts.
@@ -15,7 +15,7 @@ import {
 
 /**
  * Transform device session to response format
- * 
+ *
  * @param session Raw device session object from database
  * @returns Formatted device session response object
  */
@@ -33,7 +33,7 @@ export function transformDeviceSession(session: any): DeviceSessionResponse {
 
 /**
  * Transform player to response format for device session endpoints
- * 
+ *
  * @param player Player database object
  * @returns Formatted player info response object
  */
@@ -49,7 +49,7 @@ export function transformPlayer(player: Player): PlayerInfoResponse {
 
 /**
  * Transform game to response format for device session endpoints
- * 
+ *
  * @param game Game database object
  * @returns Formatted game info response object (simplified for device sessions)
  */

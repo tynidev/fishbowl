@@ -5,16 +5,8 @@
 
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  findById,
-  select,
-  insert,
-  update,
-} from '../db/utils';
-import {
-  withTransaction,
-  TransactionConnection,
-} from '../db/connection';
+import { findById, select, insert, update } from '../db/utils';
+import { withTransaction, TransactionConnection } from '../db/connection';
 import { Game, Player, Phrase } from '../db/schema';
 import { validatePhrase, validatePhrases } from '../utils/validators';
 import {
@@ -29,7 +21,10 @@ import {
 /**
  * POST /api/games/:gameCode/phrases - Submit phrases for a player
  */
-export async function submitPhrases(req: Request, res: Response): Promise<void> {
+export async function submitPhrases(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const { gameCode } = req.params;
     const { phrases: phrasesInput, playerId }: SubmitPhrasesRequest = req.body;
@@ -184,7 +179,10 @@ export async function submitPhrases(req: Request, res: Response): Promise<void> 
 /**
  * GET /api/games/:gameCode/phrases - Get phrases for the game (admin/host only)
  */
-export async function getGamePhrases(req: Request, res: Response): Promise<void> {
+export async function getGamePhrases(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const { gameCode } = req.params;
     const { playerId } = req.query;
@@ -442,11 +440,13 @@ export async function updatePhrase(req: Request, res: Response): Promise<void> {
       const response: SubmitOrUpdatePhraseResponse = {
         submittedCount: 1,
         totalRequired: game.phrases_per_player,
-        phrases: [{
-          id: phraseId,
-          text: text.trim(),
-          submittedAt: updatedAt,
-        }],
+        phrases: [
+          {
+            id: phraseId,
+            text: text.trim(),
+            submittedAt: updatedAt,
+          },
+        ],
       };
 
       res.status(200).json(response);

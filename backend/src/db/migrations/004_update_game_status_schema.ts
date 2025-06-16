@@ -2,12 +2,13 @@ import type { Migration } from './001_initial';
 
 const migration_004: Migration = {
   version: 4,
-  name: 'Update game status schema with status and sub_status',  up: async (db) => {
+  name: 'Update game status schema with status and sub_status',
+  up: async db => {
     // Backup existing data
     await db.exec(`
       CREATE TABLE games_backup AS SELECT * FROM games;
     `);
-    
+
     await db.exec(`
       CREATE TABLE turns_backup AS SELECT * FROM turns;
     `);
@@ -126,18 +127,34 @@ const migration_004: Migration = {
     `);
 
     // Recreate indexes
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_games_host ON games(host_player_id);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_games_current_turn ON games(current_turn_id);`);
-    
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_turns_game ON turns(game_id);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_turns_team ON turns(team_id);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_turns_player ON turns(player_id);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_turns_game_round ON turns(game_id, round);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_turns_complete ON turns(is_complete);`);
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_games_host ON games(host_player_id);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_games_current_turn ON games(current_turn_id);`
+    );
+
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_turns_game ON turns(game_id);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_turns_team ON turns(team_id);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_turns_player ON turns(player_id);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_turns_game_round ON turns(game_id, round);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_turns_complete ON turns(is_complete);`
+    );
   },
 
-  down: async (db) => {
+  down: async db => {
     // Reverse the migration by going back to the old status system
     // Remove paused columns from turns
     await db.exec(`
@@ -231,10 +248,16 @@ const migration_004: Migration = {
       END;
     `);
 
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_games_host ON games(host_player_id);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_games_current_turn ON games(current_turn_id);`);
-  }
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_games_host ON games(host_player_id);`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_games_current_turn ON games(current_turn_id);`
+    );
+  },
 };
 
 export default migration_004;

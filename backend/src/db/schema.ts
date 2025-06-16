@@ -6,20 +6,19 @@ export interface Game {
   id: string;
   name: string;
   status: 'setup' | 'playing' | 'finished';
-  sub_status: 
-    // When status = 'setup'
-    | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
-    | 'ready_to_start'          // All players joined, all phrases submitted, host can start
-    
+  sub_status: // When status = 'setup'
+  | 'waiting_for_players' // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start' // All players joined, all phrases submitted, host can start
+
     // When status = 'playing'
-    | 'round_intro'             // Showing round rules before starting
-    | 'turn_starting'           // Brief moment between turns (showing whose turn)
-    | 'turn_active'             // Active turn with timer running
-    | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
-    | 'round_complete'          // Round finished, showing scores before next round
-    
+    | 'round_intro' // Showing round rules before starting
+    | 'turn_starting' // Brief moment between turns (showing whose turn)
+    | 'turn_active' // Active turn with timer running
+    | 'turn_paused' // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete' // Round finished, showing scores before next round
+
     // When status = 'finished'
-    | 'game_complete';          // Final scores, game over
+    | 'game_complete'; // Final scores, game over
   host_player_id: string;
   team_count: number;
   phrases_per_player: number;
@@ -71,11 +70,11 @@ export interface Phrase {
 
 /**
  * Represents a single turn in a Fishbowl game where a player acts out phrases for their team to guess.
- * 
+ *
  * In Fishbowl, teams take turns with one player acting/describing phrases while their teammates guess.
  * Each turn is timed and tracked for scoring purposes. A turn ends when the timer runs out or
  * all phrases in the bowl have been guessed.
- * 
+ *
  * @remarks
  * Turns are the fundamental unit of gameplay in Fishbowl. Players can skip difficult phrases
  * during their turn, but skipped phrases go back into the bowl for future turns.

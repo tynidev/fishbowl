@@ -1,6 +1,6 @@
 /**
  * Device Sessions Controller
- * 
+ *
  * Handles all device session-related HTTP operations including:
  * - Device ID generation
  * - Session information retrieval
@@ -41,7 +41,10 @@ import {
 /**
  * GET /api/device-sessions/generate-id - Generate a new device ID
  */
-export async function generateNewDeviceId(req: Request, res: Response): Promise<void> {
+export async function generateNewDeviceId(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const deviceId = generateDeviceId();
 
@@ -130,7 +133,10 @@ export async function getDeviceSessionInfo(
 /**
  * GET /api/device-sessions/:deviceId/active/:gameId - Check if device has active session for a game
  */
-export async function checkActiveSession(req: Request, res: Response): Promise<void> {
+export async function checkActiveSession(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const { deviceId, gameId } = req.params;
 
@@ -233,7 +239,10 @@ export async function getGameActiveSessions(
 /**
  * POST /api/device-sessions/:deviceId/deactivate - Deactivate a device session
  */
-export async function deactivateSession(req: Request, res: Response): Promise<void> {
+export async function deactivateSession(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const { deviceId } = req.params;
     const { gameId }: DeactivateSessionRequest = req.body;
@@ -267,7 +276,10 @@ export async function deactivateSession(req: Request, res: Response): Promise<vo
 /**
  * POST /api/device-sessions/admin/cleanup - Cleanup stale sessions (admin endpoint)
  */
-export async function cleanupSessions(req: Request, res: Response): Promise<void> {
+export async function cleanupSessions(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const staleCount = await cleanupStaleSessions();
     const removedCount = await removeOldSessions();

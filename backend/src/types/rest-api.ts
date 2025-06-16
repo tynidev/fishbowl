@@ -22,20 +22,19 @@ export interface JoinGameResponse {
     id: string;
     name: string;
     status: 'setup' | 'playing' | 'finished';
-    sub_status:
-      // When status = 'setup'
-      | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
-      | 'ready_to_start'          // All players joined, all phrases submitted, host can start
-      
+    sub_status: // When status = 'setup'
+    | 'waiting_for_players' // Players joining, getting assigned to teams, submitting phrases
+      | 'ready_to_start' // All players joined, all phrases submitted, host can start
+
       // When status = 'playing'
-      | 'round_intro'             // Showing round rules before starting
-      | 'turn_starting'           // Brief moment between turns (showing whose turn)
-      | 'turn_active'             // Active turn with timer running
-      | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
-      | 'round_complete'          // Round finished, showing scores before next round
-      
+      | 'round_intro' // Showing round rules before starting
+      | 'turn_starting' // Brief moment between turns (showing whose turn)
+      | 'turn_active' // Active turn with timer running
+      | 'turn_paused' // Turn paused (disconnection, dispute, etc.)
+      | 'round_complete' // Round finished, showing scores before next round
+
       // When status = 'finished'
-      | 'game_complete';          // Final scores, game over
+      | 'game_complete'; // Final scores, game over
     playerCount: number;
     teamCount: number;
     phrasesPerPlayer: number;
@@ -47,20 +46,19 @@ export interface GameInfoResponse {
   id: string;
   name: string;
   status: 'setup' | 'playing' | 'finished';
-  sub_status:
-    // When status = 'setup'
-    | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
-    | 'ready_to_start'          // All players joined, all phrases submitted, host can start
-    
+  sub_status: // When status = 'setup'
+  | 'waiting_for_players' // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start' // All players joined, all phrases submitted, host can start
+
     // When status = 'playing'
-    | 'round_intro'             // Showing round rules before starting
-    | 'turn_starting'           // Brief moment between turns (showing whose turn)
-    | 'turn_active'             // Active turn with timer running
-    | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
-    | 'round_complete'          // Round finished, showing scores before next round
-    
+    | 'round_intro' // Showing round rules before starting
+    | 'turn_starting' // Brief moment between turns (showing whose turn)
+    | 'turn_active' // Active turn with timer running
+    | 'turn_paused' // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete' // Round finished, showing scores before next round
+
     // When status = 'finished'
-    | 'game_complete';          // Final scores, game over
+    | 'game_complete'; // Final scores, game over
   hostPlayerId: string;
   teamCount: number;
   phrasesPerPlayer: number;
@@ -161,7 +159,7 @@ export interface DeviceSessionResponse {
 export interface PlayerInfoResponse {
   id: string;
   name: string;
-  gameId: string;  
+  gameId: string;
   teamId: string | null;
   isConnected: boolean;
 }
@@ -170,20 +168,19 @@ export interface DeviceSessionGameInfoResponse {
   id: string;
   name: string;
   status: 'setup' | 'playing' | 'finished';
-  sub_status:
-    // When status = 'setup'
-    | 'waiting_for_players'     // Players joining, getting assigned to teams, submitting phrases
-    | 'ready_to_start'          // All players joined, all phrases submitted, host can start
-    
+  sub_status: // When status = 'setup'
+  | 'waiting_for_players' // Players joining, getting assigned to teams, submitting phrases
+    | 'ready_to_start' // All players joined, all phrases submitted, host can start
+
     // When status = 'playing'
-    | 'round_intro'             // Showing round rules before starting
-    | 'turn_starting'           // Brief moment between turns (showing whose turn)
-    | 'turn_active'             // Active turn with timer running
-    | 'turn_paused'             // Turn paused (disconnection, dispute, etc.)
-    | 'round_complete'          // Round finished, showing scores before next round
-    
+    | 'round_intro' // Showing round rules before starting
+    | 'turn_starting' // Brief moment between turns (showing whose turn)
+    | 'turn_active' // Active turn with timer running
+    | 'turn_paused' // Turn paused (disconnection, dispute, etc.)
+    | 'round_complete' // Round finished, showing scores before next round
+
     // When status = 'finished'
-    | 'game_complete';          // Final scores, game over
+    | 'game_complete'; // Final scores, game over
   hostPlayerId: string;
 }
 
@@ -235,4 +232,3 @@ export interface CleanupSessionsResponse {
   staleSessionsDeactivated: number;
   oldSessionsRemoved: number;
 }
-

@@ -1,17 +1,16 @@
-
 /**
  * Validation utilities for the Fishbowl game API
  */
 
 /**
  * Validates game configuration settings for the Fishbowl game.
- * 
+ *
  * This function performs comprehensive validation on game configuration parameters:
  * - Validates team count (2-8 teams)
  * - Validates phrases per player (3-10 phrases)
  * - Validates timer duration (30-180 seconds)
  * - Returns detailed error messages for each invalid configuration option
- * 
+ *
  * @param config - Configuration object containing optional game settings
  * @param config.teamCount - Number of teams (optional, must be 2-8 if provided)
  * @param config.phrasesPerPlayer - Number of phrases per player (optional, must be 3-10 if provided)
@@ -19,7 +18,7 @@
  * @returns An object containing:
  *   - isValid: boolean indicating if all configuration options pass validation
  *   - errors: Array of error messages describing validation failures
- * 
+ *
  * @example
  * ```typescript
  * const result = validateGameConfig({ teamCount: 10, phrasesPerPlayer: 5 });
@@ -70,23 +69,23 @@ export function validateGameConfig(config: {
 
 /**
  * Validates a player name for use in the Fishbowl game.
- * 
+ *
  * This function performs comprehensive validation on player names:
  * - Ensures the input is a non-empty string
  * - Validates length requirements (1-20 characters after trimming)
  * - Checks for allowed characters (letters, numbers, spaces, hyphens, underscores, apostrophes, periods)
  * - Returns a detailed error message if validation fails
- * 
+ *
  * @param name - The player name string to validate
  * @returns An object containing:
  *   - isValid: boolean indicating if the player name passes validation
  *   - error: Optional error message describing the validation failure
- * 
+ *
  * @example
  * ```typescript
  * const result = validatePlayerName('John Doe');
  * // Returns: { isValid: true }
- * 
+ *
  * const invalidResult = validatePlayerName('');
  * // Returns: { isValid: false, error: 'Player name is required' }
  * ```
@@ -117,28 +116,31 @@ export function validatePlayerName(name: string): {
 
 /**
  * Validates a single phrase text for use in the Fishbowl game.
- * 
+ *
  * This function performs comprehensive validation on individual phrases:
  * - Ensures the input is a non-empty string
  * - Validates length requirements (1-100 characters after trimming)
  * - Checks for allowed characters (word characters, spaces, and common punctuation)
  * - Returns a detailed error message if validation fails
- * 
+ *
  * @param text - The phrase text string to validate
  * @returns An object containing:
  *   - isValid: boolean indicating if the phrase passes validation
  *   - error: Optional error message describing the validation failure
- * 
+ *
  * @example
  * ```typescript
  * const result = validatePhrase('Harry Potter');
  * // Returns: { isValid: true }
- * 
+ *
  * const invalidResult = validatePhrase('');
  * // Returns: { isValid: false, error: 'Phrase cannot be empty' }
  * ```
  */
-export function validatePhrase(text: string): { isValid: boolean; error?: string } {
+export function validatePhrase(text: string): {
+  isValid: boolean;
+  error?: string;
+} {
   if (!text || typeof text !== 'string') {
     return { isValid: false, error: 'Phrase text is required' };
   }
@@ -162,24 +164,24 @@ export function validatePhrase(text: string): { isValid: boolean; error?: string
 
 /**
  * Validates an array of phrase strings for use in the Fishbowl game.
- * 
+ *
  * This function performs comprehensive validation on a collection of phrases:
  * - Ensures the input is a valid array
  * - Verifies at least one phrase is provided
  * - Validates each individual phrase using the validatePhrase function
  * - Checks for duplicate phrases (case-insensitive comparison)
  * - Returns detailed error messages for each invalid phrase, including its position
- * 
+ *
  * @param phrases - Array of phrase strings to validate
  * @returns An object containing:
  *   - isValid: boolean indicating if all phrases pass validation
  *   - errors: Array of error messages describing validation failures
- * 
+ *
  * @example
  * ```typescript
  * const result = validatePhrases(['Hello world', 'Test phrase', 'Hello World']);
  * // Returns: { isValid: false, errors: ['Phrase 3: Duplicate phrase "Hello World"'] }
- * 
+ *
  * const validResult = validatePhrases(['Unique phrase 1', 'Unique phrase 2']);
  * // Returns: { isValid: true, errors: [] }
  * ```

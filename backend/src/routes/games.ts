@@ -1,5 +1,10 @@
 import express, { Router } from 'express';
-import { createGame, getGameInfo, updateGameConfig, startGame } from '../controllers/gamesController';
+import {
+  createGame,
+  getGameInfo,
+  updateGameConfig,
+  startGame,
+} from '../controllers/gamesController';
 
 const router: Router = express.Router();
 

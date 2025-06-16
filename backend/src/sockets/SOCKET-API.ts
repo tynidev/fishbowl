@@ -667,7 +667,10 @@ export function getPlayerSocket(
 /**
  * Register all Socket.IO event handlers
  */
-export function registerSocketHandlers(io: SocketIOServer, cleanup: boolean = true): void {
+export function registerSocketHandlers(
+  io: SocketIOServer,
+  cleanup: boolean = true
+): void {
   io.on('connection', (socket: Socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
@@ -770,7 +773,7 @@ export function registerSocketHandlers(io: SocketIOServer, cleanup: boolean = tr
     );
   });
 
-  if(!cleanup) return;
+  if (!cleanup) return;
   // Start periodic cleanup of stale sessions (every 30 minutes)
   setInterval(
     async () => {

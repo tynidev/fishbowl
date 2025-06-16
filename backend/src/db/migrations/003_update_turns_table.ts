@@ -16,20 +16,25 @@ export const migration_003: Migration = {
       // Check if the table already has the correct schema by checking column names
       const tableInfo = await db.all('PRAGMA table_info(turns);');
       const columns = tableInfo.map((col: any) => col.name);
-      
-      // If the table already has 'player_id' and doesn't have 'acting_player_id', 
+
+      // If the table already has 'player_id' and doesn't have 'acting_player_id',
       // then it's already in the correct format (fresh migration from 001)
       const hasPlayerId = columns.includes('player_id');
       const hasActingPlayerId = columns.includes('acting_player_id');
-      const hasNullableStartTime = tableInfo.find((col: any) => col.name === 'start_time')?.notnull === 0;
-      
+      const hasNullableStartTime =
+        tableInfo.find((col: any) => col.name === 'start_time')?.notnull === 0;
+
       if (hasPlayerId && !hasActingPlayerId && hasNullableStartTime) {
-        console.log('Turns table already has correct schema, skipping migration 003');
+        console.log(
+          'Turns table already has correct schema, skipping migration 003'
+        );
         return;
       }
 
       if (!hasActingPlayerId) {
-        console.log('Warning: Expected acting_player_id column not found, table might already be migrated');
+        console.log(
+          'Warning: Expected acting_player_id column not found, table might already be migrated'
+        );
         return;
       }
 
@@ -123,7 +128,7 @@ export const migration_003: Migration = {
       await db.exec('PRAGMA foreign_keys = ON;');
 
       // Reverse the changes: rename player_id back to acting_player_id and make start_time NOT NULL
-      
+
       // Step 1: Create table with old schema
       await db.exec(`
         CREATE TABLE turns_old (

@@ -4,7 +4,7 @@ const migration_005: Migration = {
   version: 5,
   name: 'add_turn_order_table',
 
-  up: async (db) => {
+  up: async db => {
     console.log('Running migration 005: Adding turn_order table...');
 
     try {
@@ -29,11 +29,21 @@ const migration_005: Migration = {
       `);
 
       // Create indexes for the turn_order table
-      await db.exec(`CREATE INDEX IF NOT EXISTS idx_turn_order_game ON turn_order(game_id);`);
-      await db.exec(`CREATE INDEX IF NOT EXISTS idx_turn_order_player ON turn_order(player_id);`);
-      await db.exec(`CREATE INDEX IF NOT EXISTS idx_turn_order_team ON turn_order(team_id);`);
-      await db.exec(`CREATE INDEX IF NOT EXISTS idx_turn_order_next_player ON turn_order(next_player_id);`);
-      await db.exec(`CREATE INDEX IF NOT EXISTS idx_turn_order_prev_player ON turn_order(prev_player_id);`);
+      await db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_game ON turn_order(game_id);`
+      );
+      await db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_player ON turn_order(player_id);`
+      );
+      await db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_team ON turn_order(team_id);`
+      );
+      await db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_next_player ON turn_order(next_player_id);`
+      );
+      await db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_prev_player ON turn_order(prev_player_id);`
+      );
 
       // Create the updated_at trigger for turn_order
       await db.exec(`
@@ -51,7 +61,7 @@ const migration_005: Migration = {
     }
   },
 
-  down: async (db) => {
+  down: async db => {
     console.log('Rolling back migration 005: Removing turn_order table...');
 
     try {

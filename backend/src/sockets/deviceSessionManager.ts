@@ -20,7 +20,7 @@ export async function createOrUpdateDeviceSession(
   deviceId: string,
   socketId: string,
   playerId?: string,
-  gameId?: string,
+  gameId?: string
 ): Promise<DeviceSession> {
   const sessionId = uuidv4();
   const now = new Date().toISOString();
@@ -61,8 +61,7 @@ export async function createOrUpdateDeviceSession(
     return {
       ...existingSession,
       socket_id: socketId,
-      player_id:
-        playerId !== undefined ? playerId : existingSession.player_id,
+      player_id: playerId !== undefined ? playerId : existingSession.player_id,
       last_seen: now,
       is_active: true,
       updated_at: now,

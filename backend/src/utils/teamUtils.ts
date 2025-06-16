@@ -8,26 +8,26 @@ import { insert, select } from '../db/utils';
 
 /**
  * Creates default teams for a Fishbowl game with randomly assigned colors and names.
- * 
+ *
  * This function generates teams with unique visual identity by randomly selecting
  * from predefined color schemes and names. Each team gets a unique color/name
  * combination with no duplicates. If more teams are requested than predefined
  * options available, it falls back to generic names and random colors.
- * 
+ *
  * @param gameId - The unique identifier of the game to create teams for
  * @param teamCount - The number of teams to create (must be positive integer)
  * @param transaction - Optional database transaction for atomic operations
- * 
+ *
  * @returns Promise that resolves to an array of created Team objects
- * 
+ *
  * @throws Will throw an error if database insertion fails
- * 
+ *
  * @example
  * ```typescript
  * // Create 4 teams for a game (random selection each time)
  * const teams = await createDefaultTeams('game-123', 4);
  * // Returns: [Purple Team, Blue Team, Gold Team, Red Team] (random order)
- * 
+ *
  * // Create more teams than predefined (falls back to generic names)
  * const manyTeams = await createDefaultTeams('game-456', 10);
  * // Returns: [...8 random predefined teams..., Team 9, Team 10]
@@ -66,7 +66,7 @@ export async function createDefaultTeams(
   // Create shuffled copies to pick from randomly without duplicates
   const availableColors = [...teamColors];
   const availableNames = [...teamNames];
-    // Fisher-Yates shuffle algorithm for random order
+  // Fisher-Yates shuffle algorithm for random order
   const shuffleArray = <T>(array: T[]): void => {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -90,7 +90,9 @@ export async function createDefaultTeams(
       // Use shuffled predefined color or generate random hex color
       color:
         availableColors[i] ||
-        `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`,
+        `#${Math.floor(Math.random() * 16777215)
+          .toString(16)
+          .padStart(6, '0')}`,
       // Initialize all round scores to 0
       score_round_1: 0,
       score_round_2: 0,
@@ -109,31 +111,31 @@ export async function createDefaultTeams(
 
 /**
  * Assigns a player to a team using a balanced distribution algorithm or a specific team.
- * 
+ *
  * This function either assigns a player to a specific team (if teamId is provided) or
  * implements a "fewest players first" strategy to ensure teams remain balanced throughout
  * the player joining process. When no specific team is requested, it finds the team
  * with the minimum number of players for assignment.
- * 
+ *
  * @param gameId - The unique identifier of the game
  * @param playerId - The unique identifier of the player to assign
  * @param preferredTeamId - Optional specific team ID to assign the player to
  * @param transaction - Optional database transaction for atomic operations
- * 
+ *
  * @returns Promise that resolves to the team ID where the player was assigned,
  *          or undefined if no teams exist for the game
- * 
+ *
  * @throws Will throw an error if the game does not exist, the preferred team doesn't exist,
  *         or database operations fail
- * 
+ *
  * @example
  * ```typescript
  * // Assign a new player to the team with fewest members
  * const teamId = await assignPlayerToTeam('game-123', 'player-456');
- * 
+ *
  * // Assign a player to a specific team
  * const teamId = await assignPlayerToTeam('game-123', 'player-456', 'team-789');
- * 
+ *
  * // Use within a transaction
  * const teamId = await assignPlayerToTeam('game-123', 'player-456', undefined, trx);
  * ```
@@ -143,7 +145,8 @@ export async function assignPlayerToTeam(
   playerId: string,
   preferredTeamId?: string,
   transaction?: any
-): Promise<string | undefined> {  const operation = async (conn: any) => {
+): Promise<string | undefined> {
+  const operation = async (conn: any) => {
     // First validate that the game exists
     const gameExists = await conn.get(
       'SELECT 1 FROM games WHERE id = ? LIMIT 1',
@@ -155,7 +158,8 @@ export async function assignPlayerToTeam(
     }
 
     // Get teams with their current player counts using a single optimized query
-    const teamsWithCounts = await conn.all(`
+    const teamsWithCounts = await conn.all(
+      `
       SELECT 
         t.id,
         t.name,
@@ -166,17 +170,24 @@ export async function assignPlayerToTeam(
       WHERE t.game_id = ?
       GROUP BY t.id, t.name, t.created_at
       ORDER BY t.created_at ASC
-    `, [gameId, gameId]);
+    `,
+      [gameId, gameId]
+    );
 
     if (teamsWithCounts.length === 0) {
       return undefined;
     }
 
-    let targetTeamId: string;    if (preferredTeamId) {
+    let targetTeamId: string;
+    if (preferredTeamId) {
       // Check if the preferred team exists in this game
-      const preferredTeam = teamsWithCounts.find((team: any) => team.id === preferredTeamId);
+      const preferredTeam = teamsWithCounts.find(
+        (team: any) => team.id === preferredTeamId
+      );
       if (!preferredTeam) {
-        throw new Error(`Team with ID ${preferredTeamId} does not exist in game ${gameId}`);
+        throw new Error(
+          `Team with ID ${preferredTeamId} does not exist in game ${gameId}`
+        );
       }
       targetTeamId = preferredTeamId;
     } else {
@@ -196,9 +207,9 @@ export async function assignPlayerToTeam(
     const { update } = await import('../db/utils');
     await update(
       'players',
-      { 
+      {
         team_id: targetTeamId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       },
       [{ field: 'id', operator: '=', value: playerId }],
       conn
