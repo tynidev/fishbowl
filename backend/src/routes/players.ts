@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { joinGame, getGamePlayers } from '../controllers/playersController';
+import { getGamePlayers, joinGame } from '../controllers/playersController';
 
 const router: Router = express.Router();
 

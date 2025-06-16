@@ -7,12 +7,12 @@
 
 import express, { Router } from 'express';
 import {
+  checkActiveSession,
+  cleanupSessions,
+  deactivateSession,
   generateNewDeviceId,
   getDeviceSessionInfo,
-  checkActiveSession,
   getGameActiveSessions,
-  deactivateSession,
-  cleanupSessions,
 } from '../controllers/deviceSessionsController';
 
 const router: Router = express.Router();

@@ -4,10 +4,12 @@ const migration_005: Migration = {
   version: 5,
   name: 'add_turn_order_table',
 
-  up: async db => {
+  up: async db =>
+  {
     console.log('Running migration 005: Adding turn_order table...');
 
-    try {
+    try
+    {
       // Create the turn_order table
       await db.exec(`
         CREATE TABLE IF NOT EXISTS turn_order (
@@ -30,19 +32,19 @@ const migration_005: Migration = {
 
       // Create indexes for the turn_order table
       await db.exec(
-        `CREATE INDEX IF NOT EXISTS idx_turn_order_game ON turn_order(game_id);`
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_game ON turn_order(game_id);`,
       );
       await db.exec(
-        `CREATE INDEX IF NOT EXISTS idx_turn_order_player ON turn_order(player_id);`
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_player ON turn_order(player_id);`,
       );
       await db.exec(
-        `CREATE INDEX IF NOT EXISTS idx_turn_order_team ON turn_order(team_id);`
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_team ON turn_order(team_id);`,
       );
       await db.exec(
-        `CREATE INDEX IF NOT EXISTS idx_turn_order_next_player ON turn_order(next_player_id);`
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_next_player ON turn_order(next_player_id);`,
       );
       await db.exec(
-        `CREATE INDEX IF NOT EXISTS idx_turn_order_prev_player ON turn_order(prev_player_id);`
+        `CREATE INDEX IF NOT EXISTS idx_turn_order_prev_player ON turn_order(prev_player_id);`,
       );
 
       // Create the updated_at trigger for turn_order
@@ -55,16 +57,20 @@ const migration_005: Migration = {
       `);
 
       console.log('Migration 005 completed successfully');
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.error('Migration 005 failed:', error);
       throw error;
     }
   },
 
-  down: async db => {
+  down: async db =>
+  {
     console.log('Rolling back migration 005: Removing turn_order table...');
 
-    try {
+    try
+    {
       // Drop the trigger first
       await db.exec(`DROP TRIGGER IF EXISTS update_turn_order_timestamp;`);
 
@@ -79,7 +85,9 @@ const migration_005: Migration = {
       await db.exec(`DROP TABLE IF EXISTS turn_order;`);
 
       console.log('Migration 005 rollback completed');
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.error('Migration 005 rollback failed:', error);
       throw error;
     }

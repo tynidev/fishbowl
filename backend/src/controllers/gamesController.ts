@@ -1,25 +1,23 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { Game, Player, Team, Phrase, Turn, TurnOrder } from '../db/schema';
-import { insert, select, findById, exists, update } from '../db/utils';
-import { withTransaction, TransactionConnection } from '../db/connection';
-import {
-  CreateGameRequest,
-  GameInfoResponse,
-  UpdateConfigRequest,
-} from '../types/rest-api';
-import { validateGameConfig, validatePlayerName } from '../utils/validators';
-import { generateGameCode } from '../utils/codeGenerator';
-import { createDefaultTeams, assignPlayerToTeam } from '../utils/teamUtils';
-import { getRandomPlayerFromTurnOrder } from '../utils/turnUtils';
-import { broadcastGameStarted } from '../sockets/SOCKET-API';
 import { Server as SocketIOServer } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
+import { TransactionConnection, withTransaction } from '../db/connection';
+import { Game, Phrase, Player, Team, Turn, TurnOrder } from '../db/schema';
+import { exists, findById, insert, select, update } from '../db/utils';
+import { broadcastGameStarted } from '../sockets/SOCKET-API';
+import { CreateGameRequest, GameInfoResponse, UpdateConfigRequest } from '../types/rest-api';
+import { generateGameCode } from '../utils/codeGenerator';
+import { assignPlayerToTeam, createDefaultTeams } from '../utils/teamUtils';
+import { getRandomPlayerFromTurnOrder } from '../utils/turnUtils';
+import { validateGameConfig, validatePlayerName } from '../utils/validators';
 
 /**
  * POST /api/games - Create a new game
  */
-export async function createGame(req: Request, res: Response): Promise<void> {
-  try {
+export async function createGame(req: Request, res: Response): Promise<void>
+{
+  try
+  {
     const {
       name,
       hostPlayerName,
@@ -27,13 +25,15 @@ export async function createGame(req: Request, res: Response): Promise<void> {
       phrasesPerPlayer = 5,
       timerDuration = 60,
     }: CreateGameRequest = req.body; // Validate required fields
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    if (!name || typeof name !== 'string' || name.trim().length === 0)
+    {
       res.status(400).json({ error: 'Game name is required' });
       return;
     }
 
     // Validate game name length
-    if (name.trim().length > 100) {
+    if (name.trim().length > 100)
+    {
       res
         .status(400)
         .json({ error: 'Game name must be 100 characters or less' });
@@ -42,7 +42,8 @@ export async function createGame(req: Request, res: Response): Promise<void> {
 
     // Validate host player name
     const playerNameValidation = validatePlayerName(hostPlayerName);
-    if (!playerNameValidation.isValid) {
+    if (!playerNameValidation.isValid)
+    {
       res.status(400).json({ error: playerNameValidation.error });
       return;
     }
@@ -53,7 +54,8 @@ export async function createGame(req: Request, res: Response): Promise<void> {
       phrasesPerPlayer,
       timerDuration,
     });
-    if (!configValidation.isValid) {
+    if (!configValidation.isValid)
+    {
       res.status(400).json({
         error: 'Invalid game configuration',
         details: configValidation.errors,
@@ -61,24 +63,28 @@ export async function createGame(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    await withTransaction(async (transaction: TransactionConnection) => {
+    await withTransaction(async (transaction: TransactionConnection) =>
+    {
       // Generate unique game code
       let gameCode: string;
       let codeExists = true;
       let attempts = 0;
       const maxAttempts = 10;
 
-      do {
+      do
+      {
         gameCode = generateGameCode();
         codeExists = await exists(
           'games',
           [{ field: 'id', operator: '=', value: gameCode }],
-          transaction
+          transaction,
         );
         attempts++;
-      } while (codeExists && attempts < maxAttempts);
+      }
+      while (codeExists && attempts < maxAttempts);
 
-      if (codeExists) {
+      if (codeExists)
+      {
         throw new Error('Failed to generate unique game code');
       }
 
@@ -118,10 +124,13 @@ export async function createGame(req: Request, res: Response): Promise<void> {
       const teams = await createDefaultTeams(gameCode, teamCount, transaction);
 
       // Assign host player to first team and insert
-      if (teams.length > 0 && teams[0]) {
+      if (teams.length > 0 && teams[0])
+      {
         const updatedHostPlayer = { ...hostPlayer, team_id: teams[0].id };
         await insert('players', updatedHostPlayer, transaction);
-      } else {
+      }
+      else
+      {
         await insert('players', hostPlayer, transaction);
       }
 
@@ -129,7 +138,7 @@ export async function createGame(req: Request, res: Response): Promise<void> {
       const updatedGameInfo = await findById<Game>(
         'games',
         gameCode,
-        transaction
+        transaction,
       );
 
       // Prepare and send response
@@ -151,7 +160,9 @@ export async function createGame(req: Request, res: Response): Promise<void> {
 
       res.status(201).json(response);
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error creating game:', error);
     res.status(500).json({
       error: 'Failed to create game',
@@ -163,17 +174,21 @@ export async function createGame(req: Request, res: Response): Promise<void> {
 /**
  * GET /api/games/:gameCode - Get game information
  */
-export async function getGameInfo(req: Request, res: Response): Promise<void> {
-  try {
+export async function getGameInfo(req: Request, res: Response): Promise<void>
+{
+  try
+  {
     const { gameCode } = req.params;
 
-    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
+    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6)
+    {
       res.status(400).json({ error: 'Invalid game code' });
       return;
     }
 
     const game = await findById<Game>('games', gameCode);
-    if (!game) {
+    if (!game)
+    {
       res.status(404).json({ error: 'Game not found' });
       return;
     }
@@ -200,7 +215,9 @@ export async function getGameInfo(req: Request, res: Response): Promise<void> {
     };
 
     res.status(200).json(response);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error getting game info:', error);
     res.status(500).json({
       error: 'Failed to get game information',
@@ -214,13 +231,15 @@ export async function getGameInfo(req: Request, res: Response): Promise<void> {
  */
 export async function updateGameConfig(
   req: Request,
-  res: Response
-): Promise<void> {
-  try {
+  res: Response,
+): Promise<void>
+{
+  try
+  {
     const { gameCode } = req.params;
-    const { teamCount, phrasesPerPlayer, timerDuration }: UpdateConfigRequest =
-      req.body;
-    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
+    const { teamCount, phrasesPerPlayer, timerDuration }: UpdateConfigRequest = req.body;
+    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6)
+    {
       res.status(400).json({ error: 'Invalid game code' });
       return;
     }
@@ -230,10 +249,10 @@ export async function updateGameConfig(
       teamCount === undefined &&
       phrasesPerPlayer === undefined &&
       timerDuration === undefined
-    ) {
+    )
+    {
       res.status(400).json({
-        error:
-          'At least one configuration field must be provided (teamCount, phrasesPerPlayer, or timerDuration)',
+        error: 'At least one configuration field must be provided (teamCount, phrasesPerPlayer, or timerDuration)',
       });
       return;
     }
@@ -247,26 +266,34 @@ export async function updateGameConfig(
 
     if (teamCount !== undefined) configToValidate.teamCount = teamCount;
     if (phrasesPerPlayer !== undefined)
+    {
       configToValidate.phrasesPerPlayer = phrasesPerPlayer;
+    }
     if (timerDuration !== undefined)
+    {
       configToValidate.timerDuration = timerDuration;
+    }
 
     const configValidation = validateGameConfig(configToValidate);
-    if (!configValidation.isValid) {
+    if (!configValidation.isValid)
+    {
       res.status(400).json({
         error: 'Invalid configuration',
         details: configValidation.errors,
       });
       return;
     }
-    await withTransaction(async (transaction: TransactionConnection) => {
+    await withTransaction(async (transaction: TransactionConnection) =>
+    {
       // Check if game exists and is configurable
       const game = await findById<Game>('games', gameCode, transaction);
-      if (!game) {
+      if (!game)
+      {
         throw new Error('GAME_NOT_FOUND');
       }
 
-      if (game.status !== 'setup') {
+      if (game.status !== 'setup')
+      {
         throw new Error('GAME_ALREADY_STARTED');
       }
 
@@ -274,17 +301,23 @@ export async function updateGameConfig(
       const updateData: Partial<Game> = {};
       if (teamCount !== undefined) updateData.team_count = teamCount;
       if (phrasesPerPlayer !== undefined)
+      {
         updateData.phrases_per_player = phrasesPerPlayer;
+      }
       if (timerDuration !== undefined)
+      {
         updateData.timer_duration = timerDuration; // Update game configuration
-      if (Object.keys(updateData).length > 0) {
+      }
+      if (Object.keys(updateData).length > 0)
+      {
         await update(
           'games',
           updateData,
           [{ field: 'id', operator: '=', value: gameCode }],
-          transaction
+          transaction,
         ); // If team count changed, handle teams intelligently
-        if (teamCount !== undefined && teamCount !== game.team_count) {
+        if (teamCount !== undefined && teamCount !== game.team_count)
+        {
           // Implementation for team management would go here
           // For now, we'll keep it simple and let teamUtils handle this
           // This is a complex operation that involves team creation/deletion
@@ -299,7 +332,7 @@ export async function updateGameConfig(
         {
           where: [{ field: 'game_id', operator: '=', value: gameCode }],
         },
-        transaction
+        transaction,
       );
 
       const response: GameInfoResponse = {
@@ -320,15 +353,20 @@ export async function updateGameConfig(
 
       res.status(200).json(response);
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error updating game config:', error);
 
-    if (error instanceof Error) {
-      if (error.message === 'GAME_NOT_FOUND') {
+    if (error instanceof Error)
+    {
+      if (error.message === 'GAME_NOT_FOUND')
+      {
         res.status(404).json({ error: 'Game not found' });
         return;
       }
-      if (error.message === 'GAME_ALREADY_STARTED') {
+      if (error.message === 'GAME_ALREADY_STARTED')
+      {
         res.status(400).json({
           error: 'Cannot update configuration after game has started',
         });
@@ -346,24 +384,30 @@ export async function updateGameConfig(
 /**
  * POST /api/games/:gameCode/start - Start the game
  */
-export async function startGame(req: Request, res: Response): Promise<void> {
-  try {
+export async function startGame(req: Request, res: Response): Promise<void>
+{
+  try
+  {
     const { gameCode } = req.params;
 
-    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6) {
+    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6)
+    {
       res.status(400).json({ error: 'Invalid game code' });
       return;
     }
 
-    await withTransaction(async (transaction: TransactionConnection) => {
+    await withTransaction(async (transaction: TransactionConnection) =>
+    {
       // Check if game exists
       const game = await findById<Game>('games', gameCode, transaction);
-      if (!game) {
+      if (!game)
+      {
         res.status(404).json({ error: 'Game not found' });
         return;
       }
 
-      if (game.status !== 'setup') {
+      if (game.status !== 'setup')
+      {
         res.status(400).json({
           error: 'Game has already started or is not in a startable state',
         });
@@ -382,7 +426,8 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       });
 
       // Validate team count
-      if (!teams || teams.length < game.team_count) {
+      if (!teams || teams.length < game.team_count)
+      {
         res.status(400).json({
           error: 'Not enough teams to start the game',
         });
@@ -390,7 +435,8 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       }
 
       // Validate there are at least 2 * game.team_count players
-      if (!players || players.length < 2 * game.team_count) {
+      if (!players || players.length < 2 * game.team_count)
+      {
         res.status(400).json({
           error: `Not enough players to start the game. Required: ${2 * game.team_count}, Found: ${players.length}`,
         });
@@ -401,17 +447,22 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       if (
         !phrases ||
         phrases.length < players.length * game.phrases_per_player
-      ) {
+      )
+      {
         res.status(400).json({
-          error: `Not enough phrases submitted. Required: ${players.length * game.phrases_per_player}, Found: ${phrases.length}`,
+          error: `Not enough phrases submitted. Required: ${
+            players.length * game.phrases_per_player
+          }, Found: ${phrases.length}`,
         });
         return;
       }
 
       // For all players, check if they have a team assigned and have submitted the required number of phrases
-      for (const player of players) {
+      for (const player of players)
+      {
         // Check if player has a team assigned
-        if (!player.team_id) {
+        if (!player.team_id)
+        {
           res.status(400).json({
             error: `Player ${player.name} is not assigned to a team`,
           });
@@ -420,9 +471,10 @@ export async function startGame(req: Request, res: Response): Promise<void> {
 
         // Check if player has submitted the required number of phrases
         const playerPhrases = phrases.filter(
-          phrase => phrase.player_id === player.id
+          phrase => phrase.player_id === player.id,
         );
-        if (playerPhrases.length < game.phrases_per_player) {
+        if (playerPhrases.length < game.phrases_per_player)
+        {
           res.status(400).json({
             error: `Player ${player.name} must submit ${game.phrases_per_player} phrases`,
           });
@@ -442,55 +494,61 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         'games',
         updatedGame,
         [{ field: 'id', operator: '=', value: gameCode }],
-        transaction
+        transaction,
       );
 
       // Group players by team for draft
       const playersByTeam = new Map<string, Player[]>();
-      for (const player of players) {
+      for (const player of players)
+      {
         if (!player.team_id) continue;
-        if (!playersByTeam.has(player.team_id)) {
+        if (!playersByTeam.has(player.team_id))
+        {
           playersByTeam.set(player.team_id, []);
         }
         playersByTeam.get(player.team_id)!.push(player);
       }
 
       // Shuffle players within each team
-      for (const [teamId, teamPlayers] of playersByTeam.entries()) {
+      for (const [teamId, teamPlayers] of playersByTeam.entries())
+      {
         teamPlayers.sort(() => Math.random() - 0.5);
         playersByTeam.set(teamId, teamPlayers);
       }
 
       // Shuffle team order
       const teamIds = Array.from(playersByTeam.keys()).sort(
-        () => Math.random() - 0.5
+        () => Math.random() - 0.5,
       );
 
       // Build draft order
       const playerOrder: Player[] = [];
       const maxPlayersPerTeam = Math.max(
-        ...Array.from(playersByTeam.values()).map(team => team.length)
+        ...Array.from(playersByTeam.values()).map(team => team.length),
       );
 
       for (
         let playerIndex = 0;
         playerIndex < maxPlayersPerTeam;
         playerIndex++
-      ) {
-        for (const teamId of teamIds) {
+      )
+      {
+        for (const teamId of teamIds)
+        {
           const teamPlayers = playersByTeam.get(teamId);
-          if (teamPlayers && teamPlayers[playerIndex]) {
+          if (teamPlayers && teamPlayers[playerIndex])
+          {
             playerOrder.push(teamPlayers[playerIndex]!);
           }
         }
       }
 
       // Create TurnOrder records in a circular linked list
-      for (let i = 0; i < playerOrder.length; i++) {
+      for (let i = 0; i < playerOrder.length; i++)
+      {
         const currentPlayer = playerOrder[i];
         const nextPlayer = playerOrder[(i + 1) % playerOrder.length];
-        const prevPlayer =
-          playerOrder[(i - 1 + playerOrder.length) % playerOrder.length];
+        const prevPlayer = playerOrder[(i - 1 + playerOrder.length) % playerOrder.length];
 
         const turnOrder: Omit<TurnOrder, 'created_at' | 'updated_at'> = {
           id: uuidv4(),
@@ -505,9 +563,9 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       }
 
       // Select random starting player from turn order
-      const randomStartingPlayerId =
-        await getRandomPlayerFromTurnOrder(gameCode);
-      if (!randomStartingPlayerId) {
+      const randomStartingPlayerId = await getRandomPlayerFromTurnOrder(gameCode);
+      if (!randomStartingPlayerId)
+      {
         res.status(500).json({
           error: 'Failed to select starting player from turn order',
         });
@@ -515,7 +573,8 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       }
 
       const firstPlayer = players.find(p => p.id === randomStartingPlayerId);
-      if (!firstPlayer) {
+      if (!firstPlayer)
+      {
         res.status(500).json({
           error: 'Selected starting player not found',
         });
@@ -541,14 +600,14 @@ export async function startGame(req: Request, res: Response): Promise<void> {
         'games',
         { current_turn_id: firstTurn.id },
         [{ field: 'id', operator: '=', value: gameCode }],
-        transaction
+        transaction,
       );
 
       // Get updated game info for response
       const updatedGameInfo = await findById<Game>(
         'games',
         gameCode,
-        transaction
+        transaction,
       );
 
       // Prepare and send response
@@ -569,7 +628,8 @@ export async function startGame(req: Request, res: Response): Promise<void> {
       };
 
       // Broadcast game started event to all connected clients
-      if (socketServer) {
+      if (socketServer)
+      {
         const gameStartedData = {
           gameCode: game.id,
           startedAt: startTime,
@@ -579,7 +639,9 @@ export async function startGame(req: Request, res: Response): Promise<void> {
 
       res.status(200).json(response);
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error starting game:', error);
     res.status(500).json({
       error: 'Failed to start game',
@@ -591,6 +653,7 @@ export async function startGame(req: Request, res: Response): Promise<void> {
 // Store reference to socket server (will be set when server starts)
 let socketServer: SocketIOServer | null = null;
 
-export function setSocketServer(server: SocketIOServer): void {
+export function setSocketServer(server: SocketIOServer): void
+{
   socketServer = server;
 }

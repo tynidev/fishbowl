@@ -6,10 +6,12 @@ import type { Migration } from './001_initial';
 export const migration_003: Migration = {
   version: 3,
   name: 'update_turns_table',
-  up: async (db: any): Promise<void> => {
+  up: async (db: any): Promise<void> =>
+  {
     console.log('Running migration 003: Updating turns table...');
 
-    try {
+    try
+    {
       // Enable foreign key constraints
       await db.exec('PRAGMA foreign_keys = ON;');
 
@@ -21,19 +23,20 @@ export const migration_003: Migration = {
       // then it's already in the correct format (fresh migration from 001)
       const hasPlayerId = columns.includes('player_id');
       const hasActingPlayerId = columns.includes('acting_player_id');
-      const hasNullableStartTime =
-        tableInfo.find((col: any) => col.name === 'start_time')?.notnull === 0;
+      const hasNullableStartTime = tableInfo.find((col: any) => col.name === 'start_time')?.notnull === 0;
 
-      if (hasPlayerId && !hasActingPlayerId && hasNullableStartTime) {
+      if (hasPlayerId && !hasActingPlayerId && hasNullableStartTime)
+      {
         console.log(
-          'Turns table already has correct schema, skipping migration 003'
+          'Turns table already has correct schema, skipping migration 003',
         );
         return;
       }
 
-      if (!hasActingPlayerId) {
+      if (!hasActingPlayerId)
+      {
         console.log(
-          'Warning: Expected acting_player_id column not found, table might already be migrated'
+          'Warning: Expected acting_player_id column not found, table might already be migrated',
         );
         return;
       }
@@ -97,7 +100,8 @@ export const migration_003: Migration = {
         `CREATE INDEX IF NOT EXISTS idx_turns_complete ON turns(is_complete);`,
       ];
 
-      for (const indexSQL of turnsIndexes) {
+      for (const indexSQL of turnsIndexes)
+      {
         await db.exec(indexSQL);
       }
 
@@ -114,16 +118,20 @@ export const migration_003: Migration = {
       // (The current_turn_id foreign key constraint should still work)
 
       console.log('Migration 003 completed successfully');
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.error('Migration 003 failed:', error);
       throw error;
     }
   },
 
-  down: async (db: any): Promise<void> => {
+  down: async (db: any): Promise<void> =>
+  {
     console.log('Rolling back migration 003...');
 
-    try {
+    try
+    {
       // Enable foreign key constraints
       await db.exec('PRAGMA foreign_keys = ON;');
 
@@ -183,7 +191,8 @@ export const migration_003: Migration = {
         `CREATE INDEX IF NOT EXISTS idx_turns_complete ON turns(is_complete);`,
       ];
 
-      for (const indexSQL of turnsIndexes) {
+      for (const indexSQL of turnsIndexes)
+      {
         await db.exec(indexSQL);
       }
 
@@ -197,7 +206,9 @@ export const migration_003: Migration = {
       `);
 
       console.log('Migration 003 rollback completed');
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.error('Migration 003 rollback failed:', error);
       throw error;
     }

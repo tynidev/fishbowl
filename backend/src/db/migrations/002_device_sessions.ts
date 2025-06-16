@@ -8,10 +8,12 @@ export const migration_002: Migration = {
   version: 2,
   name: 'device_sessions',
 
-  up: async (db: any): Promise<void> => {
+  up: async (db: any): Promise<void> =>
+  {
     console.log('Running migration 002: Adding device sessions table...');
 
-    try {
+    try
+    {
       // Enable foreign key constraints
       await db.exec('PRAGMA foreign_keys = ON;');
 
@@ -29,7 +31,8 @@ export const migration_002: Migration = {
         `CREATE INDEX IF NOT EXISTS idx_device_sessions_device_game ON device_sessions(device_id, game_id);`,
       ];
 
-      for (const indexSQL of deviceSessionIndexes) {
+      for (const indexSQL of deviceSessionIndexes)
+      {
         await db.exec(indexSQL);
       }
 
@@ -43,21 +46,27 @@ export const migration_002: Migration = {
       `);
 
       console.log('Migration 002 completed successfully');
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.error('Migration 002 failed:', error);
       throw error;
     }
   },
 
-  down: async (db: any): Promise<void> => {
+  down: async (db: any): Promise<void> =>
+  {
     console.log('Rolling back migration 002...');
 
-    try {
+    try
+    {
       // Drop the device_sessions table
       await db.exec('DROP TABLE IF EXISTS device_sessions;');
 
       console.log('Migration 002 rollback completed');
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.error('Migration 002 rollback failed:', error);
       throw error;
     }
@@ -70,15 +79,18 @@ export default migration_002;
 /**
  * Validate device sessions table exists and has correct structure
  */
-export async function validateDeviceSessionsTable(db: any): Promise<boolean> {
-  try {
+export async function validateDeviceSessionsTable(db: any): Promise<boolean>
+{
+  try
+  {
     // Check if device_sessions table exists
     const result = await db.get(`
       SELECT name FROM sqlite_master 
       WHERE type='table' AND name='device_sessions'
     `);
 
-    if (!result) {
+    if (!result)
+    {
       console.error('Device sessions table not found');
       return false;
     }
@@ -99,10 +111,12 @@ export async function validateDeviceSessionsTable(db: any): Promise<boolean> {
 
     const actualColumns = columns.map((col: any) => col.name);
 
-    for (const expectedCol of expectedColumns) {
-      if (!actualColumns.includes(expectedCol)) {
+    for (const expectedCol of expectedColumns)
+    {
+      if (!actualColumns.includes(expectedCol))
+      {
         console.error(
-          `Missing column '${expectedCol}' in device_sessions table`
+          `Missing column '${expectedCol}' in device_sessions table`,
         );
         return false;
       }
@@ -110,7 +124,9 @@ export async function validateDeviceSessionsTable(db: any): Promise<boolean> {
 
     console.log('Device sessions table validation passed');
     return true;
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Device sessions table validation failed:', error);
     return false;
   }

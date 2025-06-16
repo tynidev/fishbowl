@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const NewGamePage: React.FC = () => {
+const NewGamePage: React.FC = () =>
+{
   const [numTeams, setNumTeams] = useState<number>(2);
   const [phrasesPerPlayer, setPhrasesPerPlayer] = useState<number>(3);
   const [turnTimerSec, setTurnTimerSec] = useState<number>(60);
   const navigate = useNavigate();
 
-  const handleCreateGame = () => {
+  const handleCreateGame = () =>
+  {
     // TODO: Implement API call to create game
     console.log('Creating game with settings:', {
       numTeams,
@@ -22,33 +24,33 @@ const NewGamePage: React.FC = () => {
     <div>
       <h1>Create New Game</h1>
       <div>
-        <label htmlFor="numTeams">Number of Teams:</label>
+        <label htmlFor='numTeams'>Number of Teams:</label>
         <input
-          type="number"
-          id="numTeams"
+          type='number'
+          id='numTeams'
           value={numTeams}
           onChange={e => setNumTeams(parseInt(e.target.value, 10))}
-          min="2"
+          min='2'
         />
       </div>
       <div>
-        <label htmlFor="phrasesPerPlayer">Phrases Per Player:</label>
+        <label htmlFor='phrasesPerPlayer'>Phrases Per Player:</label>
         <input
-          type="number"
-          id="phrasesPerPlayer"
+          type='number'
+          id='phrasesPerPlayer'
           value={phrasesPerPlayer}
           onChange={e => setPhrasesPerPlayer(parseInt(e.target.value, 10))}
-          min="1"
+          min='1'
         />
       </div>
       <div>
-        <label htmlFor="turnTimerSec">Turn Timer (seconds):</label>
+        <label htmlFor='turnTimerSec'>Turn Timer (seconds):</label>
         <input
-          type="number"
-          id="turnTimerSec"
+          type='number'
+          id='turnTimerSec'
           value={turnTimerSec}
           onChange={e => setTurnTimerSec(parseInt(e.target.value, 10))}
-          min="10"
+          min='10'
         />
       </div>
       <button onClick={handleCreateGame}>Create Game</button>

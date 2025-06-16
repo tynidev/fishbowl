@@ -1,38 +1,45 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Game, Turn, Player } from '../db/schema';
-import { findById, update, insert } from '../db/utils';
-import { withTransaction, TransactionConnection } from '../db/connection';
+import { TransactionConnection, withTransaction } from '../db/connection';
+import { Game, Player, Turn } from '../db/schema';
+import { findById, insert, update } from '../db/utils';
 import { getCurrentPlayer, getNextPlayer } from '../utils/turnUtils';
 
 /**
  * POST /games/:gameId/turns/end - End the current turn and progress to next player
  */
-export async function endTurn(req: Request, res: Response): Promise<void> {
-  try {
+export async function endTurn(req: Request, res: Response): Promise<void>
+{
+  try
+  {
     const { gameId } = req.params;
     const { playerId } = req.body; // Player requesting to end the turn
 
     // Validate required parameters
-    if (!gameId || typeof gameId !== 'string') {
+    if (!gameId || typeof gameId !== 'string')
+    {
       res.status(400).json({ error: 'Invalid game ID' });
       return;
     }
 
-    if (!playerId || typeof playerId !== 'string') {
+    if (!playerId || typeof playerId !== 'string')
+    {
       res.status(400).json({ error: 'Player ID is required' });
       return;
     }
 
-    await withTransaction(async (transaction: TransactionConnection) => {
+    await withTransaction(async (transaction: TransactionConnection) =>
+    {
       // 1. Validate game exists and is in progress
       const game = await findById<Game>('games', gameId, transaction);
-      if (!game) {
+      if (!game)
+      {
         res.status(404).json({ error: 'Game not found' });
         return;
       }
 
-      if (game.status !== 'playing') {
+      if (game.status !== 'playing')
+      {
         res.status(400).json({
           error: 'Game is not in progress',
           currentStatus: game.status,
@@ -42,13 +49,15 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
 
       // 2. Get current player from the game's current turn
       const currentPlayerId = await getCurrentPlayer(gameId);
-      if (!currentPlayerId) {
+      if (!currentPlayerId)
+      {
         res.status(400).json({ error: 'No current turn found' });
         return;
       }
 
       // 3. Verify the requesting player is the current player (security check)
-      if (currentPlayerId !== playerId) {
+      if (currentPlayerId !== playerId)
+      {
         res.status(403).json({
           error: 'Not your turn',
           currentPlayer: currentPlayerId,
@@ -60,15 +69,17 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
       const currentPlayer = await findById<Player>(
         'players',
         currentPlayerId,
-        transaction
+        transaction,
       );
-      if (!currentPlayer || !currentPlayer.is_connected) {
+      if (!currentPlayer || !currentPlayer.is_connected)
+      {
         res.status(400).json({ error: 'Current player is not connected' });
         return;
       }
 
       // 5. Get the current turn to complete it
-      if (!game.current_turn_id) {
+      if (!game.current_turn_id)
+      {
         res.status(400).json({ error: 'No current turn to end' });
         return;
       }
@@ -76,9 +87,10 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
       const currentTurn = await findById<Turn>(
         'turns',
         game.current_turn_id,
-        transaction
+        transaction,
       );
-      if (!currentTurn) {
+      if (!currentTurn)
+      {
         res.status(400).json({ error: 'Current turn not found' });
         return;
       }
@@ -92,12 +104,13 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
           is_complete: true,
         },
         [{ field: 'id', operator: '=', value: currentTurn.id }],
-        transaction
+        transaction,
       );
 
       // 7. Get the next player using turn order
       const nextPlayerId = await getNextPlayer(gameId, currentPlayerId);
-      if (!nextPlayerId) {
+      if (!nextPlayerId)
+      {
         res.status(400).json({
           error: 'No next player available',
           message: 'All other players may be disconnected',
@@ -109,9 +122,10 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
       const nextPlayer = await findById<Player>(
         'players',
         nextPlayerId,
-        transaction
+        transaction,
       );
-      if (!nextPlayer || !nextPlayer.team_id) {
+      if (!nextPlayer || !nextPlayer.team_id)
+      {
         res
           .status(400)
           .json({ error: 'Next player not found or not assigned to a team' });
@@ -142,12 +156,13 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
           sub_status: 'turn_starting', // Brief moment between turns
         },
         [{ field: 'id', operator: '=', value: gameId }],
-        transaction
+        transaction,
       );
 
       // 11. Get updated game state for response
       const updatedGame = await findById<Game>('games', gameId, transaction);
-      if (!updatedGame) {
+      if (!updatedGame)
+      {
         res.status(500).json({ error: 'Failed to get updated game state' });
         return;
       }
@@ -186,7 +201,9 @@ export async function endTurn(req: Request, res: Response): Promise<void> {
 
       res.status(200).json(response);
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error ending turn:', error);
     res.status(500).json({
       error: 'Failed to end turn',

@@ -3,7 +3,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { Team, Player } from '../db/schema';
+import { Player, Team } from '../db/schema';
 import { insert, select } from '../db/utils';
 
 /**
@@ -36,8 +36,9 @@ import { insert, select } from '../db/utils';
 export async function createDefaultTeams(
   gameId: string,
   teamCount: number,
-  transaction?: any
-): Promise<Team[]> {
+  transaction?: any,
+): Promise<Team[]>
+{
   // Predefined color palette for teams (hex color codes)
   // Colors chosen for good contrast and visual distinction
   const teamColors = [
@@ -67,8 +68,10 @@ export async function createDefaultTeams(
   const availableColors = [...teamColors];
   const availableNames = [...teamNames];
   // Fisher-Yates shuffle algorithm for random order
-  const shuffleArray = <T>(array: T[]): void => {
-    for (let i = array.length - 1; i > 0; i--) {
+  const shuffleArray = <T>(array: T[]): void =>
+  {
+    for (let i = array.length - 1; i > 0; i--)
+    {
       const j = Math.floor(Math.random() * (i + 1));
       [array[i], array[j]] = [array[j]!, array[i]!];
     }
@@ -80,7 +83,8 @@ export async function createDefaultTeams(
 
   const teams: Team[] = [];
   // Create teams up to the requested count
-  for (let i = 0; i < teamCount; i++) {
+  for (let i = 0; i < teamCount; i++)
+  {
     // Create team object with all required fields
     const team: Omit<Team, 'created_at' | 'updated_at'> = {
       id: uuidv4(), // Generate unique identifier
@@ -88,11 +92,12 @@ export async function createDefaultTeams(
       // Use shuffled predefined name or fallback to generic "Team N"
       name: availableNames[i] || `Team ${i + 1}`,
       // Use shuffled predefined color or generate random hex color
-      color:
-        availableColors[i] ||
-        `#${Math.floor(Math.random() * 16777215)
-          .toString(16)
-          .padStart(6, '0')}`,
+      color: availableColors[i] ||
+        `#${
+          Math.floor(Math.random() * 16777215)
+            .toString(16)
+            .padStart(6, '0')
+        }`,
       // Initialize all round scores to 0
       score_round_1: 0,
       score_round_2: 0,
@@ -144,16 +149,19 @@ export async function assignPlayerToTeam(
   gameId: string,
   playerId: string,
   preferredTeamId?: string,
-  transaction?: any
-): Promise<string | undefined> {
-  const operation = async (conn: any) => {
+  transaction?: any,
+): Promise<string | undefined>
+{
+  const operation = async (conn: any) =>
+  {
     // First validate that the game exists
     const gameExists = await conn.get(
       'SELECT 1 FROM games WHERE id = ? LIMIT 1',
-      [gameId]
+      [gameId],
     );
 
-    if (!gameExists) {
+    if (!gameExists)
+    {
       throw new Error(`Game with ID ${gameId} does not exist`);
     }
 
@@ -171,32 +179,39 @@ export async function assignPlayerToTeam(
       GROUP BY t.id, t.name, t.created_at
       ORDER BY t.created_at ASC
     `,
-      [gameId, gameId]
+      [gameId, gameId],
     );
 
-    if (teamsWithCounts.length === 0) {
+    if (teamsWithCounts.length === 0)
+    {
       return undefined;
     }
 
     let targetTeamId: string;
-    if (preferredTeamId) {
+    if (preferredTeamId)
+    {
       // Check if the preferred team exists in this game
       const preferredTeam = teamsWithCounts.find(
-        (team: any) => team.id === preferredTeamId
+        (team: any) => team.id === preferredTeamId,
       );
-      if (!preferredTeam) {
+      if (!preferredTeam)
+      {
         throw new Error(
-          `Team with ID ${preferredTeamId} does not exist in game ${gameId}`
+          `Team with ID ${preferredTeamId} does not exist in game ${gameId}`,
         );
       }
       targetTeamId = preferredTeamId;
-    } else {
+    }
+    else
+    {
       // Find team with minimum players (first in creation order if tied)
       let minCount = Infinity;
       targetTeamId = teamsWithCounts[0]?.id;
 
-      for (const team of teamsWithCounts) {
-        if (team.player_count < minCount) {
+      for (const team of teamsWithCounts)
+      {
+        if (team.player_count < minCount)
+        {
           minCount = team.player_count;
           targetTeamId = team.id;
         }
@@ -212,15 +227,18 @@ export async function assignPlayerToTeam(
         updated_at: new Date().toISOString(),
       },
       [{ field: 'id', operator: '=', value: playerId }],
-      conn
+      conn,
     );
 
     return targetTeamId;
   };
 
-  if (transaction) {
+  if (transaction)
+  {
     return await operation(transaction);
-  } else {
+  }
+  else
+  {
     // Import withConnection locally to avoid circular dependency
     const { withConnection } = await import('../db/connection');
     return await withConnection(operation);

@@ -9,32 +9,28 @@
  */
 
 import { Request, Response } from 'express';
+import { Game, Player } from '../db/schema';
+import { findById } from '../db/utils';
 import {
-  getDeviceSession,
-  getActiveSessionsForGame,
-  hasActiveSession,
+  cleanupStaleSessions,
   deactivateDeviceSession,
   generateDeviceId,
-  cleanupStaleSessions,
+  getActiveSessionsForGame,
+  getDeviceSession,
+  hasActiveSession,
   removeOldSessions,
 } from '../sockets/deviceSessionManager';
-import { findById } from '../db/utils';
-import { Game, Player } from '../db/schema';
 import {
-  GetDeviceSessionResponse,
-  GenerateDeviceIdResponse,
-  CheckActiveSessionResponse,
   ActiveSessionInfo,
-  GetActiveSessionsResponse,
+  CheckActiveSessionResponse,
+  CleanupSessionsResponse,
   DeactivateSessionRequest,
   DeactivateSessionResponse,
-  CleanupSessionsResponse,
+  GenerateDeviceIdResponse,
+  GetActiveSessionsResponse,
+  GetDeviceSessionResponse,
 } from '../types/rest-api';
-import {
-  transformDeviceSession,
-  transformPlayer,
-  transformGame,
-} from '../utils/deviceSessionUtils';
+import { transformDeviceSession, transformGame, transformPlayer } from '../utils/deviceSessionUtils';
 
 // ==================== Route Handlers ====================
 
@@ -43,9 +39,11 @@ import {
  */
 export async function generateNewDeviceId(
   req: Request,
-  res: Response
-): Promise<void> {
-  try {
+  res: Response,
+): Promise<void>
+{
+  try
+  {
     const deviceId = generateDeviceId();
 
     const response: GenerateDeviceIdResponse = {
@@ -54,7 +52,9 @@ export async function generateNewDeviceId(
     };
 
     res.status(200).json(response);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error generating device ID:', error);
     res.status(500).json({
       success: false,
@@ -70,13 +70,16 @@ export async function generateNewDeviceId(
  */
 export async function getDeviceSessionInfo(
   req: Request,
-  res: Response
-): Promise<void> {
-  try {
+  res: Response,
+): Promise<void>
+{
+  try
+  {
     const { deviceId } = req.params;
     const { gameId } = req.query;
 
-    if (!deviceId) {
+    if (!deviceId)
+    {
       res.status(400).json({
         success: false,
         message: 'Device ID is required',
@@ -86,7 +89,8 @@ export async function getDeviceSessionInfo(
 
     const session = await getDeviceSession(deviceId, gameId as string);
 
-    if (!session) {
+    if (!session)
+    {
       res.status(404).json({
         success: false,
         message: 'No session found for this device',
@@ -98,16 +102,20 @@ export async function getDeviceSessionInfo(
     let playerInfo = null;
     let gameInfo = null;
 
-    if (session.player_id) {
+    if (session.player_id)
+    {
       const player = await findById<Player>('players', session.player_id);
-      if (player) {
+      if (player)
+      {
         playerInfo = transformPlayer(player);
       }
     }
 
-    if (session.game_id) {
+    if (session.game_id)
+    {
       const game = await findById<Game>('games', session.game_id);
-      if (game) {
+      if (game)
+      {
         gameInfo = transformGame(game);
       }
     }
@@ -120,7 +128,9 @@ export async function getDeviceSessionInfo(
     };
 
     res.status(200).json(response);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error getting device session:', error);
     res.status(500).json({
       success: false,
@@ -135,12 +145,15 @@ export async function getDeviceSessionInfo(
  */
 export async function checkActiveSession(
   req: Request,
-  res: Response
-): Promise<void> {
-  try {
+  res: Response,
+): Promise<void>
+{
+  try
+  {
     const { deviceId, gameId } = req.params;
 
-    if (!deviceId || !gameId) {
+    if (!deviceId || !gameId)
+    {
       res.status(400).json({
         success: false,
         message: 'Device ID and Game ID are required',
@@ -156,7 +169,9 @@ export async function checkActiveSession(
     };
 
     res.status(200).json(response);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error checking active session:', error);
     res.status(500).json({
       success: false,
@@ -171,12 +186,15 @@ export async function checkActiveSession(
  */
 export async function getGameActiveSessions(
   req: Request,
-  res: Response
-): Promise<void> {
-  try {
+  res: Response,
+): Promise<void>
+{
+  try
+  {
     const { gameId } = req.params;
 
-    if (!gameId) {
+    if (!gameId)
+    {
       res.status(400).json({
         success: false,
         message: 'Game ID is required',
@@ -186,7 +204,8 @@ export async function getGameActiveSessions(
 
     // Verify game exists
     const game = await findById<Game>('games', gameId);
-    if (!game) {
+    if (!game)
+    {
       res.status(404).json({
         success: false,
         message: 'Game not found',
@@ -198,11 +217,14 @@ export async function getGameActiveSessions(
 
     // Get player information for each session
     const sessionsWithPlayers = await Promise.all(
-      sessions.map(async (session): Promise<ActiveSessionInfo> => {
+      sessions.map(async (session): Promise<ActiveSessionInfo> =>
+      {
         let playerInfo = null;
-        if (session.player_id) {
+        if (session.player_id)
+        {
           const player = await findById<Player>('players', session.player_id);
-          if (player) {
+          if (player)
+          {
             playerInfo = transformPlayer(player);
           }
         }
@@ -215,7 +237,7 @@ export async function getGameActiveSessions(
           isActive: session.is_active,
           player: playerInfo,
         };
-      })
+      }),
     );
 
     const response: GetActiveSessionsResponse = {
@@ -226,7 +248,9 @@ export async function getGameActiveSessions(
     };
 
     res.status(200).json(response);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error getting active sessions for game:', error);
     res.status(500).json({
       success: false,
@@ -241,13 +265,16 @@ export async function getGameActiveSessions(
  */
 export async function deactivateSession(
   req: Request,
-  res: Response
-): Promise<void> {
-  try {
+  res: Response,
+): Promise<void>
+{
+  try
+  {
     const { deviceId } = req.params;
     const { gameId }: DeactivateSessionRequest = req.body;
 
-    if (!deviceId) {
+    if (!deviceId)
+    {
       res.status(400).json({
         success: false,
         message: 'Device ID is required',
@@ -263,7 +290,9 @@ export async function deactivateSession(
     };
 
     res.status(200).json(response);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error deactivating device session:', error);
     res.status(500).json({
       success: false,
@@ -278,9 +307,11 @@ export async function deactivateSession(
  */
 export async function cleanupSessions(
   req: Request,
-  res: Response
-): Promise<void> {
-  try {
+  res: Response,
+): Promise<void>
+{
+  try
+  {
     const staleCount = await cleanupStaleSessions();
     const removedCount = await removeOldSessions();
 
@@ -292,7 +323,9 @@ export async function cleanupSessions(
     };
 
     res.status(200).json(response);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error during session cleanup:', error);
     res.status(500).json({
       success: false,

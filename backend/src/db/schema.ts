@@ -2,21 +2,20 @@
 
 // ==================== TypeScript Interfaces ====================
 
-export interface Game {
+export interface Game
+{
   id: string;
   name: string;
   status: 'setup' | 'playing' | 'finished';
   sub_status: // When status = 'setup'
-  | 'waiting_for_players' // Players joining, getting assigned to teams, submitting phrases
+    | 'waiting_for_players' // Players joining, getting assigned to teams, submitting phrases
     | 'ready_to_start' // All players joined, all phrases submitted, host can start
-
     // When status = 'playing'
     | 'round_intro' // Showing round rules before starting
     | 'turn_starting' // Brief moment between turns (showing whose turn)
     | 'turn_active' // Active turn with timer running
     | 'turn_paused' // Turn paused (disconnection, dispute, etc.)
     | 'round_complete' // Round finished, showing scores before next round
-
     // When status = 'finished'
     | 'game_complete'; // Final scores, game over
   host_player_id: string;
@@ -32,7 +31,8 @@ export interface Game {
   finished_at?: string;
 }
 
-export interface Player {
+export interface Player
+{
   id: string;
   game_id: string;
   name: string;
@@ -43,7 +43,8 @@ export interface Player {
   last_seen_at: string;
 }
 
-export interface Team {
+export interface Team
+{
   id: string;
   game_id: string;
   name: string;
@@ -56,7 +57,8 @@ export interface Team {
   updated_at: string;
 }
 
-export interface Phrase {
+export interface Phrase
+{
   id: string;
   game_id: string;
   player_id: string;
@@ -79,7 +81,8 @@ export interface Phrase {
  * Turns are the fundamental unit of gameplay in Fishbowl. Players can skip difficult phrases
  * during their turn, but skipped phrases go back into the bowl for future turns.
  */
-export interface Turn {
+export interface Turn
+{
   id: string;
   game_id: string;
   round: number;
@@ -98,7 +101,8 @@ export interface Turn {
   updated_at: string;
 }
 
-export interface TurnPhrase {
+export interface TurnPhrase
+{
   id: string;
   turn_id: string;
   phrase_id: string;
@@ -106,7 +110,8 @@ export interface TurnPhrase {
   timestamp: string;
 }
 
-export interface TurnOrder {
+export interface TurnOrder
+{
   id: string;
   game_id: string;
   player_id: string;
@@ -117,7 +122,8 @@ export interface TurnOrder {
   updated_at: string;
 }
 
-export interface DeviceSession {
+export interface DeviceSession
+{
   id: string;
   device_id: string;
   socket_id?: string;

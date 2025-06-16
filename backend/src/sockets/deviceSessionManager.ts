@@ -1,14 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
-import { insert, select, update, deleteRecords } from '../db/utils';
-import { DeviceSession } from '../db/schema';
 import { TransactionConnection, withTransaction } from '../db/connection';
+import { DeviceSession } from '../db/schema';
+import { deleteRecords, insert, select, update } from '../db/utils';
 
 // ==================== Device Session Management ====================
 
 /**
  * Generate a unique device ID
  */
-export function generateDeviceId(): string {
+export function generateDeviceId(): string
+{
   return `device_${uuidv4()}`;
 }
 
@@ -20,15 +21,17 @@ export async function createOrUpdateDeviceSession(
   deviceId: string,
   socketId: string,
   playerId?: string,
-  gameId?: string
-): Promise<DeviceSession> {
+  gameId?: string,
+): Promise<DeviceSession>
+{
   const sessionId = uuidv4();
   const now = new Date().toISOString();
 
   // Check if a session already exists for this device and game
   let existingSession: DeviceSession | null = null;
 
-  if (gameId) {
+  if (gameId)
+  {
     const sessions = await select<DeviceSession>(
       'device_sessions',
       {
@@ -37,25 +40,25 @@ export async function createOrUpdateDeviceSession(
           { field: 'game_id', operator: '=', value: gameId },
         ],
       },
-      transaction
+      transaction,
     );
 
     existingSession = sessions.length > 0 && sessions[0] ? sessions[0] : null;
   }
 
-  if (existingSession) {
+  if (existingSession)
+  {
     // Update existing session
     await update(
       'device_sessions',
       {
         socket_id: socketId,
-        player_id:
-          playerId !== undefined ? playerId : existingSession.player_id,
+        player_id: playerId !== undefined ? playerId : existingSession.player_id,
         last_seen: now,
         is_active: true,
       },
       [{ field: 'id', operator: '=', value: existingSession.id }],
-      transaction
+      transaction,
     );
 
     return {
@@ -66,7 +69,9 @@ export async function createOrUpdateDeviceSession(
       is_active: true,
       updated_at: now,
     } as DeviceSession;
-  } else {
+  }
+  else
+  {
     // Create new session
     const newSession: DeviceSession = {
       id: sessionId,
@@ -78,10 +83,12 @@ export async function createOrUpdateDeviceSession(
       updated_at: now,
     };
 
-    if (playerId) {
+    if (playerId)
+    {
       newSession.player_id = playerId;
     }
-    if (gameId) {
+    if (gameId)
+    {
       newSession.game_id = gameId;
     }
 
@@ -95,14 +102,17 @@ export async function createOrUpdateDeviceSession(
  */
 export async function getDeviceSession(
   deviceId: string,
-  gameId?: string
-): Promise<DeviceSession | null> {
-  return await withTransaction(async transaction => {
+  gameId?: string,
+): Promise<DeviceSession | null>
+{
+  return await withTransaction(async transaction =>
+  {
     const whereClause = [
       { field: 'device_id', operator: '=' as const, value: deviceId },
     ];
 
-    if (gameId) {
+    if (gameId)
+    {
       whereClause.push({
         field: 'game_id',
         operator: '=' as const,
@@ -117,7 +127,7 @@ export async function getDeviceSession(
         orderBy: [{ field: 'last_seen', direction: 'DESC' }],
         limit: 1,
       },
-      transaction
+      transaction,
     );
 
     return sessions.length > 0 && sessions[0] ? sessions[0] : null;
@@ -128,16 +138,18 @@ export async function getDeviceSession(
  * Get device session by socket ID
  */
 export async function getDeviceSessionBySocket(
-  socketId: string
-): Promise<DeviceSession | null> {
-  return await withTransaction(async transaction => {
+  socketId: string,
+): Promise<DeviceSession | null>
+{
+  return await withTransaction(async transaction =>
+  {
     const sessions = await select<DeviceSession>(
       'device_sessions',
       {
         where: [{ field: 'socket_id', operator: '=', value: socketId }],
         limit: 1,
       },
-      transaction
+      transaction,
     );
 
     return sessions.length > 0 && sessions[0] ? sessions[0] : null;
@@ -149,14 +161,17 @@ export async function getDeviceSessionBySocket(
  */
 export async function updateLastSeen(
   deviceId: string,
-  gameId?: string
-): Promise<void> {
-  await withTransaction(async transaction => {
+  gameId?: string,
+): Promise<void>
+{
+  await withTransaction(async transaction =>
+  {
     const whereClause = [
       { field: 'device_id', operator: '=' as const, value: deviceId },
     ];
 
-    if (gameId) {
+    if (gameId)
+    {
       whereClause.push({
         field: 'game_id',
         operator: '=' as const,
@@ -168,7 +183,7 @@ export async function updateLastSeen(
       'device_sessions',
       { last_seen: new Date().toISOString() },
       whereClause,
-      transaction
+      transaction,
     );
   });
 }
@@ -178,14 +193,17 @@ export async function updateLastSeen(
  */
 export async function deactivateDeviceSession(
   deviceId: string,
-  gameId?: string
-): Promise<void> {
-  await withTransaction(async transaction => {
+  gameId?: string,
+): Promise<void>
+{
+  await withTransaction(async transaction =>
+  {
     const whereClause = [
       { field: 'device_id', operator: '=' as const, value: deviceId },
     ];
 
-    if (gameId) {
+    if (gameId)
+    {
       whereClause.push({
         field: 'game_id',
         operator: '=' as const,
@@ -201,7 +219,7 @@ export async function deactivateDeviceSession(
         last_seen: new Date().toISOString(),
       },
       whereClause,
-      transaction
+      transaction,
     );
   });
 }
@@ -211,8 +229,9 @@ export async function deactivateDeviceSession(
  */
 export async function deactivateDeviceSessionBySocket(
   transaction: TransactionConnection,
-  socketId: string
-): Promise<void> {
+  socketId: string,
+): Promise<void>
+{
   await update(
     'device_sessions',
     {
@@ -221,7 +240,7 @@ export async function deactivateDeviceSessionBySocket(
       last_seen: new Date().toISOString(),
     },
     [{ field: 'socket_id', operator: '=', value: socketId }],
-    transaction
+    transaction,
   );
 }
 
@@ -229,9 +248,11 @@ export async function deactivateDeviceSessionBySocket(
  * Get active sessions for a game
  */
 export async function getActiveSessionsForGame(
-  gameId: string
-): Promise<DeviceSession[]> {
-  return await withTransaction(async transaction => {
+  gameId: string,
+): Promise<DeviceSession[]>
+{
+  return await withTransaction(async transaction =>
+  {
     return await select<DeviceSession>(
       'device_sessions',
       {
@@ -241,7 +262,7 @@ export async function getActiveSessionsForGame(
         ],
         orderBy: [{ field: 'last_seen', direction: 'DESC' }],
       },
-      transaction
+      transaction,
     );
   });
 }
@@ -249,8 +270,10 @@ export async function getActiveSessionsForGame(
 /**
  * Clean up stale sessions (inactive for more than 1 hour)
  */
-export async function cleanupStaleSessions(): Promise<number> {
-  return await withTransaction(async transaction => {
+export async function cleanupStaleSessions(): Promise<number>
+{
+  return await withTransaction(async transaction =>
+  {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
     // Get stale sessions count first
@@ -262,7 +285,7 @@ export async function cleanupStaleSessions(): Promise<number> {
           { field: 'is_active', operator: '=', value: true },
         ],
       },
-      transaction
+      transaction,
     );
 
     // Deactivate stale sessions
@@ -276,7 +299,7 @@ export async function cleanupStaleSessions(): Promise<number> {
         { field: 'last_seen', operator: '<', value: oneHourAgo },
         { field: 'is_active', operator: '=', value: true },
       ],
-      transaction
+      transaction,
     );
 
     console.log(`Cleaned up ${staleSessions.length} stale device sessions`);
@@ -287,10 +310,12 @@ export async function cleanupStaleSessions(): Promise<number> {
 /**
  * Remove old inactive sessions (older than 24 hours)
  */
-export async function removeOldSessions(): Promise<number> {
-  return await withTransaction(async transaction => {
+export async function removeOldSessions(): Promise<number>
+{
+  return await withTransaction(async transaction =>
+  {
     const twentyFourHoursAgo = new Date(
-      Date.now() - 24 * 60 * 60 * 1000
+      Date.now() - 24 * 60 * 60 * 1000,
     ).toISOString();
 
     // Get old sessions count first
@@ -302,7 +327,7 @@ export async function removeOldSessions(): Promise<number> {
           { field: 'is_active', operator: '=', value: false },
         ],
       },
-      transaction
+      transaction,
     );
 
     // Remove old inactive sessions
@@ -312,7 +337,7 @@ export async function removeOldSessions(): Promise<number> {
         { field: 'last_seen', operator: '<', value: twentyFourHoursAgo },
         { field: 'is_active', operator: '=', value: false },
       ],
-      transaction
+      transaction,
     );
 
     console.log(`Removed ${oldSessions.length} old device sessions`);
@@ -325,9 +350,11 @@ export async function removeOldSessions(): Promise<number> {
  */
 export async function hasActiveSession(
   deviceId: string,
-  gameId: string
-): Promise<boolean> {
-  return await withTransaction(async transaction => {
+  gameId: string,
+): Promise<boolean>
+{
+  return await withTransaction(async transaction =>
+  {
     const sessions = await select<DeviceSession>(
       'device_sessions',
       {
@@ -337,7 +364,7 @@ export async function hasActiveSession(
           { field: 'is_active', operator: '=', value: true },
         ],
       },
-      transaction
+      transaction,
     );
 
     return sessions.length > 0;
@@ -348,16 +375,18 @@ export async function hasActiveSession(
  * Get all device sessions for a player
  */
 export async function getPlayerDeviceSessions(
-  playerId: string
-): Promise<DeviceSession[]> {
-  return await withTransaction(async transaction => {
+  playerId: string,
+): Promise<DeviceSession[]>
+{
+  return await withTransaction(async transaction =>
+  {
     return await select<DeviceSession>(
       'device_sessions',
       {
         where: [{ field: 'player_id', operator: '=', value: playerId }],
         orderBy: [{ field: 'last_seen', direction: 'DESC' }],
       },
-      transaction
+      transaction,
     );
   });
 }

@@ -7,11 +7,7 @@
  */
 
 import { Game, Player } from '../db/schema';
-import {
-  DeviceSessionResponse,
-  PlayerInfoResponse,
-  DeviceSessionGameInfoResponse,
-} from '../types/rest-api';
+import { DeviceSessionGameInfoResponse, DeviceSessionResponse, PlayerInfoResponse } from '../types/rest-api';
 
 /**
  * Transform device session to response format
@@ -19,7 +15,8 @@ import {
  * @param session Raw device session object from database
  * @returns Formatted device session response object
  */
-export function transformDeviceSession(session: any): DeviceSessionResponse {
+export function transformDeviceSession(session: any): DeviceSessionResponse
+{
   return {
     id: session.id,
     deviceId: session.device_id,
@@ -37,7 +34,8 @@ export function transformDeviceSession(session: any): DeviceSessionResponse {
  * @param player Player database object
  * @returns Formatted player info response object
  */
-export function transformPlayer(player: Player): PlayerInfoResponse {
+export function transformPlayer(player: Player): PlayerInfoResponse
+{
   return {
     id: player.id,
     name: player.name,
@@ -53,7 +51,8 @@ export function transformPlayer(player: Player): PlayerInfoResponse {
  * @param game Game database object
  * @returns Formatted game info response object (simplified for device sessions)
  */
-export function transformGame(game: Game): DeviceSessionGameInfoResponse {
+export function transformGame(game: Game): DeviceSessionGameInfoResponse
+{
   return {
     id: game.id,
     name: game.name,

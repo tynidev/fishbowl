@@ -52,7 +52,7 @@ fishbowl-app/
 
 ### Development Tools
 - **TypeScript** for type safety
-- **Prettier** for code formatting
+- **dprint** for code formatting
 - **Jest** for testing (backend) & **React Testing Library** (frontend)
 - **Concurrently** for parallel development
 
@@ -220,7 +220,7 @@ npm run clean:all
 
 ## 🤝 Contributing
 
-1. **Follow the code style** - Prettier configurations recommended
+1. **Follow the code style** - dprint configurations recommended
 2. **Write tests** - Maintain test coverage for new features
 3. **Use TypeScript** - All code should be properly typed
 4. **Validate changes** - Run `npm run validate` before committing

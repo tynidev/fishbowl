@@ -4,13 +4,14 @@ import './App.css';
 import HomePage from './HomePage'; // Import the HomePage component
 import NewGamePage from './NewGamePage'; // Import the NewGamePage component
 
-function App() {
+function App()
+{
   return (
     <Router>
-      <div className="App">
+      <div className='App'>
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/new-game" element={<NewGamePage />} />
+          <Route path='/' element={<HomePage />} />
+          <Route path='/new-game' element={<NewGamePage />} />
           {/* Add other routes here as needed */}
         </Routes>
       </div>

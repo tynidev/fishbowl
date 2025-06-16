@@ -1,10 +1,10 @@
 import express, { Router } from 'express';
 import {
-  submitPhrases,
+  deletePhrase,
   getGamePhrases,
   getPhraseSubmissionStatus,
+  submitPhrases,
   updatePhrase,
-  deletePhrase,
 } from '../controllers/phrasesController';
 
 const router: Router = express.Router();

@@ -1,29 +1,32 @@
 // Database connection module for SQLite
 // Handles database initialization, connection management, and utilities
 
+import fs from 'fs';
+import path from 'path';
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
-import path from 'path';
-import fs from 'fs';
 
 // Enable verbose mode in development
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production')
+{
   sqlite3.verbose();
 }
 
-export interface DatabaseConfig {
+export interface DatabaseConfig
+{
   filename: string;
   mode?: number;
   timeout?: number;
   maxConnections?: number;
 }
 
-export interface DatabaseConnection {
+export interface DatabaseConnection
+{
   db: sqlite3.Database;
   run: (
     sql: string,
-    params?: any[]
-  ) => Promise<{ lastID?: number; changes: number }>;
+    params?: any[],
+  ) => Promise<{ lastID?: number; changes: number; }>;
   get: <T = any>(sql: string, params?: any[]) => Promise<T | undefined>;
   all: <T = any>(sql: string, params?: any[]) => Promise<T[]>;
   exec: (sql: string) => Promise<void>;
@@ -32,33 +35,40 @@ export interface DatabaseConnection {
   isHealthy: () => Promise<boolean>;
 }
 
-export interface TransactionConnection extends DatabaseConnection {
+export interface TransactionConnection extends DatabaseConnection
+{
   commit: () => Promise<void>;
   rollback: () => Promise<void>;
 }
 
-class DatabaseManager {
+class DatabaseManager
+{
   private connections: Map<string, sqlite3.Database> = new Map();
   private config: DatabaseConfig;
   private isInitialized = false;
   private cachedDb: sqlite3.Database | null = null;
 
-  constructor(config: DatabaseConfig) {
+  constructor(config: DatabaseConfig)
+  {
     this.config = config;
   }
 
   /**
    * Initialize database connection and ensure database file exists
    */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) {
+  async initialize(): Promise<void>
+  {
+    if (this.isInitialized)
+    {
       return;
     }
 
-    try {
+    try
+    {
       // Ensure database directory exists
       const dbDir = path.dirname(this.config.filename);
-      if (!fs.existsSync(dbDir)) {
+      if (!fs.existsSync(dbDir))
+      {
         fs.mkdirSync(dbDir, { recursive: true });
         console.log(`Created database directory: ${dbDir}`);
       }
@@ -70,7 +80,9 @@ class DatabaseManager {
 
       this.isInitialized = true;
       console.log(`Database initialized: ${this.config.filename}`);
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.error('Failed to initialize database:', error);
       throw error;
     }
@@ -78,10 +90,13 @@ class DatabaseManager {
   /**
    * Create a new database connection with promisified methods
    */
-  async createConnection(): Promise<DatabaseConnection> {
-    return new Promise((resolve, reject) => {
+  async createConnection(): Promise<DatabaseConnection>
+  {
+    return new Promise((resolve, reject) =>
+    {
       // For :memory: databases, reuse the same instance to maintain data consistency
-      if (this.config.filename === ':memory:' && this.cachedDb) {
+      if (this.config.filename === ':memory:' && this.cachedDb)
+      {
         const connection = this.wrapDatabase(this.cachedDb);
         resolve(connection);
         return;
@@ -90,8 +105,10 @@ class DatabaseManager {
       const db = new sqlite3.Database(
         this.config.filename,
         this.config.mode || sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-        err => {
-          if (err) {
+        err =>
+        {
+          if (err)
+          {
             console.error('Failed to create database connection:', err);
             reject(err);
             return;
@@ -101,28 +118,36 @@ class DatabaseManager {
           db.configure('busyTimeout', this.config.timeout || 5000);
 
           // Cache the database instance for :memory: databases
-          if (this.config.filename === ':memory:') {
+          if (this.config.filename === ':memory:')
+          {
             this.cachedDb = db;
           }
 
           const connection = this.wrapDatabase(db);
           resolve(connection);
-        }
+        },
       );
     });
   }
   /**
    * Wrap a SQLite database instance with promisified methods
    */
-  private wrapDatabase(db: sqlite3.Database): DatabaseConnection {
+  private wrapDatabase(db: sqlite3.Database): DatabaseConnection
+  {
     const connection: DatabaseConnection = {
       db,
-      run: (sql: string, params?: any) => {
-        return new Promise((resolve, reject) => {
-          db.run(sql, params, function (err) {
-            if (err) {
+      run: (sql: string, params?: any) =>
+      {
+        return new Promise((resolve, reject) =>
+        {
+          db.run(sql, params, function(err)
+          {
+            if (err)
+            {
               reject(err);
-            } else {
+            }
+            else
+            {
               resolve({
                 lastID: this.lastID,
                 changes: this.changes,
@@ -134,40 +159,57 @@ class DatabaseManager {
       get: promisify(db.get.bind(db)),
       all: promisify(db.all.bind(db)),
       exec: promisify(db.exec.bind(db)),
-      serialize: (callback: () => Promise<void>) => {
-        return new Promise((resolveSerialize, rejectSerialize) => {
-          db.serialize(async () => {
-            try {
+      serialize: (callback: () => Promise<void>) =>
+      {
+        return new Promise((resolveSerialize, rejectSerialize) =>
+        {
+          db.serialize(async () =>
+          {
+            try
+            {
               await callback();
               resolveSerialize();
-            } catch (error) {
+            }
+            catch (error)
+            {
               rejectSerialize(error);
             }
           });
         });
       },
-      close: () => {
-        return new Promise((resolveClose, rejectClose) => {
+      close: () =>
+      {
+        return new Promise((resolveClose, rejectClose) =>
+        {
           // For cached :memory: databases, don't actually close the connection
-          if (this.config.filename === ':memory:' && db === this.cachedDb) {
+          if (this.config.filename === ':memory:' && db === this.cachedDb)
+          {
             resolveClose();
             return;
           }
 
-          db.close(err => {
-            if (err) {
+          db.close(err =>
+          {
+            if (err)
+            {
               rejectClose(err);
-            } else {
+            }
+            else
+            {
               resolveClose();
             }
           });
         });
       },
-      isHealthy: async () => {
-        try {
+      isHealthy: async () =>
+      {
+        try
+        {
           await connection.get('SELECT 1 as test');
           return true;
-        } catch (error) {
+        }
+        catch (error)
+        {
           console.error('Database health check failed:', error);
           return false;
         }
@@ -180,36 +222,47 @@ class DatabaseManager {
   /**
    * Create a transaction wrapper with commit/rollback functionality
    */
-  async createTransaction(): Promise<TransactionConnection> {
+  async createTransaction(): Promise<TransactionConnection>
+  {
     const connection = await this.createConnection();
     let isTransactionActive = false;
 
-    try {
+    try
+    {
       await connection.exec('BEGIN TRANSACTION');
       isTransactionActive = true;
 
       const transaction: TransactionConnection = {
         ...connection,
-        commit: async () => {
-          if (isTransactionActive) {
+        commit: async () =>
+        {
+          if (isTransactionActive)
+          {
             await connection.exec('COMMIT');
             isTransactionActive = false;
           }
         },
-        rollback: async () => {
-          if (isTransactionActive) {
+        rollback: async () =>
+        {
+          if (isTransactionActive)
+          {
             await connection.exec('ROLLBACK');
             isTransactionActive = false;
           }
         },
-        close: async () => {
-          if (isTransactionActive) {
-            try {
+        close: async () =>
+        {
+          if (isTransactionActive)
+          {
+            try
+            {
               await connection.exec('ROLLBACK');
-            } catch (error) {
+            }
+            catch (error)
+            {
               console.warn(
                 'Failed to rollback transaction during close:',
-                error
+                error,
               );
             }
           }
@@ -218,7 +271,9 @@ class DatabaseManager {
       };
 
       return transaction;
-    } catch (error) {
+    }
+    catch (error)
+    {
       await connection.close();
       throw error;
     }
@@ -227,17 +282,19 @@ class DatabaseManager {
   /**
    * Get database statistics and information
    */
-  async getStats(): Promise<any> {
+  async getStats(): Promise<any>
+  {
     const connection = await this.createConnection();
-    try {
+    try
+    {
       const [version, pragmaInfo, tableCount, indexCount] = await Promise.all([
         connection.get('SELECT sqlite_version() as version'),
         connection.get('PRAGMA database_list'),
         connection.get(
-          'SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"'
+          'SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"',
         ),
         connection.get(
-          'SELECT COUNT(*) as count FROM sqlite_master WHERE type="index"'
+          'SELECT COUNT(*) as count FROM sqlite_master WHERE type="index"',
         ),
       ]);
 
@@ -250,18 +307,25 @@ class DatabaseManager {
         pragmaInfo,
         lastModified: this.getDatabaseLastModified(),
       };
-    } finally {
+    }
+    finally
+    {
       await connection.close();
     }
   }
   /**
    * Cleanup all connections
    */
-  async cleanup(): Promise<void> {
-    const closePromises = Array.from(this.connections.values()).map(db => {
-      return new Promise<void>(resolve => {
-        db.close(err => {
-          if (err) {
+  async cleanup(): Promise<void>
+  {
+    const closePromises = Array.from(this.connections.values()).map(db =>
+    {
+      return new Promise<void>(resolve =>
+      {
+        db.close(err =>
+        {
+          if (err)
+          {
             console.warn('Error closing database connection:', err);
           }
           resolve();
@@ -270,17 +334,21 @@ class DatabaseManager {
     });
 
     // Close cached database if it exists
-    if (this.cachedDb) {
+    if (this.cachedDb)
+    {
       closePromises.push(
-        new Promise<void>(resolve => {
-          this.cachedDb!.close(err => {
-            if (err) {
+        new Promise<void>(resolve =>
+        {
+          this.cachedDb!.close(err =>
+          {
+            if (err)
+            {
               console.warn('Error closing cached database connection:', err);
             }
             this.cachedDb = null;
             resolve();
           });
-        })
+        }),
       );
     }
 
@@ -290,21 +358,29 @@ class DatabaseManager {
     console.log('Database connections cleaned up');
   }
 
-  private getDatabaseFileSize(): number {
-    try {
+  private getDatabaseFileSize(): number
+  {
+    try
+    {
       const stats = fs.statSync(this.config.filename);
       return stats.size;
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.warn('Error getting database file size:', error);
       return 0;
     }
   }
 
-  private getDatabaseLastModified(): Date | null {
-    try {
+  private getDatabaseLastModified(): Date | null
+  {
+    try
+    {
       const stats = fs.statSync(this.config.filename);
       return stats.mtime;
-    } catch (error) {
+    }
+    catch (error)
+    {
       console.warn('Error getting database last modified time:', error);
       return null;
     }
@@ -312,9 +388,9 @@ class DatabaseManager {
 }
 
 // Default database configuration
-const getDefaultConfig = (): DatabaseConfig => {
-  const dbPath =
-    process.env.DB_PATH || path.join(process.cwd(), 'database', 'fishbowl.db');
+const getDefaultConfig = (): DatabaseConfig =>
+{
+  const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'database', 'fishbowl.db');
 
   return {
     filename: dbPath,
@@ -331,8 +407,9 @@ let dbManager: DatabaseManager | null = null;
  * Initialize the database manager with optional config
  */
 export async function initializeDatabase(
-  config?: Partial<DatabaseConfig>
-): Promise<void> {
+  config?: Partial<DatabaseConfig>,
+): Promise<void>
+{
   const finalConfig = { ...getDefaultConfig(), ...config };
   dbManager = new DatabaseManager(finalConfig);
   await dbManager.initialize();
@@ -341,10 +418,12 @@ export async function initializeDatabase(
 /**
  * Get a database connection
  */
-export async function getConnection(): Promise<DatabaseConnection> {
-  if (!dbManager) {
+export async function getConnection(): Promise<DatabaseConnection>
+{
+  if (!dbManager)
+  {
     throw new Error(
-      'Database not initialized. Call initializeDatabase() first.'
+      'Database not initialized. Call initializeDatabase() first.',
     );
   }
   return await dbManager.createConnection();
@@ -353,10 +432,12 @@ export async function getConnection(): Promise<DatabaseConnection> {
 /**
  * Get a transaction connection
  */
-export async function getTransaction(): Promise<TransactionConnection> {
-  if (!dbManager) {
+export async function getTransaction(): Promise<TransactionConnection>
+{
+  if (!dbManager)
+  {
     throw new Error(
-      'Database not initialized. Call initializeDatabase() first.'
+      'Database not initialized. Call initializeDatabase() first.',
     );
   }
   return await dbManager.createTransaction();
@@ -366,17 +447,23 @@ export async function getTransaction(): Promise<TransactionConnection> {
  * Execute a function within a transaction
  */
 export async function withTransaction<T>(
-  callback: (connection: TransactionConnection) => Promise<T>
-): Promise<T> {
+  callback: (connection: TransactionConnection) => Promise<T>,
+): Promise<T>
+{
   const transaction = await getTransaction();
-  try {
+  try
+  {
     const result = await callback(transaction);
     await transaction.commit();
     return result;
-  } catch (error) {
+  }
+  catch (error)
+  {
     await transaction.rollback();
     throw error;
-  } finally {
+  }
+  finally
+  {
     await transaction.close();
   }
 }
@@ -385,12 +472,16 @@ export async function withTransaction<T>(
  * Execute a function with a database connection
  */
 export async function withConnection<T>(
-  callback: (connection: DatabaseConnection) => Promise<T>
-): Promise<T> {
+  callback: (connection: DatabaseConnection) => Promise<T>,
+): Promise<T>
+{
   const connection = await getConnection();
-  try {
+  try
+  {
     return await callback(connection);
-  } finally {
+  }
+  finally
+  {
     await connection.close();
   }
 }
@@ -398,10 +489,12 @@ export async function withConnection<T>(
 /**
  * Get database statistics
  */
-export async function getDatabaseStats(): Promise<any> {
-  if (!dbManager) {
+export async function getDatabaseStats(): Promise<any>
+{
+  if (!dbManager)
+  {
     throw new Error(
-      'Database not initialized. Call initializeDatabase() first.'
+      'Database not initialized. Call initializeDatabase() first.',
     );
   }
   return await dbManager.getStats();
@@ -410,12 +503,17 @@ export async function getDatabaseStats(): Promise<any> {
 /**
  * Perform database health check
  */
-export async function healthCheck(): Promise<boolean> {
-  try {
-    return await withConnection(async connection => {
+export async function healthCheck(): Promise<boolean>
+{
+  try
+  {
+    return await withConnection(async connection =>
+    {
       return await connection.isHealthy();
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Database health check failed:', error);
     return false;
   }
@@ -424,8 +522,10 @@ export async function healthCheck(): Promise<boolean> {
 /**
  * Cleanup database connections
  */
-export async function cleanup(): Promise<void> {
-  if (dbManager) {
+export async function cleanup(): Promise<void>
+{
+  if (dbManager)
+  {
     await dbManager.cleanup();
     dbManager = null;
   }

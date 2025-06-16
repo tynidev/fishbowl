@@ -27,7 +27,8 @@
     "validate": "npm run format:check && npm run test"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "dprint": "^0.50.0"
   },
   "engines": {
     "node": ">=18.0.0",

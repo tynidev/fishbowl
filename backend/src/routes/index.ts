@@ -1,8 +1,8 @@
 import express, { Router } from 'express';
-import gamesRouter from './games';
-import playersRouter from './players';
-import phrasesRouter from './phrases';
 import deviceSessionsRouter from './deviceSessions';
+import gamesRouter from './games';
+import phrasesRouter from './phrases';
+import playersRouter from './players';
 import turnsRouter from './turns';
 
 const router: Router = express.Router();

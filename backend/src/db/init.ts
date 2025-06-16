@@ -1,16 +1,13 @@
 // Database initialization module
 // Handles database setup on application startup
 
-import {
-  initializeDatabase,
-  healthCheck,
-  getDatabaseStats,
-} from './connection';
-import { initializeSchema, getMigrationStatus } from './migrator';
-import { createSampleData } from './migrations/001_initial';
 import path from 'path';
+import { getDatabaseStats, healthCheck, initializeDatabase } from './connection';
+import { createSampleData } from './migrations/001_initial';
+import { getMigrationStatus, initializeSchema } from './migrator';
 
-export interface InitializationResult {
+export interface InitializationResult
+{
   success: boolean;
   databasePath: string;
   migrationStatus: any;
@@ -22,11 +19,13 @@ export interface InitializationResult {
 /**
  * Initialize database for development environment
  */
-export async function initializeDevelopmentDatabase(): Promise<InitializationResult> {
+export async function initializeDevelopmentDatabase(): Promise<InitializationResult>
+{
   const errors: string[] = [];
   let sampleDataCreated = false;
 
-  try {
+  try
+  {
     console.log('Initializing development database...');
 
     // Initialize database connection
@@ -43,15 +42,20 @@ export async function initializeDevelopmentDatabase(): Promise<InitializationRes
     if (
       process.env.NODE_ENV === 'development' ||
       process.env.CREATE_SAMPLE_DATA === 'true'
-    ) {
-      try {
+    )
+    {
+      try
+      {
         const { withConnection } = await import('./connection');
-        await withConnection(async connection => {
+        await withConnection(async connection =>
+        {
           await createSampleData(connection);
         });
         sampleDataCreated = true;
         console.log('Sample data created for development');
-      } catch (error) {
+      }
+      catch (error)
+      {
         // Sample data creation is not critical
         const errorMsg = error instanceof Error ? error.message : String(error);
         console.warn('Failed to create sample data:', errorMsg);
@@ -72,7 +76,9 @@ export async function initializeDevelopmentDatabase(): Promise<InitializationRes
       sampleDataCreated,
       errors,
     };
-  } catch (error) {
+  }
+  catch (error)
+  {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('Development database initialization failed:', errorMsg);
     errors.push(errorMsg);
@@ -91,15 +97,16 @@ export async function initializeDevelopmentDatabase(): Promise<InitializationRes
 /**
  * Initialize database for production environment
  */
-export async function initializeProductionDatabase(): Promise<InitializationResult> {
+export async function initializeProductionDatabase(): Promise<InitializationResult>
+{
   const errors: string[] = [];
 
-  try {
+  try
+  {
     console.log('Initializing production database...');
 
     // Initialize database connection
-    const dbPath =
-      process.env.DB_PATH ||
+    const dbPath = process.env.DB_PATH ||
       path.join(process.cwd(), 'database', 'fishbowl.db');
     await initializeDatabase({
       filename: dbPath,
@@ -114,7 +121,8 @@ export async function initializeProductionDatabase(): Promise<InitializationResu
 
     // Verify database health
     const isHealthy = await healthCheck();
-    if (!isHealthy) {
+    if (!isHealthy)
+    {
       throw new Error('Database health check failed');
     }
 
@@ -131,7 +139,9 @@ export async function initializeProductionDatabase(): Promise<InitializationResu
       sampleDataCreated: false,
       errors,
     };
-  } catch (error) {
+  }
+  catch (error)
+  {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('Production database initialization failed:', errorMsg);
     errors.push(errorMsg);
@@ -150,10 +160,12 @@ export async function initializeProductionDatabase(): Promise<InitializationResu
 /**
  * Initialize database based on environment
  */
-export async function initializeForEnvironment(): Promise<InitializationResult> {
+export async function initializeForEnvironment(): Promise<InitializationResult>
+{
   const env = process.env.NODE_ENV || 'development';
 
-  switch (env) {
+  switch (env)
+  {
     case 'production':
       return await initializeProductionDatabase();
     case 'test':
@@ -166,10 +178,12 @@ export async function initializeForEnvironment(): Promise<InitializationResult> 
 /**
  * Initialize database for testing environment
  */
-export async function initializeTestDatabase(): Promise<InitializationResult> {
+export async function initializeTestDatabase(): Promise<InitializationResult>
+{
   const errors: string[] = [];
 
-  try {
+  try
+  {
     console.log('Initializing test database...');
 
     // Use in-memory database for tests
@@ -195,7 +209,9 @@ export async function initializeTestDatabase(): Promise<InitializationResult> {
       sampleDataCreated: false,
       errors,
     };
-  } catch (error) {
+  }
+  catch (error)
+  {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('Test database initialization failed:', errorMsg);
     errors.push(errorMsg);
@@ -217,21 +233,25 @@ export async function initializeTestDatabase(): Promise<InitializationResult> {
 export async function verifyDatabaseIntegrity(): Promise<{
   valid: boolean;
   issues: string[];
-}> {
+}>
+{
   const issues: string[] = [];
 
-  try {
+  try
+  {
     // Check database health
     const isHealthy = await healthCheck();
-    if (!isHealthy) {
+    if (!isHealthy)
+    {
       issues.push('Database health check failed');
     }
 
     // Check migration status
     const migrationStatus = await getMigrationStatus();
-    if (!migrationStatus.isUpToDate) {
+    if (!migrationStatus.isUpToDate)
+    {
       issues.push(
-        `Database schema is not up to date. Current: ${migrationStatus.currentVersion}, Latest: ${migrationStatus.latestVersion}`
+        `Database schema is not up to date. Current: ${migrationStatus.currentVersion}, Latest: ${migrationStatus.latestVersion}`,
       );
     }
 
@@ -239,11 +259,13 @@ export async function verifyDatabaseIntegrity(): Promise<{
     const { withConnection } = await import('./connection');
     const { validateSchema } = await import('./migrations/001_initial');
 
-    const schemaValid = await withConnection(async connection => {
+    const schemaValid = await withConnection(async connection =>
+    {
       return await validateSchema(connection);
     });
 
-    if (!schemaValid) {
+    if (!schemaValid)
+    {
       issues.push('Database schema validation failed');
     }
 
@@ -251,7 +273,9 @@ export async function verifyDatabaseIntegrity(): Promise<{
       valid: issues.length === 0,
       issues,
     };
-  } catch (error) {
+  }
+  catch (error)
+  {
     const errorMsg = error instanceof Error ? error.message : String(error);
     issues.push(`Database integrity check failed: ${errorMsg}`);
 
@@ -265,8 +289,10 @@ export async function verifyDatabaseIntegrity(): Promise<{
 /**
  * Get database status information
  */
-export async function getDatabaseStatus(): Promise<any> {
-  try {
+export async function getDatabaseStatus(): Promise<any>
+{
+  try
+  {
     const [migrationStatus, stats, integrity] = await Promise.all([
       getMigrationStatus(),
       getDatabaseStats(),
@@ -281,7 +307,9 @@ export async function getDatabaseStatus(): Promise<any> {
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
     };
-  } catch (error) {
+  }
+  catch (error)
+  {
     return {
       healthy: false,
       error: error instanceof Error ? error.message : String(error),
@@ -293,28 +321,35 @@ export async function getDatabaseStatus(): Promise<any> {
 /**
  * Reset database (development only)
  */
-export async function resetDatabaseForDevelopment(): Promise<void> {
-  if (process.env.NODE_ENV === 'production') {
+export async function resetDatabaseForDevelopment(): Promise<void>
+{
+  if (process.env.NODE_ENV === 'production')
+  {
     throw new Error('Database reset is not allowed in production');
   }
 
   console.log('Resetting development database...');
 
-  try {
+  try
+  {
     const { resetDatabase } = await import('./migrator');
     await resetDatabase();
     await initializeSchema();
 
     // Recreate sample data
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'development')
+    {
       const { withConnection } = await import('./connection');
-      await withConnection(async connection => {
+      await withConnection(async connection =>
+      {
         await createSampleData(connection);
       });
     }
 
     console.log('Database reset completed');
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Database reset failed:', error);
     throw error;
   }

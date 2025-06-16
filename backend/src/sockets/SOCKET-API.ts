@@ -1,32 +1,35 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { findById, select, update } from '../db/utils';
-import { Game, Team, Player } from '../db/schema';
 import { withTransaction } from '../db/connection';
+import { Game, Player, Team } from '../db/schema';
+import { findById, select, update } from '../db/utils';
 import {
+  cleanupStaleSessions,
   createOrUpdateDeviceSession,
+  deactivateDeviceSessionBySocket,
+  generateDeviceId,
   getDeviceSession,
   getDeviceSessionBySocket,
-  deactivateDeviceSessionBySocket,
   updateLastSeen,
-  cleanupStaleSessions,
-  generateDeviceId,
 } from './deviceSessionManager';
 
 // ==================== Socket Event Interfaces ====================
 
-export interface JoinGameData {
+export interface JoinGameData
+{
   gameCode: string;
   playerId: string;
   playerName: string;
   deviceId: string;
 }
 
-export interface LeaveGameData {
+export interface LeaveGameData
+{
   gameCode: string;
   playerId: string;
 }
 
-export interface PlayerUpdateData {
+export interface PlayerUpdateData
+{
   gameCode: string;
   playerId: string;
   updates: {
@@ -35,7 +38,8 @@ export interface PlayerUpdateData {
   };
 }
 
-export interface GameStateUpdate {
+export interface GameStateUpdate
+{
   gameCode: string;
   status?: string;
   currentRound?: number;
@@ -48,27 +52,31 @@ export interface GameStateUpdate {
   };
 }
 
-export interface PhraseSubmissionUpdate {
+export interface PhraseSubmissionUpdate
+{
   gameCode: string;
   playerId: string;
   submittedCount: number;
   totalRequired: number;
 }
 
-export interface TeamAssignmentData {
+export interface TeamAssignmentData
+{
   gameCode: string;
   playerId: string;
   teamId: string;
 }
 
-export interface GameStartedData {
+export interface GameStartedData
+{
   gameCode: string;
   startedAt: Date;
 }
 
 // ==================== Socket Connection Management ====================
 
-interface ConnectedPlayer {
+interface ConnectedPlayer
+{
   socketId: string;
   playerId: string;
   gameCode: string;
@@ -107,35 +115,39 @@ const playerSockets = new Map<string, string>(); // playerId -> socketId
 export async function handleJoinGameRoom(
   io: SocketIOServer,
   socket: Socket,
-  data: JoinGameData
-): Promise<void> {
-  try {
+  data: JoinGameData,
+): Promise<void>
+{
+  try
+  {
     const { gameCode, playerId, playerName, deviceId } = data;
 
     // Validate input
-    if (!gameCode || !playerId || !playerName || !deviceId) {
+    if (!gameCode || !playerId || !playerName || !deviceId)
+    {
       socket.emit('error', {
-        message:
-          'Missing required fields: gameCode, playerId, playerName, deviceId',
+        message: 'Missing required fields: gameCode, playerId, playerName, deviceId',
       });
       return;
     }
 
-    await withTransaction(async transaction => {
+    await withTransaction(async transaction =>
+    {
       // Verify game exists
       const game = await findById<Game>('games', gameCode, transaction);
-      if (!game) {
+      if (!game)
+      {
         socket.emit('error', { message: 'Game not found' });
         return;
       }
 
       // Verify player exists in game
       const player = await findById<Player>('players', playerId, transaction);
-      if (!player || player.game_id !== gameCode) {
+      if (!player || player.game_id !== gameCode)
+      {
         // Player should have already joined the game via REST API
         socket.emit('error', {
-          message:
-            'Player not found in this game. Make sure to join via REST API first.',
+          message: 'Player not found in this game. Make sure to join via REST API first.',
         });
         return;
       }
@@ -146,26 +158,26 @@ export async function handleJoinGameRoom(
         deviceId,
         socket.id,
         playerId,
-        gameCode
+        gameCode,
       );
 
       // Check if player is already connected on another socket
       // if they are, disconnect the old socket
       const existingSocketId = playerSockets.get(playerId);
-      if (existingSocketId && existingSocketId !== socket.id) {
+      if (existingSocketId && existingSocketId !== socket.id)
+      {
         // Disconnect the old socket
         const existingSocket = io.sockets.sockets.get(existingSocketId);
-        if (existingSocket) {
+        if (existingSocket)
+        {
           // Check if this is a reconnection from the same device
-          const existingSession =
-            await getDeviceSessionBySocket(existingSocketId);
-          const isReconnection =
-            existingSession && existingSession.device_id === deviceId;
+          const existingSession = await getDeviceSessionBySocket(existingSocketId);
+          const isReconnection = existingSession && existingSession.device_id === deviceId;
 
           existingSocket.emit('connection-replaced', {
-            message: isReconnection
-              ? 'You have reconnected from the same device'
-              : 'You have connected from another device',
+            message: isReconnection ?
+              'You have reconnected from the same device' :
+              'You have connected from another device',
             isReconnection,
           });
           existingSocket.disconnect();
@@ -182,7 +194,7 @@ export async function handleJoinGameRoom(
         'players',
         { is_connected: true },
         [{ field: 'id', operator: '=', value: playerId }],
-        transaction
+        transaction,
       );
 
       // Store connection info
@@ -218,10 +230,12 @@ export async function handleJoinGameRoom(
       await sendGameStateToPlayer(socket, gameCode, transaction);
 
       console.log(
-        `Player ${playerName} (${playerId}) joined game ${gameCode} on socket ${socket.id}`
+        `Player ${playerName} (${playerId}) joined game ${gameCode} on socket ${socket.id}`,
       );
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error in handleJoinGame:', error);
     socket.emit('error', {
       message: 'Failed to join game',
@@ -250,31 +264,37 @@ export async function handleJoinGameRoom(
 export async function handleLeaveGameRoom(
   io: SocketIOServer,
   socket: Socket,
-  data: LeaveGameData
-): Promise<void> {
-  try {
+  data: LeaveGameData,
+): Promise<void>
+{
+  try
+  {
     const { gameCode, playerId } = data;
 
-    await withTransaction(async transaction => {
+    await withTransaction(async transaction =>
+    {
       // Update player connection status in database
-      if (playerId) {
+      if (playerId)
+      {
         await update(
           'players',
           { is_connected: false },
           [{ field: 'id', operator: '=', value: playerId }],
-          transaction
+          transaction,
         );
       }
 
       const playerConnection = connectedPlayers.get(socket.id);
 
       // Validate player connection exists
-      if (!playerConnection) {
+      if (!playerConnection)
+      {
         return;
       }
 
       // Validate game code matches the game the player is connected to
-      if (playerConnection.gameCode !== gameCode) {
+      if (playerConnection.gameCode !== gameCode)
+      {
         socket.emit('error', {
           message: 'Game code mismatch - cannot leave a different game',
         });
@@ -298,10 +318,12 @@ export async function handleLeaveGameRoom(
       });
 
       console.log(
-        `Player ${playerConnection.playerName} left game ${gameCode}`
+        `Player ${playerConnection.playerName} left game ${gameCode}`,
       );
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error in handleLeaveGame:', error);
     socket.emit('error', {
       message: 'Failed to leave game',
@@ -337,13 +359,17 @@ export async function handleLeaveGameRoom(
 export async function handleDisconnect(
   io: SocketIOServer,
   socket: Socket,
-  reason: string
-): Promise<void> {
-  try {
+  reason: string,
+): Promise<void>
+{
+  try
+  {
     const playerConnection = connectedPlayers.get(socket.id);
 
-    if (playerConnection) {
-      await withTransaction(async transaction => {
+    if (playerConnection)
+    {
+      await withTransaction(async transaction =>
+      {
         // Deactivate device session
         await deactivateDeviceSessionBySocket(transaction, socket.id);
 
@@ -352,7 +378,7 @@ export async function handleDisconnect(
           'players',
           { is_connected: false },
           [{ field: 'id', operator: '=', value: playerConnection.playerId }],
-          transaction
+          transaction,
         );
 
         // Clean up tracking
@@ -368,11 +394,13 @@ export async function handleDisconnect(
         });
 
         console.log(
-          `Player ${playerConnection.playerName} disconnected from game ${playerConnection.gameCode} (${reason})`
+          `Player ${playerConnection.playerName} disconnected from game ${playerConnection.gameCode} (${reason})`,
         );
       });
     }
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error in handleDisconnect:', error);
   }
 }
@@ -403,21 +431,26 @@ export async function handleDisconnect(
 export async function handleAssignedTeam(
   io: SocketIOServer,
   socket: Socket,
-  data: TeamAssignmentData
-): Promise<void> {
-  try {
+  data: TeamAssignmentData,
+): Promise<void>
+{
+  try
+  {
     const { gameCode, playerId, teamId } = data;
 
-    await withTransaction(async transaction => {
+    await withTransaction(async transaction =>
+    {
       // Verify game exists
       const game = await findById<Game>('games', gameCode, transaction);
-      if (!game) {
+      if (!game)
+      {
         socket.emit('error', { message: 'Invalid game' });
         return;
       }
 
       // Only allow team assignment during setup
-      if (game.status !== 'setup') {
+      if (game.status !== 'setup')
+      {
         socket.emit('error', {
           message: 'Cannot change teams after game has started',
         });
@@ -426,14 +459,16 @@ export async function handleAssignedTeam(
 
       // Verify player exists in the game
       const player = await findById<Player>('players', playerId, transaction);
-      if (!player || player.game_id !== gameCode) {
+      if (!player || player.game_id !== gameCode)
+      {
         socket.emit('error', { message: 'Invalid player id' });
         return;
       }
 
       // Verify team exists in the game
       const team = await findById<Team>('teams', teamId, transaction);
-      if (!team || team.game_id !== gameCode) {
+      if (!team || team.game_id !== gameCode)
+      {
         socket.emit('error', { message: 'Invalid team id' });
         return;
       }
@@ -443,12 +478,12 @@ export async function handleAssignedTeam(
         player.team_id !== teamId &&
         player.team_id !== team.id &&
         team.id !== teamId
-      ) {
+      )
+      {
         // If player is not assigned to the team then
         // return error as only the REST API should handle team assignments
         socket.emit('error', {
-          message:
-            'Player is not assigned to team. Use REST API to assign teams.',
+          message: 'Player is not assigned to team. Use REST API to assign teams.',
         });
         return;
       }
@@ -462,10 +497,12 @@ export async function handleAssignedTeam(
       });
 
       console.log(
-        `Player ${player.name} assigned to team ${teamId} in game ${gameCode}`
+        `Player ${player.name} assigned to team ${teamId} in game ${gameCode}`,
       );
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error in handleTeamAssignmentBroadcast:', error);
     socket.emit('error', {
       message: 'Failed to broadcast team assignment',
@@ -481,9 +518,11 @@ export async function handleAssignedTeam(
  */
 export async function broadcastGameStateUpdate(
   io: SocketIOServer,
-  update: GameStateUpdate
-): Promise<void> {
-  try {
+  update: GameStateUpdate,
+): Promise<void>
+{
+  try
+  {
     const { gameCode, ...stateData } = update;
 
     io.to(gameCode).emit('game-state-updated', {
@@ -494,9 +533,11 @@ export async function broadcastGameStateUpdate(
 
     console.log(
       `Broadcasting game state update for game ${gameCode}:`,
-      stateData
+      stateData,
     );
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error broadcasting game state update:', error);
   }
 }
@@ -506,9 +547,11 @@ export async function broadcastGameStateUpdate(
  */
 export async function broadcastPhraseSubmissionUpdate(
   io: SocketIOServer,
-  update: PhraseSubmissionUpdate
-): Promise<void> {
-  try {
+  update: PhraseSubmissionUpdate,
+): Promise<void>
+{
+  try
+  {
     const { gameCode, ...updateData } = update;
 
     io.to(gameCode).emit('phrase-submission-updated', {
@@ -519,9 +562,11 @@ export async function broadcastPhraseSubmissionUpdate(
 
     console.log(
       `Broadcasting phrase submission update for game ${gameCode}:`,
-      updateData
+      updateData,
     );
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error broadcasting phrase submission update:', error);
   }
 }
@@ -532,9 +577,11 @@ export async function broadcastPhraseSubmissionUpdate(
 export async function broadcastPlayerUpdate(
   io: SocketIOServer,
   gameCode: string,
-  playerUpdate: any
-): Promise<void> {
-  try {
+  playerUpdate: any,
+): Promise<void>
+{
+  try
+  {
     io.to(gameCode).emit('player-updated', {
       gameCode,
       ...playerUpdate,
@@ -543,9 +590,11 @@ export async function broadcastPlayerUpdate(
 
     console.log(
       `Broadcasting player update for game ${gameCode}:`,
-      playerUpdate
+      playerUpdate,
     );
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error broadcasting player update:', error);
   }
 }
@@ -555,12 +604,16 @@ export async function broadcastPlayerUpdate(
  */
 export async function broadcastGameStarted(
   io: SocketIOServer,
-  data: GameStartedData
-): Promise<void> {
-  try {
+  data: GameStartedData,
+): Promise<void>
+{
+  try
+  {
     io.to(data.gameCode).emit('game:started', data);
     console.log(`Broadcasting game started for game ${data.gameCode}`);
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error broadcasting game started:', error);
   }
 }
@@ -573,9 +626,11 @@ export async function broadcastGameStarted(
 async function sendGameStateToPlayer(
   socket: Socket,
   gameCode: string,
-  transaction: any
-): Promise<void> {
-  try {
+  transaction: any,
+): Promise<void>
+{
+  try
+  {
     // Get current game state
     const game = await findById<Game>('games', gameCode, transaction);
     if (!game) return;
@@ -586,7 +641,7 @@ async function sendGameStateToPlayer(
       {
         where: [{ field: 'game_id', operator: '=', value: gameCode }],
       },
-      transaction
+      transaction,
     );
 
     // Send comprehensive game state
@@ -612,7 +667,9 @@ async function sendGameStateToPlayer(
         joinedAt: player.created_at,
       })),
     });
-  } catch (error) {
+  }
+  catch (error)
+  {
     console.error('Error sending game state to player:', error);
   }
 }
@@ -620,10 +677,13 @@ async function sendGameStateToPlayer(
 /**
  * Get connected players count for a game
  */
-export function getConnectedPlayersCount(gameCode: string): number {
+export function getConnectedPlayersCount(gameCode: string): number
+{
   let count = 0;
-  for (const playerConnection of connectedPlayers.values()) {
-    if (playerConnection.gameCode === gameCode) {
+  for (const playerConnection of connectedPlayers.values())
+  {
+    if (playerConnection.gameCode === gameCode)
+    {
       count++;
     }
   }
@@ -633,10 +693,13 @@ export function getConnectedPlayersCount(gameCode: string): number {
 /**
  * Get all connected players for a game
  */
-export function getConnectedPlayers(gameCode: string): ConnectedPlayer[] {
+export function getConnectedPlayers(gameCode: string): ConnectedPlayer[]
+{
   const players: ConnectedPlayer[] = [];
-  for (const playerConnection of connectedPlayers.values()) {
-    if (playerConnection.gameCode === gameCode) {
+  for (const playerConnection of connectedPlayers.values())
+  {
+    if (playerConnection.gameCode === gameCode)
+    {
       players.push(playerConnection);
     }
   }
@@ -646,7 +709,8 @@ export function getConnectedPlayers(gameCode: string): ConnectedPlayer[] {
 /**
  * Check if a player is connected
  */
-export function isPlayerConnected(playerId: string): boolean {
+export function isPlayerConnected(playerId: string): boolean
+{
   return playerSockets.has(playerId);
 }
 
@@ -655,10 +719,12 @@ export function isPlayerConnected(playerId: string): boolean {
  */
 export function getPlayerSocket(
   io: SocketIOServer,
-  playerId: string
-): Socket | null {
+  playerId: string,
+): Socket | null
+{
   const socketId = playerSockets.get(playerId);
-  if (socketId) {
+  if (socketId)
+  {
     return io.sockets.sockets.get(socketId) || null;
   }
   return null;
@@ -669,39 +735,48 @@ export function getPlayerSocket(
  */
 export function registerSocketHandlers(
   io: SocketIOServer,
-  cleanup: boolean = true
-): void {
-  io.on('connection', (socket: Socket) => {
+  cleanup: boolean = true,
+): void
+{
+  io.on('connection', (socket: Socket) =>
+  {
     console.log(`Socket connected: ${socket.id}`);
 
     // Game room management
-    socket.on('join-gameroom', (data: JoinGameData) => {
+    socket.on('join-gameroom', (data: JoinGameData) =>
+    {
       handleJoinGameRoom(io, socket, data);
     });
 
-    socket.on('leave-gameroom', (data: LeaveGameData) => {
+    socket.on('leave-gameroom', (data: LeaveGameData) =>
+    {
       handleLeaveGameRoom(io, socket, data);
     });
 
     // Team management
-    socket.on('assigned-team', (data: TeamAssignmentData) => {
+    socket.on('assigned-team', (data: TeamAssignmentData) =>
+    {
       handleAssignedTeam(io, socket, data);
     });
 
     // Disconnect handling
-    socket.on('disconnect', (reason: string) => {
+    socket.on('disconnect', (reason: string) =>
+    {
       handleDisconnect(io, socket, reason);
     });
 
     // Device session reconnection
     socket.on(
       'reconnect-session',
-      async (data: { deviceId: string; gameCode?: string }) => {
-        try {
+      async (data: { deviceId: string; gameCode?: string; }) =>
+      {
+        try
+        {
           const { deviceId, gameCode } = data;
           const existingSession = await getDeviceSession(deviceId, gameCode);
 
-          if (existingSession && existingSession.player_id) {
+          if (existingSession && existingSession.player_id)
+          {
             // Found existing session, attempt to rejoin
             const rejoinData: JoinGameData = {
               gameCode: existingSession.game_id || gameCode || '',
@@ -713,9 +788,10 @@ export function registerSocketHandlers(
             // Get player name from database
             const player = await findById<Player>(
               'players',
-              existingSession.player_id
+              existingSession.player_id,
             );
-            if (player) {
+            if (player)
+            {
               rejoinData.playerName = player.name;
               rejoinData.gameCode = player.game_id;
 
@@ -734,49 +810,62 @@ export function registerSocketHandlers(
               // Auto-rejoin the game room
               await handleJoinGameRoom(io, socket, rejoinData);
             }
-          } else {
+          }
+          else
+          {
             // No existing session found
             socket.emit('session-reconnected', {
               success: false,
               message: 'No previous session found for this device',
             });
           }
-        } catch (error) {
+        }
+        catch (error)
+        {
           console.error('Error in reconnect-session:', error);
           socket.emit('session-reconnected', {
             success: false,
             message: 'Failed to reconnect session',
           });
         }
-      }
+      },
     );
 
     // Heartbeat/ping for connection monitoring with device session update
     socket.on(
       'ping',
-      async (data?: { deviceId?: string; gameCode?: string }) => {
-        if (data?.deviceId) {
-          try {
+      async (data?: { deviceId?: string; gameCode?: string; }) =>
+      {
+        if (data?.deviceId)
+        {
+          try
+          {
             await updateLastSeen(data.deviceId, data.gameCode);
-          } catch (error) {
+          }
+          catch (error)
+          {
             console.error('Error updating last seen:', error);
           }
         }
         socket.emit('pong');
-      }
+      },
     );
   });
 
   if (!cleanup) return;
   // Start periodic cleanup of stale sessions (every 30 minutes)
   setInterval(
-    async () => {
-      try {
+    async () =>
+    {
+      try
+      {
         await cleanupStaleSessions();
-      } catch (error) {
+      }
+      catch (error)
+      {
         console.error('Error during session cleanup:', error);
       }
     },
-    30 * 60 * 1000
+    30 * 60 * 1000,
   );
 }
