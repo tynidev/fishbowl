@@ -322,7 +322,7 @@ describe("SOCKET-API Tests", () => {
                     expect(data.gameCode).toEqual(roundData.gameCode);
                     expect(data.round).toEqual(roundData.round);
                     expect(data.roundName).toEqual(roundData.roundName);
-                    expect(data.startedAt).toBeDefined();
+                    expect(data.startedAt).toEqual(roundData.startedAt.toISOString());
                     resolve();
                 });
             });
@@ -359,8 +359,10 @@ describe("SOCKET-API Tests", () => {
                     expect(data.gameCode).toEqual(roundData.gameCode);
                     expect(data.round).toEqual(roundData.round);
                     expect(data.roundScores).toHaveLength(2);
-                    expect(data.roundScores[0].teamName).toBe("Team A");
-                    expect(data.roundScores[0].score).toBe(10);
+                    expect(data.roundScores[0].teamName).toBe(roundData.roundScores[0]!.teamName);
+                    expect(data.roundScores[0].score).toBe(roundData.roundScores[0]!.score);
+                    expect(data.roundScores[1].teamName).toBe(roundData.roundScores[1]!.teamName);
+                    expect(data.roundScores[1].score).toBe(roundData.roundScores[1]!.score);
                     expect(data.endedAt).toBeDefined();
                     resolve();
                 });
@@ -394,8 +396,8 @@ describe("SOCKET-API Tests", () => {
                     // Check everything except dates which may be serialized
                     expect(data.gameCode).toEqual(turnData.gameCode);
                     expect(data.round).toEqual(turnData.round);
-                    expect(data.playerName).toBe("John Doe");
-                    expect(data.teamName).toBe("Team A");
+                    expect(data.playerName).toBe(turnData.playerName);
+                    expect(data.teamName).toBe(turnData.teamName);
                     expect(data.startedAt).toBeDefined();
                     resolve();
                 });
@@ -429,9 +431,9 @@ describe("SOCKET-API Tests", () => {
                     // Check everything except dates which may be serialized
                     expect(data.gameCode).toEqual(turnData.gameCode);
                     expect(data.round).toEqual(turnData.round);
-                    expect(data.playerName).toBe("John Doe");
-                    expect(data.pausedReason).toBe("host_paused");
-                    expect(data.pausedAt).toBeDefined();
+                    expect(data.playerName).toBe(turnData.playerName);
+                    expect(data.pausedReason).toBe(turnData.pausedReason);
+                    expect(data.pausedAt).toEqual(turnData.pausedAt.toISOString());
                     resolve();
                 });
             });
@@ -466,11 +468,11 @@ describe("SOCKET-API Tests", () => {
                     // Check everything except dates which may be serialized
                     expect(data.gameCode).toEqual(turnData.gameCode);
                     expect(data.round).toEqual(turnData.round);
-                    expect(data.playerName).toBe("John Doe");
-                    expect(data.phrasesGuessed).toBe(5);
-                    expect(data.phrasesSkipped).toBe(1);
-                    expect(data.pointsScored).toBe(5);
-                    expect(data.endedAt).toBeDefined();
+                    expect(data.playerName).toBe(turnData.playerName);
+                    expect(data.phrasesGuessed).toBe(turnData.phrasesGuessed);
+                    expect(data.phrasesSkipped).toBe(turnData.phrasesSkipped);
+                    expect(data.pointsScored).toBe(turnData.pointsScored);
+                    expect(data.endedAt).toEqual(turnData.endedAt.toISOString());
                     resolve();
                 });
             });
