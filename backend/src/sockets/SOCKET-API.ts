@@ -28,38 +28,6 @@ export interface LeaveGameData
   playerId: string;
 }
 
-export interface PlayerUpdateData
-{
-  gameCode: string;
-  playerId: string;
-  updates: {
-    isConnected?: boolean;
-    teamId?: string;
-  };
-}
-
-export interface GameStateUpdate
-{
-  gameCode: string;
-  status?: string;
-  currentRound?: number;
-  currentTeam?: number;
-  currentPlayer?: string;
-  timerState?: {
-    isRunning: boolean;
-    timeRemaining: number;
-    startedAt?: string;
-  };
-}
-
-export interface PhraseSubmissionUpdate
-{
-  gameCode: string;
-  playerId: string;
-  submittedCount: number;
-  totalRequired: number;
-}
-
 export interface TeamAssignmentData
 {
   gameCode: string;
@@ -405,112 +373,6 @@ export async function handleDisconnect(
   }
 }
 
-/**
- * Handle team assignment updates
- *
- * This is triggered to broadcast team assignment changes to all players
- * in a game. Note: This handler only validates and broadcasts - the actual
- * team assignment is done via the REST API.
- *
- * Key characteristics:
- * - Initiated by client via 'assigned-team' event
- * - Only broadcasts if player is already assigned to the team
- * - Does NOT perform the actual team assignment (REST API responsibility)
- * - Validates game is in correct state (waiting or phrase_submission)
- * - Ensures team assignment integrity
- *
- * Purpose:
- * - Synchronize team assignments across all connected clients
- * - Ensure real-time updates when teams change
- * - Maintain separation of concerns (REST handles data, Socket.IO handles notifications)
- *
- * Emits:
- * - 'team-assignment-updated' - To all players in game with assignment details
- * - 'error' - If validation fails or player not assigned to team
- */
-export async function handleAssignedTeam(
-  io: SocketIOServer,
-  socket: Socket,
-  data: TeamAssignmentData,
-): Promise<void>
-{
-  try
-  {
-    const { gameCode, playerId, teamId } = data;
-
-    await withTransaction(async transaction =>
-    {
-      // Verify game exists
-      const game = await findById<Game>('games', gameCode, transaction);
-      if (!game)
-      {
-        socket.emit('error', { message: 'Invalid game' });
-        return;
-      }
-
-      // Only allow team assignment during setup
-      if (game.status !== 'setup')
-      {
-        socket.emit('error', {
-          message: 'Cannot change teams after game has started',
-        });
-        return;
-      }
-
-      // Verify player exists in the game
-      const player = await findById<Player>('players', playerId, transaction);
-      if (!player || player.game_id !== gameCode)
-      {
-        socket.emit('error', { message: 'Invalid player id' });
-        return;
-      }
-
-      // Verify team exists in the game
-      const team = await findById<Team>('teams', teamId, transaction);
-      if (!team || team.game_id !== gameCode)
-      {
-        socket.emit('error', { message: 'Invalid team id' });
-        return;
-      }
-
-      // Check if the player is assigned to the team
-      if (
-        player.team_id !== teamId &&
-        player.team_id !== team.id &&
-        team.id !== teamId
-      )
-      {
-        // If player is not assigned to the team then
-        // return error as only the REST API should handle team assignments
-        socket.emit('error', {
-          message: 'Player is not assigned to team. Use REST API to assign teams.',
-        });
-        return;
-      }
-
-      // Broadcast team assignment to all players in the game
-      io.to(gameCode).emit('team:assignment:updated', {
-        playerId,
-        teamId,
-        playerName: player.name,
-        updatedAt: new Date(),
-      });
-
-      console.log(
-        `Player ${player.name} assigned to team ${teamId} in game ${gameCode}`,
-      );
-    });
-  }
-  catch (error)
-  {
-    console.error('Error in handleTeamAssignmentBroadcast:', error);
-    socket.emit('error', {
-      message: 'Failed to broadcast team assignment',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-}
-
 // ==================== Broadcast Functions ====================
 
 /**
@@ -555,63 +417,6 @@ export async function broadcastGameState(
   }
   catch (error) {
     console.error('Error broadcasting game state update:', error);
-  }
-}
-
-/**
- * Broadcast phrase submission update to all players in a game
- */
-export async function broadcastPhraseSubmissionUpdate(
-  io: SocketIOServer,
-  update: PhraseSubmissionUpdate,
-): Promise<void>
-{
-  try
-  {
-    const { gameCode, ...updateData } = update;
-
-    io.to(gameCode).emit('phrase:submission:updated', {
-      gameCode,
-      ...updateData,
-      updatedAt: new Date(),
-    });
-
-    console.log(
-      `Broadcasting phrase submission update for game ${gameCode}:`,
-      updateData,
-    );
-  }
-  catch (error)
-  {
-    console.error('Error broadcasting phrase submission update:', error);
-  }
-}
-
-/**
- * Broadcast player update to all players in a game
- */
-export async function broadcastPlayerUpdate(
-  io: SocketIOServer,
-  gameCode: string,
-  playerUpdate: any,
-): Promise<void>
-{
-  try
-  {
-    io.to(gameCode).emit('player:updated', {
-      gameCode,
-      ...playerUpdate,
-      updatedAt: new Date(),
-    });
-
-    console.log(
-      `Broadcasting player update for game ${gameCode}:`,
-      playerUpdate,
-    );
-  }
-  catch (error)
-  {
-    console.error('Error broadcasting player update:', error);
   }
 }
 
@@ -691,62 +496,6 @@ async function sendGameStateToPlayer(
 }
 
 /**
- * Get connected players count for a game
- */
-export function getConnectedPlayersCount(gameCode: string): number
-{
-  let count = 0;
-  for (const playerConnection of connectedPlayers.values())
-  {
-    if (playerConnection.gameCode === gameCode)
-    {
-      count++;
-    }
-  }
-  return count;
-}
-
-/**
- * Get all connected players for a game
- */
-export function getConnectedPlayers(gameCode: string): ConnectedPlayer[]
-{
-  const players: ConnectedPlayer[] = [];
-  for (const playerConnection of connectedPlayers.values())
-  {
-    if (playerConnection.gameCode === gameCode)
-    {
-      players.push(playerConnection);
-    }
-  }
-  return players;
-}
-
-/**
- * Check if a player is connected
- */
-export function isPlayerConnected(playerId: string): boolean
-{
-  return playerSockets.has(playerId);
-}
-
-/**
- * Get socket for a specific player
- */
-export function getPlayerSocket(
-  io: SocketIOServer,
-  playerId: string,
-): Socket | null
-{
-  const socketId = playerSockets.get(playerId);
-  if (socketId)
-  {
-    return io.sockets.sockets.get(socketId) || null;
-  }
-  return null;
-}
-
-/**
  * Register all Socket.IO event handlers
  */
 export function registerSocketHandlers(
@@ -767,12 +516,6 @@ export function registerSocketHandlers(
     socket.on('game:leave', (data: LeaveGameData) =>
     {
       handleLeaveGameRoom(io, socket, data);
-    });
-
-    // Team management
-    socket.on('team:assigned', (data: TeamAssignmentData) =>
-    {
-      handleAssignedTeam(io, socket, data);
     });
 
     // Disconnect handling
