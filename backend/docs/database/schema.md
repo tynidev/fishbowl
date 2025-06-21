@@ -172,15 +172,15 @@ Manages game configuration and state.
 | name | TEXT | NOT NULL | Display name for the game |
 | status | TEXT | NOT NULL, CHECK | Main game status (setup/playing/finished) |
 | sub_status | TEXT | NOT NULL, CHECK | Detailed game sub-status |
-| host_player_id | TEXT | NOT NULL, FK | Player who created/hosts the game |
-| team_count | INTEGER | NOT NULL, 2-6 | Number of teams in the game |
-| phrases_per_player | INTEGER | NOT NULL, 1-10 | Required phrases per player |
-| timer_duration | INTEGER | NOT NULL, 30-300 | Turn timer in seconds |
-| current_round | INTEGER | NOT NULL, 1-3 | Current round being played |
-| current_team | INTEGER | NOT NULL | Team currently taking their turn |
+| host_player_id | TEXT | NOT NULL | Player who created/hosts the game |
+| team_count | INTEGER | NOT NULL, DEFAULT 2, CHECK 2-6 | Number of teams in the game |
+| phrases_per_player | INTEGER | NOT NULL, DEFAULT 5, CHECK 1-10 | Required phrases per player |
+| timer_duration | INTEGER | NOT NULL, DEFAULT 60, CHECK 30-300 | Turn timer in seconds |
+| current_round | INTEGER | NOT NULL, DEFAULT 1, CHECK 1-3 | Current round being played |
+| current_team | INTEGER | NOT NULL, DEFAULT 1 | Team currently taking their turn |
 | current_turn_id | TEXT | FK (optional) | Reference to active turn |
-| created_at | TEXT | NOT NULL, DEFAULT | Game creation timestamp |
-| updated_at | TEXT | NOT NULL, DEFAULT | Last update timestamp |
+| created_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Game creation timestamp |
+| updated_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 | started_at | TEXT | (optional) | When game started playing |
 | finished_at | TEXT | (optional) | When game completed |
 
@@ -194,12 +194,13 @@ Tracks individual players and their connection status.
 | name | TEXT | NOT NULL | Player's display name |
 | team_id | TEXT | FK (optional) | Assigned team |
 | is_connected | BOOLEAN | NOT NULL, DEFAULT 1 | Current connection status |
-| created_at | TEXT | NOT NULL, DEFAULT | Player creation timestamp |
-| updated_at | TEXT | NOT NULL, DEFAULT | Last update timestamp |
-| last_seen_at | TEXT | NOT NULL, DEFAULT | Last activity timestamp |
+| created_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Player creation timestamp |
+| updated_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
+| last_seen_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last activity timestamp |
 
 **Constraints:**
 - UNIQUE(game_id, name) - No duplicate names per game
+- ON DELETE CASCADE from games table
 
 ### Teams Table
 Manages team information and scoring across rounds.
@@ -214,11 +215,12 @@ Manages team information and scoring across rounds.
 | score_round_2 | INTEGER | NOT NULL, DEFAULT 0 | Points scored in round 2 |
 | score_round_3 | INTEGER | NOT NULL, DEFAULT 0 | Points scored in round 3 |
 | total_score | INTEGER | NOT NULL, DEFAULT 0 | Sum of all round scores |
-| created_at | TEXT | NOT NULL, DEFAULT | Team creation timestamp |
-| updated_at | TEXT | NOT NULL, DEFAULT | Last update timestamp |
+| created_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Team creation timestamp |
+| updated_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Constraints:**
 - UNIQUE(game_id, name) - No duplicate team names per game
+- ON DELETE CASCADE from games table
 
 ### Phrases Table
 Stores all phrases submitted by players and their status.
@@ -229,16 +231,19 @@ Stores all phrases submitted by players and their status.
 | game_id | TEXT | NOT NULL, FK | Game the phrase belongs to |
 | player_id | TEXT | NOT NULL, FK | Player who submitted the phrase |
 | text | TEXT | NOT NULL | The actual phrase text |
-| status | TEXT | NOT NULL, CHECK | Current phrase status |
-| guessed_in_round | INTEGER | 1-3 (optional) | Round when phrase was guessed |
+| status | TEXT | NOT NULL, DEFAULT 'active', CHECK | Current phrase status |
+| guessed_in_round | INTEGER | CHECK 1-3 (optional) | Round when phrase was guessed |
 | guessed_by_team_id | TEXT | FK (optional) | Team that guessed the phrase |
-| created_at | TEXT | NOT NULL, DEFAULT | Phrase creation timestamp |
-| updated_at | TEXT | NOT NULL, DEFAULT | Last update timestamp |
+| created_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Phrase creation timestamp |
+| updated_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Status Values:**
 - **active** - Available to be drawn from the bowl
 - **guessed** - Successfully guessed by a team
 - **skipped** - Skipped during a turn (returns to active)
+
+**Constraints:**
+- ON DELETE CASCADE from games and players tables
 
 ### Turns Table
 Tracks individual player turns during gameplay.
@@ -247,25 +252,28 @@ Tracks individual player turns during gameplay.
 |--------|------|-------------|-------------|
 | id | TEXT | PRIMARY KEY | Unique turn identifier |
 | game_id | TEXT | NOT NULL, FK | Game the turn belongs to |
-| round | INTEGER | NOT NULL, 1-3 | Round number for this turn |
+| round | INTEGER | NOT NULL, CHECK 1-3 | Round number for this turn |
 | team_id | TEXT | NOT NULL, FK | Team taking the turn |
 | player_id | TEXT | NOT NULL, FK | Player acting during the turn |
 | start_time | TEXT | (optional) | When turn started |
 | end_time | TEXT | (optional) | When turn ended |
 | paused_at | TEXT | (optional) | When turn was paused |
-| paused_reason | TEXT | CHECK (optional) | Reason for pause |
+| paused_reason | TEXT | CHECK (optional) | Reason for pause (NULL allowed) |
 | duration | INTEGER | NOT NULL, DEFAULT 0 | Turn duration in seconds |
 | phrases_guessed | INTEGER | NOT NULL, DEFAULT 0 | Number of phrases guessed |
 | phrases_skipped | INTEGER | NOT NULL, DEFAULT 0 | Number of phrases skipped |
 | points_scored | INTEGER | NOT NULL, DEFAULT 0 | Points earned this turn |
 | is_complete | BOOLEAN | NOT NULL, DEFAULT 0 | Whether turn is finished |
-| created_at | TEXT | NOT NULL, DEFAULT | Turn creation timestamp |
-| updated_at | TEXT | NOT NULL, DEFAULT | Last update timestamp |
+| created_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Turn creation timestamp |
+| updated_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Pause Reasons:**
 - **player_disconnected** - Acting player lost connection
 - **host_paused** - Game host manually paused
 - **dispute** - Dispute needs resolution
+
+**Constraints:**
+- ON DELETE CASCADE from games, teams, and players tables
 
 ### Turn Phrases Table
 Junction table tracking phrase actions during turns.
@@ -276,7 +284,7 @@ Junction table tracking phrase actions during turns.
 | turn_id | TEXT | NOT NULL, FK | Turn this action occurred in |
 | phrase_id | TEXT | NOT NULL, FK | Phrase that was acted upon |
 | action | TEXT | NOT NULL, CHECK | Action taken on the phrase |
-| timestamp | TEXT | NOT NULL, DEFAULT | When action occurred |
+| timestamp | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | When action occurred |
 
 **Actions:**
 - **guessed** - Phrase was successfully guessed
@@ -285,6 +293,7 @@ Junction table tracking phrase actions during turns.
 
 **Constraints:**
 - UNIQUE(turn_id, phrase_id) - One action per phrase per turn
+- ON DELETE CASCADE from turns and phrases tables
 
 ### Turn Order Table
 Implements circular linked list for turn progression.
@@ -297,11 +306,12 @@ Implements circular linked list for turn progression.
 | team_id | TEXT | NOT NULL, FK | Player's team |
 | next_player_id | TEXT | NOT NULL, FK | Next player in sequence |
 | prev_player_id | TEXT | NOT NULL, FK | Previous player in sequence |
-| created_at | TEXT | NOT NULL, DEFAULT | Record creation timestamp |
-| updated_at | TEXT | NOT NULL, DEFAULT | Last update timestamp |
+| created_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Record creation timestamp |
+| updated_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Constraints:**
 - UNIQUE(game_id, player_id) - One entry per player per game
+- ON DELETE CASCADE from games, players, and teams tables
 
 ### Device Sessions Table
 Tracks device connections and session management.
@@ -313,13 +323,14 @@ Tracks device connections and session management.
 | socket_id | TEXT | (optional) | WebSocket connection ID |
 | player_id | TEXT | FK (optional) | Associated player |
 | game_id | TEXT | FK (optional) | Associated game |
-| last_seen | TEXT | NOT NULL, DEFAULT | Last activity timestamp |
+| last_seen | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last activity timestamp |
 | is_active | BOOLEAN | NOT NULL, DEFAULT 1 | Session active status |
-| created_at | TEXT | NOT NULL, DEFAULT | Session creation timestamp |
-| updated_at | TEXT | NOT NULL, DEFAULT | Last update timestamp |
+| created_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Session creation timestamp |
+| updated_at | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Constraints:**
 - UNIQUE(device_id, game_id) - One session per device per game
+- ON DELETE SET NULL for player_id and game_id references
 
 ## Database Features
 
@@ -330,22 +341,26 @@ All tables include automatic timestamp management:
 
 ### Cascading Deletes
 Proper foreign key relationships ensure data integrity:
-- Deleting a game removes all associated players, teams, phrases, turns, etc.
+- Deleting a game removes all associated players, teams, phrases, turns, turn_phrases, turn_order, and device_sessions
 - Deleting a player removes their phrases and turn records
-- Device sessions are preserved but unlinked when players/games are deleted
+- Device sessions are preserved but unlinked (SET NULL) when players/games are deleted
 
 ### Indexes
 Comprehensive indexing for optimal query performance:
 - Primary keys and foreign keys
-- Composite indexes for common query patterns
+- Composite indexes for common query patterns (e.g., game_id + status for phrases)
 - Status and connection state indexes
 - Game and player lookup optimization
+- Turn order navigation indexes (next_player_id, prev_player_id)
+- Device session lookup by device_id, socket_id, and composite device_id + game_id
 
 ### Data Validation
 Extensive CHECK constraints ensure data integrity:
 - Status enums are strictly enforced
-- Numeric ranges are validated (team counts, round numbers, etc.)
-- Timer durations and phrase counts have reasonable limits
+- Numeric ranges are validated (team counts 2-6, rounds 1-3, etc.)
+- Timer durations must be between 30-300 seconds
+- Phrases per player must be between 1-10
+- Pause reasons are restricted to specific values or NULL
 
 ## Schema Version
 Current schema version: **1**
