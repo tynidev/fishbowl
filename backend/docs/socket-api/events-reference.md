@@ -12,7 +12,7 @@ All events follow the standardized `colon:separated` pattern:
 
 Events that clients emit to the server:
 
-### Game Events
+### Game Room Events
 
 | Event | Description | Payload |
 |-------|-------------|---------|
@@ -27,7 +27,7 @@ Events that the server emits to clients:
 
 | Event | Description | Payload |
 |-------|-------------|---------|
-| `game:joined` | Confirmation of joining a game | `{ gameCode, playerId, playerName, connectedAt }` |
+| `game:joined` | Confirmation of joining a game room | `{ gameCode, playerId, playerName, connectedAt }` |
 | `game:state` | Complete game state | `{ game, players, teams, gameCode, updatedAt }` |
 | `game:started` | Game has started | `{ gameCode, startedAt }` |
 
@@ -35,15 +35,14 @@ Events that the server emits to clients:
 
 | Event | Description | Payload |
 |-------|-------------|---------|
-| `player:connected` | Player connected to game | `{ playerId, playerName, connectedAt }` |
-| `player:disconnected` | Player disconnected from game | `{ playerId, playerName, disconnectedAt, reason? }` |
+| `player:connected` | When a player connected to game room | `{ playerId, playerName, connectedAt }` |
+| `player:disconnected` | When a player disconnected from game room | `{ playerId, playerName, disconnectedAt, reason? }` |
 
 ### Connection Events
 
 | Event | Description | Payload |
 |-------|-------------|---------|
-| `connection:replaced` | Current connection replaced | `{ message }` |
-| `session:reconnected` | Session reconnected | `{ success, session?, message? }` |
+| `connection:replaced` | Notifies an existing socket that it's being disconnected because the same player connected from a different socket | `{ message }` |
 
 ### Error Events
 
@@ -54,5 +53,4 @@ Events that the server emits to clients:
 ## Best Practices
 
 1. **Error Handling**: Always listen for the `error` event to handle error cases
-2. **Reconnection**: Handle `session:reconnected` for seamless reconnection experience
-3. **State Synchronization**: Use `game:state` to get full state after joining
+2. **State Synchronization**: Use `game:state` to get full state after joining
