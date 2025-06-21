@@ -250,3 +250,15 @@ export interface CleanupSessionsResponse
   staleSessionsDeactivated: number;
   oldSessionsRemoved: number;
 }
+
+export interface StartRoundResponse
+{
+  round: number;
+  roundName: string;
+  currentTurnId: string;
+  currentPlayer: {
+    id: string;
+    teamId: string;
+  };
+  startedAt: string;
+}

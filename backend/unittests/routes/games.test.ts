@@ -600,18 +600,10 @@ describe('POST /api/games/:gameCode/start', () => {
       const isCircularValid = await verifyCircularLinking(gameCode);
       expect(isCircularValid).toBe(true);
       
-      // Verify current_turn_id points to a valid player in the turn order
-      expect(updatedGame.current_turn_id).toBeDefined();
+      // Verify current_turn_id is not set
+      expect(updatedGame.current_turn_id).toBeNull();
       const turnOrderSequence = await extractTurnOrderSequence(gameCode);
       expect(turnOrderSequence).toHaveLength(4);
-      
-      // Verify that the current turn player is in the turn order
-      const { select } = await import('../../src/db/utils');
-      const currentTurn = await select('turns', {
-        where: [{ field: 'id', operator: '=', value: updatedGame.current_turn_id }]
-      });
-      expect(currentTurn).toHaveLength(1);
-      expect(turnOrderSequence).toContain(currentTurn[0].player_id);
       
       // Verify turn order integrity using utility function
       const integrityValid = await validateTurnOrderIntegrity(gameCode);
@@ -697,68 +689,6 @@ describe('POST /api/games/:gameCode/start', () => {
       // Verify circular linking
       const isCircularValid = await verifyCircularLinking(gameCode);
       expect(isCircularValid).toBe(true);
-    });
-
-    it('should verify random player selection varies over multiple runs', async () => {
-      const selectedPlayers = new Set<string>();
-      const numberOfRuns = 5;
-
-      for (let run = 0; run < numberOfRuns; run++) {
-        // Reset for each run
-        await resetAllMocks();
-        
-        const runGameCode = `TST${run.toString().padStart(3, '0')}`;
-        const scenario = createGameScenario({
-          gameCode: runGameCode,
-          gameStatus: 'setup',
-          gameSubStatus: 'waiting_for_players',
-          teamCount: 2,
-          playerCount: 6,
-          phrasesPerPlayer: 3
-        });
-
-        const dataStore = createRealDataStoreFromScenario(scenario);
-        await dataStore.initDb();
-
-        // Add required phrases
-        for (const player of scenario.players) {
-          for (let i = 0; i < scenario.game.phrases_per_player; i++) {
-            await dataStore.addPhrase({
-              id: `phrase-${player.id}-${i}-${run}`,
-              game_id: runGameCode,
-              player_id: player.id,
-              text: `Test phrase ${i + 1} from ${player.name}`,
-              status: 'active',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-          }
-        }
-
-        const response = await request(app)
-          .post(`/api/games/${runGameCode}/start`)
-          .expect(200);
-
-        // Get the starting player from the current turn
-        const { select } = await import('../../src/db/utils');
-        const game = await select('games', {
-          where: [{ field: 'id', operator: '=', value: runGameCode }]
-        });
-        
-        if (game.length > 0 && game[0].current_turn_id) {
-          const turns = await select('turns', {
-            where: [{ field: 'id', operator: '=', value: game[0].current_turn_id }]
-          });
-          
-          if (turns.length > 0) {
-            selectedPlayers.add(turns[0].player_id);
-          }
-        }
-      }
-
-      // We should see some variation in selected starting players
-      // (though it's possible, albeit unlikely, for the same player to be selected multiple times)
-      expect(selectedPlayers.size).toBeGreaterThan(0);
     });
 
     it('should maintain turn order integrity with proper circular linking', async () => {

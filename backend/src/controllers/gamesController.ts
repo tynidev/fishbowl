@@ -1,15 +1,16 @@
 import { Request, Response } from 'express';
-import { Server as SocketIOServer } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import { TransactionConnection, withTransaction } from '../db/connection';
-import { Game, Phrase, Player, Team, Turn, TurnOrder } from '../db/schema';
-import { exists, findById, insert, select, update } from '../db/utils';
-import { broadcastGameStarted } from '../sockets/SOCKET-API';
-import { CreateGameRequest, GameInfoResponse, UpdateConfigRequest } from '../types/rest-api';
-import { generateGameCode } from '../utils/codeGenerator';
-import { assignPlayerToTeam, createDefaultTeams } from '../utils/teamUtils';
-import { getRandomPlayerFromTurnOrder } from '../utils/turnUtils';
+import { Server as SocketIOServer } from 'socket.io';
+import { GameInfoResponse, CreateGameRequest, UpdateConfigRequest, StartRoundResponse } from '../types/rest-api';
+import { Game, Player, Team, TurnOrder, Turn, Phrase } from '../db/schema';
+import { withTransaction } from '../db/connection';
+import { findById, insert, select, update, exists } from '../db/utils';
 import { validateGameConfig, validatePlayerName } from '../utils/validators';
+import { TransactionConnection } from '../db/connection';
+import { broadcastRoundStarted, RoundStartedData, broadcastGameStarted } from '../sockets/SOCKET-API';
+import { generateGameCode } from '../utils/codeGenerator';
+import { createDefaultTeams } from '../utils/teamUtils';
+import { getRandomPlayerFromTurnOrder, getNextPlayerInTurnOrder } from '../utils/turnUtils';
 
 /**
  * POST /api/games - Create a new game
@@ -562,47 +563,6 @@ export async function startGame(req: Request, res: Response): Promise<void>
         await insert('turn_order', turnOrder, transaction);
       }
 
-      // Select random starting player from turn order
-      const randomStartingPlayerId = await getRandomPlayerFromTurnOrder(gameCode);
-      if (!randomStartingPlayerId)
-      {
-        res.status(500).json({
-          error: 'Failed to select starting player from turn order',
-        });
-        return;
-      }
-
-      const firstPlayer = players.find(p => p.id === randomStartingPlayerId);
-      if (!firstPlayer)
-      {
-        res.status(500).json({
-          error: 'Selected starting player not found',
-        });
-        return;
-      }
-      const firstTurn: Omit<Turn, 'created_at' | 'updated_at'> = {
-        id: uuidv4(),
-        game_id: gameCode,
-        player_id: firstPlayer!.id,
-        team_id: firstPlayer!.team_id!,
-        round: 1,
-        is_complete: false, // Turn is not complete
-        duration: 0, // No time elapsed yet
-        phrases_guessed: 0, // No phrases guessed yet
-        phrases_skipped: 0, // No phrases skipped yet
-        points_scored: 0, // No points scored yet
-      };
-
-      await insert('turns', firstTurn, transaction);
-
-      // Update game to reference the current turn
-      await update(
-        'games',
-        { current_turn_id: firstTurn.id },
-        [{ field: 'id', operator: '=', value: gameCode }],
-        transaction,
-      );
-
       // Get updated game info for response
       const updatedGameInfo = await findById<Game>(
         'games',
@@ -645,6 +605,144 @@ export async function startGame(req: Request, res: Response): Promise<void>
     console.error('Error starting game:', error);
     res.status(500).json({
       error: 'Failed to start game',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * POST /api/games/:gameCode/rounds/start - Start a new round
+ */
+export async function startRound(req: Request, res: Response): Promise<void>
+{
+  try
+  {
+    const { gameCode } = req.params;
+
+    if (!gameCode || typeof gameCode !== 'string' || gameCode.length !== 6)
+    {
+      res.status(400).json({ error: 'Invalid game code' });
+      return;
+    }
+
+    await withTransaction(async (transaction: TransactionConnection) =>
+    {
+      // Retrieve game information
+      const game = await findById<Game>('games', gameCode, transaction);
+      if (!game)
+      {
+        res.status(404).json({ error: 'Game not found' });
+        return;
+      }
+
+      // Check if game is in the correct state to start a round
+      if (game.status !== 'playing' || game.sub_status !== 'round_intro')
+      {
+        res.status(400).json({
+          error: 'Game is not in the correct state to start a round',
+          status: game.status,
+          subStatus: game.sub_status,
+        });
+        return;
+      }
+
+      // Determine the current round and get round name
+      const roundNames = ['Taboo', 'Charades', 'One Word'];
+      const roundName = roundNames[game.current_round - 1] || 'Unknown';
+
+      // Get the next player in the turn order OR first player if no current turn
+      const nextPlayerId = await getNextPlayerInTurnOrder(gameCode, game.current_turn_id, transaction);
+      
+      if (!nextPlayerId)
+      {
+        res.status(500).json({ error: 'Failed to determine next player for the round' });
+        return;
+      }
+
+      // Get player information
+      const player = await findById<Player>('players', nextPlayerId, transaction);
+      if (!player)
+      {
+        res.status(500).json({ error: 'Player not found' });
+        return;
+      }
+
+      // Create the first turn of the round
+      const turnId = uuidv4();
+      const startTime = new Date().toISOString();
+      
+      const turn = {
+        id: turnId,
+        game_id: gameCode,
+        round: game.current_round,
+        team_id: player.team_id,
+        player_id: player.id,
+        start_time: startTime,
+        duration: 0,
+        phrases_guessed: 0,
+        phrases_skipped: 0,
+        points_scored: 0,
+        is_complete: false,
+      };
+
+      await insert('turns', turn, transaction);
+
+      // Reset all phrase statuses for the new round
+      await update(
+        'phrases',
+        { status: 'active' },
+        [
+          { field: 'game_id', operator: '=', value: gameCode },
+        ],
+        transaction
+      );
+
+      // Update game state with the new turn
+      await update(
+        'games',
+        {
+          current_turn_id: turnId,
+          sub_status: 'turn_starting',
+          updated_at: startTime,
+        },
+        [{ field: 'id', operator: '=', value: gameCode }],
+        transaction
+      );
+
+      // Prepare response
+      const response: StartRoundResponse = {
+        round: game.current_round,
+        roundName,
+        currentTurnId: turnId,
+        currentPlayer: {
+          id: player.id,
+          teamId: player.team_id || '',
+        },
+        startedAt: startTime,
+      };
+
+      // Send response
+      res.status(200).json(response);
+
+      // Broadcast round started event via Socket.IO
+      if (socketServer)
+      {
+        const roundStartData: RoundStartedData = {
+          gameCode,
+          round: game.current_round,
+          roundName,
+          startedAt: new Date(startTime),
+        };
+        
+        await broadcastRoundStarted(socketServer, roundStartData);
+      }
+    });
+  }
+  catch (error)
+  {
+    console.error('Error starting round:', error);
+    res.status(500).json({
+      error: 'Failed to start round',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }

@@ -2,7 +2,9 @@
 // Handles turn order operations for the Fishbowl game
 
 import { withConnection } from '../db/connection';
-import { Game, Player, Turn, TurnOrder } from '../db/schema';
+import { Game, Player, Team, Turn, Phrase, TurnOrder } from '../db/schema';
+import { TransactionConnection } from '../db/connection';
+import { findById, select } from '../db/utils';
 
 /**
  * Get the next player in the circular turn order
@@ -231,4 +233,66 @@ export async function validateTurnOrderIntegrity(
       return false;
     }
   });
+}
+
+/**
+ * Get the next player in turn order from the circular linked list
+ * If currentPlayerId is null, return the first player in the turn order
+ * 
+ * @param gameId - The game ID
+ * @param currentTurnId - The current turn ID (or null to get the first player)
+ * @param transaction - Optional database transaction
+ * @returns Promise<string | null> - Next player ID or null if no player found
+ */
+export async function getNextPlayerInTurnOrder(
+  gameId: string,
+  currentTurnId: string | undefined,
+  transaction?: TransactionConnection
+): Promise<string | null> {
+  try {
+    // If currentTurnId is undefined, get a random starting player
+    if (!currentTurnId) {
+      // Select random starting player from turn order
+      const randomStartingPlayerId = await getRandomPlayerFromTurnOrder(gameId);
+      if (!randomStartingPlayerId)
+      {
+        return null;
+      }
+      return randomStartingPlayerId;
+    }
+
+    // Get the current player's turn entry
+    const turn = await findById<Turn>(
+      'turns',
+      currentTurnId,
+      transaction
+    );
+
+    if (!turn) {
+      return null;
+    }
+
+    const currentTurnOrder = await select<TurnOrder>('turn_order',
+      {
+        where: [
+          { field: 'game_id', operator: '=', value: gameId },
+          { field: 'player_id', operator: '=', value: turn.player_id }
+        ],
+        limit: 1
+      },
+      transaction
+    );
+
+    // If there's only one player in the turn order, return their next player ID
+    if (currentTurnOrder.length === 1 && currentTurnOrder[0]) {
+      // Return the next player in the turn order
+      return currentTurnOrder[0].next_player_id;
+    }
+
+    return null;
+  }
+  catch (error) {
+    console.error('Error getting next player in turn order:', error);
+    throw error;
+  }
 }
