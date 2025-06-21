@@ -19,12 +19,6 @@ Events that clients emit to the server:
 | `game:join` | Join a game room | `{ gameCode, playerId, playerName, deviceId }` |
 | `game:leave` | Leave a game room | `{ gameCode, playerId }` |
 
-### Team Events
-
-| Event | Description | Payload |
-|-------|-------------|---------|
-| `team:assigned` | Broadcast team assignment | `{ gameCode, playerId, teamId }` |
-
 ## Server-to-Client Events
 
 Events that the server emits to clients:
@@ -43,19 +37,6 @@ Events that the server emits to clients:
 |-------|-------------|---------|
 | `player:connected` | Player connected to game | `{ playerId, playerName, connectedAt }` |
 | `player:disconnected` | Player disconnected from game | `{ playerId, playerName, disconnectedAt, reason? }` |
-| `player:updated` | Player data updated | `{ gameCode, playerId, updates }` |
-
-### Team Events
-
-| Event | Description | Payload |
-|-------|-------------|---------|
-| `team:assignment:updated` | Team assignment updated | `{ playerId, teamId, playerName }` |
-
-### Phrase Events
-
-| Event | Description | Payload |
-|-------|-------------|---------|
-| `phrase:submission:updated` | Phrase submission progress | `{ gameCode, playerId, submittedCount, totalRequired }` |
 
 ### Connection Events
 
