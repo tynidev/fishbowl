@@ -302,6 +302,190 @@ describe("SOCKET-API Tests", () => {
 
         await expectErrorEvent(clientSocket, "Missing required fields: gameCode, playerId, playerName, deviceId");
     });
+
+    describe("Game Event Broadcast Tests", () => {
+        // Test round:started broadcast
+        test("should broadcast round:started event to all players in game", async () => {
+            jest.setTimeout(15000); // Increase timeout for this test
+            const gameCode = "TEST123";
+            const roundData: SocketAPI.RoundStartedData = {
+                gameCode,
+                round: 1,
+                roundName: "Taboo",
+                startedAt: new Date()
+            };
+
+            // Set up an event listener for the round:started event
+            const eventPromise = new Promise<void>((resolve) => {
+                clientSocket.once("round:started", (data) => {
+                    // Check everything except dates which may be serialized
+                    expect(data.gameCode).toEqual(roundData.gameCode);
+                    expect(data.round).toEqual(roundData.round);
+                    expect(data.roundName).toEqual(roundData.roundName);
+                    expect(data.startedAt).toBeDefined();
+                    resolve();
+                });
+            });
+
+            // Join the game room first
+            server.socketsJoin(gameCode);
+            clientSocket.emit("gameroom:join", gameCode);
+
+            // Broadcast the event
+            await SocketAPI.broadcastRoundStarted(server, roundData);
+            
+            // Wait for the event to be received
+            await eventPromise;
+        });
+
+        // Test round:ended broadcast
+        test("should broadcast round:ended event with scores", async () => {
+            jest.setTimeout(15000); // Increase timeout for this test
+            const gameCode = "TEST123";
+            const roundData: SocketAPI.RoundEndedData = {
+                gameCode,
+                round: 1,
+                roundScores: [
+                    { teamName: "Team A", score: 10 },
+                    { teamName: "Team B", score: 8 }
+                ],
+                endedAt: new Date()
+            };
+
+            // Set up an event listener for the round:ended event
+            const eventPromise = new Promise<void>((resolve) => {
+                clientSocket.once("round:ended", (data) => {
+                    // Check everything except dates which may be serialized
+                    expect(data.gameCode).toEqual(roundData.gameCode);
+                    expect(data.round).toEqual(roundData.round);
+                    expect(data.roundScores).toHaveLength(2);
+                    expect(data.roundScores[0].teamName).toBe("Team A");
+                    expect(data.roundScores[0].score).toBe(10);
+                    expect(data.endedAt).toBeDefined();
+                    resolve();
+                });
+            });
+
+            // Join the game room first
+            server.socketsJoin(gameCode);
+            clientSocket.emit("gameroom:join", gameCode);
+
+            // Broadcast the event
+            await SocketAPI.broadcastRoundEnded(server, roundData);
+            
+            // Wait for the event to be received
+            await eventPromise;
+        });
+
+        // Test turn:started broadcast
+        test("should broadcast turn:started event", async () => {
+            const gameCode = "TEST123";
+            const turnData: SocketAPI.TurnStartedData = {
+                gameCode,
+                round: 2,
+                playerName: "John Doe",
+                teamName: "Team A",
+                startedAt: new Date()
+            };
+
+            // Set up an event listener for the turn:started event
+            const eventPromise = new Promise<void>((resolve) => {
+                clientSocket.once("turn:started", (data) => {
+                    // Check everything except dates which may be serialized
+                    expect(data.gameCode).toEqual(turnData.gameCode);
+                    expect(data.round).toEqual(turnData.round);
+                    expect(data.playerName).toBe("John Doe");
+                    expect(data.teamName).toBe("Team A");
+                    expect(data.startedAt).toBeDefined();
+                    resolve();
+                });
+            });
+
+            // Join the game room first
+            server.socketsJoin(gameCode);
+            clientSocket.emit("gameroom:join", gameCode);
+
+            // Broadcast the event
+            await SocketAPI.broadcastTurnStarted(server, turnData);
+            
+            // Wait for the event to be received
+            await eventPromise;
+        });
+
+        // Test turn:paused broadcast
+        test("should broadcast turn:paused event with reason", async () => {
+            const gameCode = "TEST123";
+            const turnData: SocketAPI.TurnPausedData = {
+                gameCode,
+                round: 2,
+                playerName: "John Doe",
+                pausedAt: new Date(),
+                pausedReason: "host_paused"
+            };
+
+            // Set up an event listener for the turn:paused event
+            const eventPromise = new Promise<void>((resolve) => {
+                clientSocket.once("turn:paused", (data) => {
+                    // Check everything except dates which may be serialized
+                    expect(data.gameCode).toEqual(turnData.gameCode);
+                    expect(data.round).toEqual(turnData.round);
+                    expect(data.playerName).toBe("John Doe");
+                    expect(data.pausedReason).toBe("host_paused");
+                    expect(data.pausedAt).toBeDefined();
+                    resolve();
+                });
+            });
+
+            // Join the game room first
+            server.socketsJoin(gameCode);
+            clientSocket.emit("gameroom:join", gameCode);
+
+            // Broadcast the event
+            await SocketAPI.broadcastTurnPaused(server, turnData);
+            
+            // Wait for the event to be received
+            await eventPromise;
+        });
+
+        // Test turn:ended broadcast
+        test("should broadcast turn:ended event with statistics", async () => {
+            const gameCode = "TEST123";
+            const turnData: SocketAPI.TurnEndedData = {
+                gameCode,
+                round: 3,
+                playerName: "John Doe",
+                phrasesGuessed: 5,
+                phrasesSkipped: 1,
+                pointsScored: 5,
+                endedAt: new Date()
+            };
+
+            // Set up an event listener for the turn:ended event
+            const eventPromise = new Promise<void>((resolve) => {
+                clientSocket.once("turn:ended", (data) => {
+                    // Check everything except dates which may be serialized
+                    expect(data.gameCode).toEqual(turnData.gameCode);
+                    expect(data.round).toEqual(turnData.round);
+                    expect(data.playerName).toBe("John Doe");
+                    expect(data.phrasesGuessed).toBe(5);
+                    expect(data.phrasesSkipped).toBe(1);
+                    expect(data.pointsScored).toBe(5);
+                    expect(data.endedAt).toBeDefined();
+                    resolve();
+                });
+            });
+
+            // Join the game room first
+            server.socketsJoin(gameCode);
+            clientSocket.emit("gameroom:join", gameCode);
+
+            // Broadcast the event
+            await SocketAPI.broadcastTurnEnded(server, turnData);
+            
+            // Wait for the event to be received
+            await eventPromise;
+        });
+    });
 });
 
 /**

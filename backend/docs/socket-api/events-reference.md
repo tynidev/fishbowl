@@ -37,6 +37,11 @@ Events that the server emits to clients:
 |-------|-------------|---------|
 | `game:state` | Complete game state | `{ gameCode, game, teams, players, updatedAt }` |
 | `game:started` | Game has started | `{ gameCode, startedAt }` |
+| `round:started` | Round has started | `{ gameCode, round, roundName, startedAt }` |
+| `round:ended` | Round has ended | `{ gameCode, round, roundScores, endedAt }` |
+| `turn:started` | Turn has started | `{ gameCode, round, playerName, teamName, startedAt }` |
+| `turn:paused` | Turn has been paused | `{ gameCode, round, playerName, pausedAt, pausedReason }` |
+| `turn:ended` | Turn has ended | `{ gameCode, round, playerName, phrasesGuessed, phrasesSkipped, pointsScored, endedAt }` |
 
 ### Connection Events
 

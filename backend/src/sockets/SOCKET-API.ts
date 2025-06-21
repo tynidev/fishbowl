@@ -41,6 +41,54 @@ export interface GameStartedData
   startedAt: Date;
 }
 
+export interface RoundStartedData
+{
+  gameCode: string;
+  round: number; // 1-3
+  roundName: string; // "Taboo", "Charades", "One Word"
+  startedAt: Date;
+}
+
+export interface RoundEndedData
+{
+  gameCode: string;
+  round: number;
+  roundScores: {
+    teamName: string;
+    score: number;
+  }[];
+  endedAt: Date;
+}
+
+export interface TurnStartedData
+{
+  gameCode: string;
+  round: number;
+  playerName: string;
+  teamName: string;
+  startedAt: Date;
+}
+
+export interface TurnPausedData
+{
+  gameCode: string;
+  round: number;
+  playerName: string;
+  pausedAt: Date;
+  pausedReason: 'player_disconnected' | 'host_paused' | 'dispute';
+}
+
+export interface TurnEndedData
+{
+  gameCode: string;
+  round: number;
+  playerName: string;
+  phrasesGuessed: number;
+  phrasesSkipped: number;
+  pointsScored: number;
+  endedAt: Date;
+}
+
 // ==================== Socket Connection Management ====================
 
 interface ConnectedPlayer
@@ -436,6 +484,101 @@ export async function broadcastGameStarted(
   catch (error)
   {
     console.error('Error broadcasting game started:', error);
+  }
+}
+
+/**
+ * Broadcast round started event to all players in a game
+ */
+export async function broadcastRoundStarted(
+  io: SocketIOServer,
+  data: RoundStartedData
+): Promise<void> 
+{
+  try 
+  {
+    io.to(data.gameCode).emit('round:started', data);
+    console.log(`Broadcasting round ${data.round} started for game ${data.gameCode}`);
+  } 
+  catch (error) 
+  {
+    console.error('Error broadcasting round started:', error);
+  }
+}
+
+/**
+ * Broadcast round ended event to all players in a game
+ */
+export async function broadcastRoundEnded(
+  io: SocketIOServer,
+  data: RoundEndedData
+): Promise<void> 
+{
+  try 
+  {
+    io.to(data.gameCode).emit('round:ended', data);
+    console.log(`Broadcasting round ${data.round} ended for game ${data.gameCode}`);
+  } 
+  catch (error) 
+  {
+    console.error('Error broadcasting round ended:', error);
+  }
+}
+
+/**
+ * Broadcast turn started event to all players in a game
+ */
+export async function broadcastTurnStarted(
+  io: SocketIOServer,
+  data: TurnStartedData
+): Promise<void> 
+{
+  try 
+  {
+    io.to(data.gameCode).emit('turn:started', data);
+    console.log(`Broadcasting turn started for player ${data.playerName} in game ${data.gameCode}`);
+  } 
+  catch (error) 
+  {
+    console.error('Error broadcasting turn started:', error);
+  }
+}
+
+/**
+ * Broadcast turn paused event to all players in a game
+ */
+export async function broadcastTurnPaused(
+  io: SocketIOServer,
+  data: TurnPausedData
+): Promise<void> 
+{
+  try 
+  {
+    io.to(data.gameCode).emit('turn:paused', data);
+    console.log(`Broadcasting turn paused (${data.pausedReason}) for game ${data.gameCode}`);
+  } 
+  catch (error) 
+  {
+    console.error('Error broadcasting turn paused:', error);
+  }
+}
+
+/**
+ * Broadcast turn ended event to all players in a game
+ */
+export async function broadcastTurnEnded(
+  io: SocketIOServer,
+  data: TurnEndedData
+): Promise<void> 
+{
+  try 
+  {
+    io.to(data.gameCode).emit('turn:ended', data);
+    console.log(`Broadcasting turn ended for game ${data.gameCode}`);
+  } 
+  catch (error) 
+  {
+    console.error('Error broadcasting turn ended:', error);
   }
 }
 
