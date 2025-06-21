@@ -3,7 +3,7 @@
 ### Backend Files (Existing)
 - `/backend/jest.config.js` - Jest testing configuration for backend
 - `/backend/src/server.ts` - Main Express server setup with Socket.IO integration
-- `/backend/src/routes/REST-API.ts` - REST API endpoints for game management
+- `/backend/src/routes/rest-api.ts` - REST API endpoints for game management
 - `/backend/src/routes/README.md` - Documentation for REST API routes
 - `/backend/src/sockets/SOCKET-API.ts` - Socket.IO event handlers for real-time updates
 - `/backend/src/db/schema.ts` - SQLite database schema definitions

@@ -4,13 +4,13 @@ Welcome to the Fishbowl backend documentation. This guide provides comprehensive
 
 ## 📚 Documentation Overview
 
-### 🎮 [REST API Documentation](./REST-API/README.md)
+### 🎮 [REST API Documentation](./rest-api/README.md)
 Complete REST API reference for the Fishbowl backend, including:
-- [Game Management Endpoints](./REST-API/game-endpoints.md) - Create, configure, and manage games
-- [Player Management Endpoints](./REST-API/player-endpoints.md) - Player registration and team assignments
-- [Phrase Management Endpoints](./REST-API/phrase-endpoints.md) - Phrase submission and tracking
-- [Turn Management Endpoints](./REST-API/turn-endpoints.md) - Turn progression and circular draft order
-- [Device Session Endpoints](./REST-API/device-session-endpoints.md) - Device tracking and session management
+- [Game Management Endpoints](./rest-api/game-endpoints.md) - Create, configure, and manage games
+- [Player Management Endpoints](./rest-api/player-endpoints.md) - Player registration and team assignments
+- [Phrase Management Endpoints](./rest-api/phrase-endpoints.md) - Phrase submission and tracking
+- [Turn Management Endpoints](./rest-api/turn-endpoints.md) - Turn progression and circular draft order
+- [Device Session Endpoints](./rest-api/device-session-endpoints.md) - Device tracking and session management
 
 ### 🗄️ [Database Documentation](./database/README.md)
 Comprehensive database module documentation, including:
@@ -82,7 +82,7 @@ Device sessions enable:
 - Real-time connection status
 - Cross-game session support
 
-Details in the [Device Session Endpoints](./REST-API/device-session-endpoints.md).
+Details in the [Device Session Endpoints](./rest-api/device-session-endpoints.md).
 
 ## 🛠️ Development
 

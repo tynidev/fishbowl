@@ -32,7 +32,7 @@ services/
 ### 1. GameService Class (`GameService.ts`)
 
 Create a singleton service that:
-- Integrates REST API calls from `REST-API.ts`
+- Integrates REST API calls from `rest-api.ts`
 - Manages Socket.IO events from `SOCKET-API.ts`
 - Handles device sessions from `deviceSessions.ts`
 - Provides unified interface for all game operations
@@ -70,7 +70,7 @@ Device persistence and session management:
 ## TypeScript Interfaces
 
 ### REST API Types (`rest.types.ts`)
-- Mirror all request/response interfaces from `REST-API.ts`
+- Mirror all request/response interfaces from `rest-api.ts`
 - Add client-specific types for state management
 - Include error response types
 
