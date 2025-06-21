@@ -174,7 +174,7 @@ export async function handleJoinGameRoom(
           const existingSession = await getDeviceSessionBySocket(existingSocketId);
           const isReconnection = existingSession && existingSession.device_id === deviceId;
 
-          existingSocket.emit('connection-replaced', {
+          existingSocket.emit('connection:replaced', {
             message: isReconnection ?
               'You have reconnected from the same device' :
               'You have connected from another device',
@@ -212,7 +212,7 @@ export async function handleJoinGameRoom(
       socket.join(gameCode);
 
       // Notify the player that they have joined the game
-      socket.emit('gameroom-joined', {
+      socket.emit('game:joined', {
         gameCode,
         playerId,
         playerName,
@@ -220,7 +220,7 @@ export async function handleJoinGameRoom(
       });
 
       // Notify other players in the game that this player has connected
-      io.to(gameCode).emit('player-connected', {
+      io.to(gameCode).emit('player:connected', {
         playerId,
         playerName,
         connectedAt: playerConnection.connectedAt,
@@ -311,7 +311,7 @@ export async function handleLeaveGameRoom(
       socket.leave(gameCode);
 
       // Notify other players
-      io.to(gameCode).emit('player-disconnected', {
+      io.to(gameCode).emit('player:disconnected', {
         playerId: playerConnection.playerId,
         playerName: playerConnection.playerName,
         disconnectedAt: new Date(),
@@ -386,7 +386,7 @@ export async function handleDisconnect(
         playerSockets.delete(playerConnection.playerId);
 
         // Notify other players in the game
-        io.to(playerConnection.gameCode).emit('player-disconnected', {
+        io.to(playerConnection.gameCode).emit('player:disconnected', {
           playerId: playerConnection.playerId,
           playerName: playerConnection.playerName,
           disconnectedAt: new Date(),
@@ -489,7 +489,7 @@ export async function handleAssignedTeam(
       }
 
       // Broadcast team assignment to all players in the game
-      io.to(gameCode).emit('team-assignment-updated', {
+      io.to(gameCode).emit('team:assignment:updated', {
         playerId,
         teamId,
         playerName: player.name,
@@ -514,30 +514,46 @@ export async function handleAssignedTeam(
 // ==================== Broadcast Functions ====================
 
 /**
- * Broadcast game state update to all players in a game
+ * Broadcast complete game state to all players in a game
  */
-export async function broadcastGameStateUpdate(
+export async function broadcastGameState(
   io: SocketIOServer,
-  update: GameStateUpdate,
-): Promise<void>
-{
-  try
-  {
-    const { gameCode, ...stateData } = update;
+  game: Game,
+  players: Player[],
+): Promise<void> {
+  try {
+    if (!game || !players) return;
 
-    io.to(gameCode).emit('game-state-updated', {
-      gameCode,
-      ...stateData,
+    // Broadcast comprehensive game state to all players
+    io.to(game.id).emit('game:state', {
+      game: {
+        id: game.id,
+        name: game.name,
+        status: game.status,
+        hostPlayerId: game.host_player_id,
+        teamCount: game.team_count,
+        phrasesPerPlayer: game.phrases_per_player,
+        timerDuration: game.timer_duration,
+        currentRound: game.current_round,
+        currentTeam: game.current_team,
+        createdAt: game.created_at,
+        startedAt: game.started_at,
+      },
+      players: players.map(player => ({
+        id: player.id,
+        name: player.name,
+        teamId: player.team_id,
+        isConnected: Boolean(player.is_connected),
+        joinedAt: player.created_at,
+      })),
+      gameId: game.id,
       updatedAt: new Date(),
     });
 
-    console.log(
-      `Broadcasting game state update for game ${gameCode}:`,
-      stateData,
-    );
+    console.log(`Broadcasting game state for game ${game.id}`);
+
   }
-  catch (error)
-  {
+  catch (error) {
     console.error('Error broadcasting game state update:', error);
   }
 }
@@ -554,7 +570,7 @@ export async function broadcastPhraseSubmissionUpdate(
   {
     const { gameCode, ...updateData } = update;
 
-    io.to(gameCode).emit('phrase-submission-updated', {
+    io.to(gameCode).emit('phrase:submission:updated', {
       gameCode,
       ...updateData,
       updatedAt: new Date(),
@@ -582,7 +598,7 @@ export async function broadcastPlayerUpdate(
 {
   try
   {
-    io.to(gameCode).emit('player-updated', {
+    io.to(gameCode).emit('player:updated', {
       gameCode,
       ...playerUpdate,
       updatedAt: new Date(),
@@ -645,7 +661,7 @@ async function sendGameStateToPlayer(
     );
 
     // Send comprehensive game state
-    socket.emit('current-game-state', {
+    socket.emit('game:state', {
       game: {
         id: game.id,
         name: game.name,
@@ -743,18 +759,18 @@ export function registerSocketHandlers(
     console.log(`Socket connected: ${socket.id}`);
 
     // Game room management
-    socket.on('join-gameroom', (data: JoinGameData) =>
+    socket.on('game:join', (data: JoinGameData) =>
     {
       handleJoinGameRoom(io, socket, data);
     });
 
-    socket.on('leave-gameroom', (data: LeaveGameData) =>
+    socket.on('game:leave', (data: LeaveGameData) =>
     {
       handleLeaveGameRoom(io, socket, data);
     });
 
     // Team management
-    socket.on('assigned-team', (data: TeamAssignmentData) =>
+    socket.on('team:assigned', (data: TeamAssignmentData) =>
     {
       handleAssignedTeam(io, socket, data);
     });
@@ -796,7 +812,7 @@ export function registerSocketHandlers(
               rejoinData.gameCode = player.game_id;
 
               // Emit reconnection success and auto-rejoin
-              socket.emit('session-reconnected', {
+              socket.emit('session:reconnected', {
                 success: true,
                 session: existingSession,
                 player: {
@@ -814,7 +830,7 @@ export function registerSocketHandlers(
           else
           {
             // No existing session found
-            socket.emit('session-reconnected', {
+            socket.emit('session:reconnected', {
               success: false,
               message: 'No previous session found for this device',
             });
