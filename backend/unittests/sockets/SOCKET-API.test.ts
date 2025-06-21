@@ -86,7 +86,7 @@ describe("SOCKET-API Tests", () => {
             };
 
             // Connect the first players device to the game room
-            clientSocket.emit('game:join', joinPayload);
+            clientSocket.emit('gameroom:join', joinPayload);
 
             // Wait for the join to complete by listening for required events
             await hasJoinedGame(clientSocket, game, players, joinPayload);
@@ -125,7 +125,7 @@ describe("SOCKET-API Tests", () => {
                 }
             };
 
-            socket.once('game:joined', (response) => {
+            socket.once('gameroom:joined', (response) => {
                 expect(response.gameCode).toBe(joinPayload.gameCode);
                 expect(response.playerId).toBe(joinPayload.playerId);
                 expect(response.playerName).toBe(joinPayload.playerName);
@@ -134,7 +134,7 @@ describe("SOCKET-API Tests", () => {
             });
 
             // clientSocket should receive 'player-connected' as it's in the game room.
-            socket.once('player:connected', (data) => {
+            socket.once('gameroom:player:joined', (data) => {
                 // Payload for 'player-connected' is { playerId, playerName, connectedAt }
                 expect(data.playerId).toBe(joinPayload.playerId);
                 expect(data.playerName).toBe(joinPayload.playerName);
@@ -181,7 +181,7 @@ describe("SOCKET-API Tests", () => {
             deviceId: "test-device-id",
         };
 
-        clientSocket.emit('game:join', joinPayload);
+        clientSocket.emit('gameroom:join', joinPayload);
 
         await expectErrorEvent(clientSocket, "Missing required fields: gameCode, playerId, playerName, deviceId");
     });
@@ -193,7 +193,7 @@ describe("SOCKET-API Tests", () => {
             deviceId: "test-device-id",
         };
 
-        clientSocket.emit('game:join', joinPayload);
+        clientSocket.emit('gameroom:join', joinPayload);
 
         await expectErrorEvent(clientSocket, "Missing required fields: gameCode, playerId, playerName, deviceId");
     });
@@ -205,7 +205,7 @@ describe("SOCKET-API Tests", () => {
             deviceId: "test-device-id",
         };
 
-        clientSocket.emit('game:join', joinPayload);
+        clientSocket.emit('gameroom:join', joinPayload);
 
         await expectErrorEvent(clientSocket, "Missing required fields: gameCode, playerId, playerName, deviceId");
     });
@@ -217,7 +217,7 @@ describe("SOCKET-API Tests", () => {
             playerName: "Test Player",
         };
 
-        clientSocket.emit('game:join', joinPayload);
+        clientSocket.emit('gameroom:join', joinPayload);
 
         await expectErrorEvent(clientSocket, "Missing required fields: gameCode, playerId, playerName, deviceId");
     });
@@ -231,7 +231,7 @@ describe("SOCKET-API Tests", () => {
             deviceId: "test-device-id",
         };
 
-        clientSocket.emit('game:join', joinPayload);
+        clientSocket.emit('gameroom:join', joinPayload);
 
         await expectErrorEvent(clientSocket, "Game not found");
     });
@@ -251,7 +251,7 @@ describe("SOCKET-API Tests", () => {
             deviceId: "test-device-id",
         };
 
-        clientSocket.emit('game:join', otherPlayerPayload);
+        clientSocket.emit('gameroom:join', otherPlayerPayload);
 
         await expectErrorEvent(clientSocket, "Player not found in this game. Make sure to join via REST API first.");
     });
@@ -276,7 +276,7 @@ describe("SOCKET-API Tests", () => {
         };
 
         // Connect player to the game room
-        clientSocket.emit('game:join', joinPayload);
+        clientSocket.emit('gameroom:join', joinPayload);
 
         // Wait for join completion
         await hasJoinedGame(clientSocket, game, players, joinPayload);
@@ -298,7 +298,7 @@ describe("SOCKET-API Tests", () => {
             deviceId: "test-device-id",
         };
 
-        clientSocket.emit('game:join', joinPayload);
+        clientSocket.emit('gameroom:join', joinPayload);
 
         await expectErrorEvent(clientSocket, "Missing required fields: gameCode, playerId, playerName, deviceId");
     });

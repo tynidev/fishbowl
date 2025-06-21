@@ -5,7 +5,7 @@ This document provides a comprehensive reference of all Socket.IO events used in
 ## Event Naming Conventions
 
 All events follow the standardized `colon:separated` pattern:
-- `entity:action` - For simple events (e.g., `game:join`)
+- `entity:action` - For simple events (e.g., `gameroom:join`)
 - `entity:state` - For state-related events (e.g., `game:state`)
 
 ## Client-to-Server Events
@@ -16,27 +16,27 @@ Events that clients emit to the server:
 
 | Event | Description | Payload |
 |-------|-------------|---------|
-| `game:join` | Join a game room | `{ gameCode, playerId, playerName, deviceId }` |
-| `game:leave` | Leave a game room | `{ gameCode, playerId }` |
+| `gameroom:join` | Join a game room | `{ gameCode, playerId, playerName, deviceId }` |
+| `gameroom:leave` | Leave a game room | `{ gameCode, playerId }` |
 
 ## Server-to-Client Events
 
 Events that the server emits to clients:
 
+### Game Room Events
+
+| Event | Description | Payload |
+|-------|-------------|---------|
+| `gameroom:joined` | Confirmation of joining a game room | `{ gameCode, playerId, playerName, connectedAt }` |
+| `gameroom:player:joined` | When a player connected to game room | `{ playerId, playerName, connectedAt }` |
+| `gameroom:player:left` | When a player disconnected from game room | `{ playerId, playerName, disconnectedAt, reason? }` |
+
 ### Game Events
 
 | Event | Description | Payload |
 |-------|-------------|---------|
-| `game:joined` | Confirmation of joining a game room | `{ gameCode, playerId, playerName, connectedAt }` |
-| `game:state` | Complete game state | `{ game, players, teams, gameCode, updatedAt }` |
+| `game:state` | Complete game state | `{ gameCode, game, teams, players, updatedAt }` |
 | `game:started` | Game has started | `{ gameCode, startedAt }` |
-
-### Player Events
-
-| Event | Description | Payload |
-|-------|-------------|---------|
-| `player:connected` | When a player connected to game room | `{ playerId, playerName, connectedAt }` |
-| `player:disconnected` | When a player disconnected from game room | `{ playerId, playerName, disconnectedAt, reason? }` |
 
 ### Connection Events
 
@@ -49,6 +49,13 @@ Events that the server emits to clients:
 | Event | Description | Payload |
 |-------|-------------|---------|
 | `error` | Error occurred | `{ message, details? }` |
+
+### System Events
+
+| Event | Description | Payload |
+|-------|-------------|---------|
+| `ping` | Heartbeat request from client | `{ deviceId?, gameCode? }` |
+| `pong` | Heartbeat response from server | none |
 
 ## Best Practices
 

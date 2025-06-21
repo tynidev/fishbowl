@@ -8,15 +8,15 @@ The Fishbowl Socket API provides real-time functionality for the game through So
 
 All Socket.IO events follow a standardized `colon:separated` naming pattern for consistency:
 
-- Client-to-server events: `entity:action` (e.g., `game:join`)
-- Server-to-client events: `entity:action` or `entity:state` (e.g., `player:connected`, `game:state`)
+- Client-to-server events: `entity:action` (e.g., `gameroom:join`)
+- Server-to-client events: `entity:action` or `entity:state` (e.g., `gameroom:player:joined`, `game:state`)
 
 ## Socket Connection Lifecycle
 
 1. **Connection**: Client connects to Socket.IO server
-2. **Authentication**: Client joins a game room using the `game:join` event
+2. **Authentication**: Client joins a game room using the `gameroom:join` event
 3. **Real-time Updates**: Client receives updates through various events
-4. **Disconnection**: Client leaves explicitly with `game:leave` or through socket disconnection
+4. **Disconnection**: Client leaves explicitly with `gameroom:leave` or through socket disconnection
 
 ## Key Features
 

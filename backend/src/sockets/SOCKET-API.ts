@@ -66,7 +66,7 @@ const playerSockets = new Map<string, string>(); // playerId -> socketId
  * the game via the REST API.
  *
  * Key characteristics:
- * - Initiated by client via 'join-gameroom' event
+ * - Initiated by client via 'gameroom:join' event
  * - Requires gameCode, playerId, and playerName
  * - Validates that the player exists in the game
  * - Handles reconnection by disconnecting any existing socket for the same player
@@ -75,9 +75,9 @@ const playerSockets = new Map<string, string>(); // playerId -> socketId
  * - Sends current game state to the newly connected player
  *
  * Emits:
- * - 'gameroom-joined' - To the connecting player confirming join
- * - 'player-connected' - To all players in game notifying of new connection
- * - 'current-game-state' - To the connecting player with full game state
+ * - 'gameroom:joined' - To the connecting player confirming join
+ * - 'gameroom:player:joined' - To all players in game notifying of new connection
+ * - 'game:state' - To the connecting player with full game state
  * - 'error' - If validation fails or any error occurs
  */
 export async function handleJoinGameRoom(
@@ -180,7 +180,7 @@ export async function handleJoinGameRoom(
       socket.join(gameCode);
 
       // Notify the player that they have joined the game
-      socket.emit('game:joined', {
+      socket.emit('gameroom:joined', {
         gameCode,
         playerId,
         playerName,
@@ -188,7 +188,7 @@ export async function handleJoinGameRoom(
       });
 
       // Notify other players in the game that this player has connected
-      io.to(gameCode).emit('player:connected', {
+      io.to(gameCode).emit('gameroom:player:joined', {
         playerId,
         playerName,
         connectedAt: playerConnection.connectedAt,
@@ -218,7 +218,7 @@ export async function handleJoinGameRoom(
  * Triggered when a player intentionally leaves the game (e.g., "Leave Game" button).
  *
  * Key characteristics:
- * - Initiated by client via 'leave-gameroom' event
+ * - Initiated by client via 'gameroom:leave' event
  * - Requires gameCode and playerId
  * - Updates player's connection status to false in database
  * - Removes player from Socket.IO room
@@ -226,7 +226,7 @@ export async function handleJoinGameRoom(
  * - Validates that the player is leaving the correct game
  *
  * Emits:
- * - 'player-disconnected' - To all remaining players in game
+ * - 'gameroom:player:left' - To all remaining players in game
  * - 'error' - If validation fails or game code mismatch
  */
 export async function handleLeaveGameRoom(
@@ -279,7 +279,7 @@ export async function handleLeaveGameRoom(
       socket.leave(gameCode);
 
       // Notify other players
-      io.to(gameCode).emit('player:disconnected', {
+      io.to(gameCode).emit('gameroom:player:left', {
         playerId: playerConnection.playerId,
         playerName: playerConnection.playerName,
         disconnectedAt: new Date(),
@@ -320,7 +320,7 @@ export async function handleLeaveGameRoom(
  * - "transport error" - WebSocket error occurred
  *
  * Emits:
- * - 'player-disconnected' - To all remaining players in game notifying of disconnection
+ * - 'gameroom:player:left' - To all remaining players in game notifying of disconnection
  *
  * Note: Cannot emit to the disconnecting player as they are no longer connected
  */
@@ -354,7 +354,7 @@ export async function handleDisconnect(
         playerSockets.delete(playerConnection.playerId);
 
         // Notify other players in the game
-        io.to(playerConnection.gameCode).emit('player:disconnected', {
+        io.to(playerConnection.gameCode).emit('gameroom:player:left', {
           playerId: playerConnection.playerId,
           playerName: playerConnection.playerName,
           disconnectedAt: new Date(),
@@ -508,12 +508,12 @@ export function registerSocketHandlers(
     console.log(`Socket connected: ${socket.id}`);
 
     // Game room management
-    socket.on('game:join', (data: JoinGameData) =>
+    socket.on('gameroom:join', (data: JoinGameData) =>
     {
       handleJoinGameRoom(io, socket, data);
     });
 
-    socket.on('game:leave', (data: LeaveGameData) =>
+    socket.on('gameroom:leave', (data: LeaveGameData) =>
     {
       handleLeaveGameRoom(io, socket, data);
     });
