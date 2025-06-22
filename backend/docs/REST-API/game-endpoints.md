@@ -177,6 +177,34 @@ This ensures balanced turn distribution and maintains fairness across teams.
 }
 ```
 
+### <span style="color: orange;">POST /api/games/:gameCode/rounds/start</span>
+Starts a new round in a game that is in the 'round_intro' state.
+
+**Features:**
+- Validates game is in 'playing' status and 'round_intro' sub-status
+- Creates the first turn for the round with the next player in turn order
+- Resets all phrases back to 'active' state for the new round
+- Updates game sub-status to 'turn_starting'
+- Broadcasts round start event via Socket.IO to all connected clients
+
+**Validation Requirements:**
+- Game must exist and be in 'playing' status with 'round_intro' sub-status
+- A valid player must be determined from the turn order
+
+**Response:**
+```typescript
+{
+  round: number;                   // Current round number (1-3)
+  roundName: string;               // Round name ("Taboo", "Charades", "One Word")
+  currentTurnId: string;           // UUID of the new turn
+  currentPlayer: {
+    id: string;                    // Player ID who will take the turn
+    teamId: string;                // Team ID of the player
+  };
+  startedAt: string;               // ISO timestamp when the round started
+}
+```
+
 ## Related Documentation
 
 - [Player Endpoints](./player-endpoints.md) - Managing players within games
